@@ -1,6 +1,6 @@
 use crate::{DeserializeError, DeserializeFromValue, IntoValue, Map, Sequence, Value, ValueKind};
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     convert::TryFrom,
     hash::Hash,
     str::FromStr,
@@ -198,6 +198,44 @@ where
                     let key = Key::from_str(&key).map_err(|_| E::unexpected("todo"))?;
                     let value = T::deserialize_from_value(value.into_value())?;
                     res.insert(key, value);
+                }
+                Ok(res)
+            }
+            _ => Err(E::incorrect_value_kind(&[ValueKind::Map])),
+        }
+    }
+}
+
+impl<T, E: DeserializeError> DeserializeFromValue<E> for HashSet<T>
+where
+    T: DeserializeFromValue<E> + Hash + Eq,
+{
+    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
+        match value {
+            Value::Sequence(seq) => {
+                let mut res = HashSet::with_capacity(seq.len());
+                for value in seq.into_iter() {
+                    let value = T::deserialize_from_value(value.into_value())?;
+                    res.insert(value);
+                }
+                Ok(res)
+            }
+            _ => Err(E::incorrect_value_kind(&[ValueKind::Map])),
+        }
+    }
+}
+
+impl<T, E: DeserializeError> DeserializeFromValue<E> for BTreeSet<T>
+where
+    T: DeserializeFromValue<E> + Ord,
+{
+    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
+        match value {
+            Value::Sequence(seq) => {
+                let mut res = BTreeSet::new();
+                for value in seq.into_iter() {
+                    let value = T::deserialize_from_value(value.into_value())?;
+                    res.insert(value);
                 }
                 Ok(res)
             }
