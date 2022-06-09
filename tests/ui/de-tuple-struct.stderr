@@ -1,0 +1,5 @@
+error: Tuple structs aren't supported by the DeserializeFromValue derive macro
+ --> tests/ui/de-tuple-struct.rs:5:19
+  |
+5 | struct TupleStruct(i32, i32);
+  |                   ^^^^^^^^^^

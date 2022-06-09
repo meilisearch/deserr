@@ -1,0 +1,5 @@
+error: Unions aren't supported by the DeserializeFromValue derive macro
+ --> tests/ui/de-union.rs:5:1
+  |
+5 | union Union {
+  | ^^^^^
