@@ -33,6 +33,8 @@ mod impls;
 #[cfg(feature = "serde_json")]
 mod serde_json;
 
+use std::fmt::Display;
+
 pub use jayson_internal::DeserializeFromValue;
 
 /// Equivalent to [`Value`] but without the associated data.
@@ -120,6 +122,12 @@ pub enum Error {
     Unexpected(String),
     MissingField(String),
 }
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "error deserializing")
+    }
+}
+impl std::error::Error for Error {}
 
 impl DeserializeError for Error {
     fn unexpected(s: &str) -> Self {
