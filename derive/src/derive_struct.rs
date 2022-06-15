@@ -66,9 +66,10 @@ pub fn generate_derive_struct_impl(
                         })
                     }
                     // this is the case where the value is not a map
-                    _ => {
+                    v @ _ => {
                         ::std::result::Result::Err(
                             <#err_ty as jayson::DeserializeError>::incorrect_value_kind(
+                                v.kind(),
                                 &[jayson::ValueKind::Map],
                                 location
                             )

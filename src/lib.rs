@@ -123,6 +123,20 @@ pub enum Value<V: IntoValue> {
     Sequence(V::Sequence),
     Map(V::Map),
 }
+impl<V: IntoValue> Value<V> {
+    pub fn kind(&self) -> ValueKind {
+        match self {
+            Value::Null => ValueKind::Null,
+            Value::Boolean(_) => ValueKind::Boolean,
+            Value::Integer(_) => ValueKind::Integer,
+            Value::NegativeInteger(_) => ValueKind::NegativeInteger,
+            Value::Float(_) => ValueKind::Float,
+            Value::String(_) => ValueKind::String,
+            Value::Sequence(_) => ValueKind::Sequence,
+            Value::Map(_) => ValueKind::Map,
+        }
+    }
+}
 
 /// A trait for a value that can be deserialized via [`DeserializeFromValue`].
 pub trait IntoValue: Sized {
@@ -158,7 +172,7 @@ pub trait DeserializeFromValue<E: DeserializeError>: Sized {
     /// Attempts to deserialize `Self` from the given value.
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
-        current_location: ValuePointerRef,
+        location: ValuePointerRef,
     ) -> Result<Self, E>;
     /// The value of `Self`, if any, when deserializing from a non-existent value.
     fn default() -> Option<Self> {
@@ -177,7 +191,12 @@ where
 
 /// A trait for errors returned by [`deserialize_from_value`](DeserializeFromValue::deserialize_from_value).
 pub trait DeserializeError {
-    fn incorrect_value_kind(accepted: &[ValueKind], location: ValuePointerRef) -> Self;
+    fn incorrect_value_kind(
+        actual: ValueKind,
+        accepted: &[ValueKind],
+        location: ValuePointerRef,
+    ) -> Self;
     fn missing_field(field: &str, location: ValuePointerRef) -> Self;
+    fn unknown_key(key: &str, accepted: &[&str], location: ValuePointerRef) -> Self;
     fn unexpected(msg: &str, location: ValuePointerRef) -> Self;
 }

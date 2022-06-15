@@ -31,13 +31,14 @@ where
 {
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
-        current_location: ValuePointerRef,
+        location: ValuePointerRef,
     ) -> Result<Self, E> {
         match value {
             Value::Null => Ok(()),
-            _ => Err(E::incorrect_value_kind(
+            v @ _ => Err(E::incorrect_value_kind(
+                v.kind(),
                 &[ValueKind::Null],
-                current_location,
+                location,
             )),
         }
     }
@@ -49,13 +50,14 @@ where
 {
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
-        current_location: ValuePointerRef,
+        location: ValuePointerRef,
     ) -> Result<Self, E> {
         match value {
             Value::Boolean(b) => Ok(b),
-            _ => Err(E::incorrect_value_kind(
+            v @ _ => Err(E::incorrect_value_kind(
+                v.kind(),
                 &[ValueKind::Boolean],
-                current_location,
+                location,
             )),
         }
     }
@@ -69,16 +71,33 @@ macro_rules! deserialize_impl_integer {
         {
             fn deserialize_from_value<V: IntoValue>(
                 value: Value<V>,
-                current_location: ValuePointerRef,
+                location: ValuePointerRef,
             ) -> Result<Self, E> {
-                let err = || E::incorrect_value_kind(&[ValueKind::Integer], current_location);
+                let err = |kind: ValueKind| {
+                    E::incorrect_value_kind(kind, &[ValueKind::Integer], location)
+                };
 
                 match value {
-                    Value::Integer(x) => <$t>::try_from(x).ok(),
-                    Value::NegativeInteger(x) => <$t>::try_from(x).ok(),
-                    _ => return Err(err()),
+                    Value::Integer(x) => <$t>::try_from(x).map_err(|_| {
+                        E::unexpected(
+                            &format!(
+                                "Cannot deserialize {x} into a {}",
+                                std::any::type_name::<$t>()
+                            ),
+                            location,
+                        )
+                    }),
+                    Value::NegativeInteger(x) => <$t>::try_from(x).map_err(|_| {
+                        E::unexpected(
+                            &format!(
+                                "Cannot deserialize {x} into a {}",
+                                std::any::type_name::<$t>()
+                            ),
+                            location,
+                        )
+                    }),
+                    v @ _ => Err(err(v.kind())),
                 }
-                .ok_or_else(err)
             }
         }
     };
@@ -97,21 +116,37 @@ macro_rules! deserialize_impl_negative_integer {
         {
             fn deserialize_from_value<V: IntoValue>(
                 value: Value<V>,
-                current_location: ValuePointerRef,
+                location: ValuePointerRef,
             ) -> Result<Self, E> {
-                let err = || {
+                let err = |kind: ValueKind| {
                     E::incorrect_value_kind(
+                        kind,
                         &[ValueKind::Integer, ValueKind::NegativeInteger],
-                        current_location,
+                        location,
                     )
                 };
 
                 match value {
-                    Value::Integer(x) => <$t>::try_from(x).ok(),
-                    Value::NegativeInteger(x) => <$t>::try_from(x).ok(),
-                    _ => return Err(err()),
+                    Value::Integer(x) => <$t>::try_from(x).map_err(|_| {
+                        E::unexpected(
+                            &format!(
+                                "Cannot deserialize {x} into a {}",
+                                std::any::type_name::<$t>()
+                            ),
+                            location,
+                        )
+                    }),
+                    Value::NegativeInteger(x) => <$t>::try_from(x).map_err(|_| {
+                        E::unexpected(
+                            &format!(
+                                "Cannot deserialize {x} into a {}",
+                                std::any::type_name::<$t>()
+                            ),
+                            location,
+                        )
+                    }),
+                    v @ _ => Err(err(v.kind())),
                 }
-                .ok_or_else(err)
             }
         }
     };
@@ -131,7 +166,7 @@ macro_rules! deserialize_impl_float {
         {
             fn deserialize_from_value<V: IntoValue>(
                 value: Value<V>,
-                current_location: ValuePointerRef,
+                location: ValuePointerRef,
             ) -> Result<Self, E> {
                 match value {
                     Value::Integer(x) => {
@@ -143,14 +178,15 @@ macro_rules! deserialize_impl_float {
                     Value::Float(x) => {
                         return Ok(x as $t);
                     }
-                    _ => {
+                    v @ _ => {
                         return Err(E::incorrect_value_kind(
+                            v.kind(),
                             &[
                                 ValueKind::Float,
                                 ValueKind::Integer,
                                 ValueKind::NegativeInteger,
                             ],
-                            current_location,
+                            location,
                         ))
                     }
                 };
@@ -167,13 +203,14 @@ where
 {
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
-        current_location: ValuePointerRef,
+        location: ValuePointerRef,
     ) -> Result<Self, E> {
         match value {
             Value::String(x) => Ok(x),
-            _ => Err(E::incorrect_value_kind(
+            v @ _ => Err(E::incorrect_value_kind(
+                v.kind(),
                 &[ValueKind::String],
-                current_location,
+                location,
             )),
         }
     }
@@ -186,23 +223,22 @@ where
 {
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
-        current_location: ValuePointerRef,
+        location: ValuePointerRef,
     ) -> Result<Self, E> {
         match value {
             Value::Sequence(seq) => seq
                 .into_iter()
                 .enumerate()
                 .map(|(index, x)| {
-                    let result = T::deserialize_from_value(
-                        x.into_value(),
-                        current_location.push_index(index),
-                    );
+                    let result =
+                        T::deserialize_from_value(x.into_value(), location.push_index(index));
                     result
                 })
                 .collect(),
-            _ => Err(E::incorrect_value_kind(
+            v @ _ => Err(E::incorrect_value_kind(
+                v.kind(),
                 &[ValueKind::Sequence],
-                current_location,
+                location,
             )),
         }
     }
@@ -215,11 +251,11 @@ where
 {
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
-        current_location: ValuePointerRef,
+        location: ValuePointerRef,
     ) -> Result<Self, E> {
         match value {
             Value::Null => Ok(None),
-            value => T::deserialize_from_value(value, current_location).map(Some),
+            value => T::deserialize_from_value(value, location).map(Some),
         }
     }
     fn default() -> Option<Self> {
@@ -234,9 +270,9 @@ where
 {
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
-        current_location: ValuePointerRef,
+        location: ValuePointerRef,
     ) -> Result<Self, E> {
-        T::deserialize_from_value(value, current_location).map(Box::new)
+        T::deserialize_from_value(value, location).map(Box::new)
     }
 }
 
@@ -248,7 +284,7 @@ where
 {
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
-        current_location: ValuePointerRef,
+        location: ValuePointerRef,
     ) -> Result<Self, E> {
         match value {
             Value::Map(map) => {
@@ -258,18 +294,22 @@ where
                         E::unexpected(&format!(
                                 "The key \"{string_key}\" could not be deserialized into the key type `{}`",
                                 std::any::type_name::<Key>()
-                            ), current_location
+                            ), location
                         )
                     })?;
                     let value = T::deserialize_from_value(
                         value.into_value(),
-                        current_location.push_key(&string_key),
+                        location.push_key(&string_key),
                     )?;
                     res.insert(key, value);
                 }
                 Ok(res)
             }
-            _ => Err(E::incorrect_value_kind(&[ValueKind::Map], current_location)),
+            v @ _ => Err(E::incorrect_value_kind(
+                v.kind(),
+                &[ValueKind::Map],
+                location,
+            )),
         }
     }
 }
@@ -282,7 +322,7 @@ where
 {
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
-        current_location: ValuePointerRef,
+        location: ValuePointerRef,
     ) -> Result<Self, E> {
         match value {
             Value::Map(map) => {
@@ -292,18 +332,22 @@ where
                         E::unexpected(&format!(
                                 "The key \"{string_key}\" could not be deserialized into the key type `{}`",
                                 std::any::type_name::<Key>()
-                            ), current_location
+                            ), location
                         )}
                     )?;
                     let value = T::deserialize_from_value(
                         value.into_value(),
-                        current_location.push_key(&string_key),
+                        location.push_key(&string_key),
                     )?;
                     res.insert(key, value);
                 }
                 Ok(res)
             }
-            _ => Err(E::incorrect_value_kind(&[ValueKind::Map], current_location)),
+            v @ _ => Err(E::incorrect_value_kind(
+                v.kind(),
+                &[ValueKind::Map],
+                location,
+            )),
         }
     }
 }
@@ -315,23 +359,22 @@ where
 {
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
-        current_location: ValuePointerRef,
+        location: ValuePointerRef,
     ) -> Result<Self, E> {
         match value {
             Value::Sequence(seq) => {
                 let mut res = HashSet::with_capacity(seq.len());
                 for (i, value) in seq.into_iter().enumerate() {
-                    let value = T::deserialize_from_value(
-                        value.into_value(),
-                        current_location.push_index(i),
-                    )?;
+                    let value =
+                        T::deserialize_from_value(value.into_value(), location.push_index(i))?;
                     res.insert(value);
                 }
                 Ok(res)
             }
-            _ => Err(E::incorrect_value_kind(
+            v @ _ => Err(E::incorrect_value_kind(
+                v.kind(),
                 &[ValueKind::Sequence],
-                current_location,
+                location,
             )),
         }
     }
@@ -344,23 +387,22 @@ where
 {
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
-        current_location: ValuePointerRef,
+        location: ValuePointerRef,
     ) -> Result<Self, E> {
         match value {
             Value::Sequence(seq) => {
                 let mut res = BTreeSet::new();
                 for (i, value) in seq.into_iter().enumerate() {
-                    let value = T::deserialize_from_value(
-                        value.into_value(),
-                        current_location.push_index(i),
-                    )?;
+                    let value =
+                        T::deserialize_from_value(value.into_value(), location.push_index(i))?;
                     res.insert(value);
                 }
                 Ok(res)
             }
-            _ => Err(E::incorrect_value_kind(
+            v @ _ => Err(E::incorrect_value_kind(
+                v.kind(),
                 &[ValueKind::Sequence],
-                current_location,
+                location,
             )),
         }
     }
@@ -374,7 +416,7 @@ where
 {
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
-        current_location: ValuePointerRef,
+        location: ValuePointerRef,
     ) -> Result<Self, E> {
         match value {
             Value::Sequence(seq) => {
@@ -382,7 +424,7 @@ where
                 if len != 2 {
                     return Err(E::unexpected(
                         "The sequence should have exactly 2 elements.",
-                        current_location,
+                        location,
                     ));
                 }
 
@@ -390,17 +432,18 @@ where
 
                 let a = A::deserialize_from_value(
                     iter.next().unwrap().into_value(),
-                    current_location.push_index(0),
+                    location.push_index(0),
                 )?;
                 let b = B::deserialize_from_value(
                     iter.next().unwrap().into_value(),
-                    current_location.push_index(1),
+                    location.push_index(1),
                 )?;
                 Ok((a, b))
             }
-            _ => Err(E::incorrect_value_kind(
+            v @ _ => Err(E::incorrect_value_kind(
+                v.kind(),
                 &[ValueKind::Sequence],
-                current_location,
+                location,
             )),
         }
     }
@@ -415,7 +458,7 @@ where
 {
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
-        current_location: ValuePointerRef,
+        location: ValuePointerRef,
     ) -> Result<Self, E> {
         match value {
             Value::Sequence(seq) => {
@@ -423,7 +466,7 @@ where
                 if len != 2 {
                     return Err(E::unexpected(
                         "The sequence should have exactly 3 elements.",
-                        current_location,
+                        location,
                     ));
                 }
 
@@ -431,22 +474,23 @@ where
 
                 let a = A::deserialize_from_value(
                     iter.next().unwrap().into_value(),
-                    current_location.push_index(0),
+                    location.push_index(0),
                 )?;
                 let b = B::deserialize_from_value(
                     iter.next().unwrap().into_value(),
-                    current_location.push_index(1),
+                    location.push_index(1),
                 )?;
                 let c = C::deserialize_from_value(
                     iter.next().unwrap().into_value(),
-                    current_location.push_index(2),
+                    location.push_index(2),
                 )?;
 
                 Ok((a, b, c))
             }
-            _ => Err(E::incorrect_value_kind(
+            v @ _ => Err(E::incorrect_value_kind(
+                v.kind(),
                 &[ValueKind::Sequence],
-                current_location,
+                location,
             )),
         }
     }

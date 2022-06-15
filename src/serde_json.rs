@@ -69,7 +69,7 @@ impl IntoValue for JValue {
 impl<E: DeserializeError> DeserializeFromValue<E> for JValue {
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
-        current_location: ValuePointerRef,
+        location: ValuePointerRef,
     ) -> Result<Self, E> {
         Ok(match value {
             Value::Null => JValue::Null,
@@ -79,7 +79,7 @@ impl<E: DeserializeError> DeserializeFromValue<E> for JValue {
             Value::Float(f) => JValue::Number(Number::from_f64(f).ok_or_else(|| {
                 E::unexpected(
                     &format!("The float {f} is not representable in JSON"),
-                    current_location,
+                    location,
                 )
             })?),
             Value::String(s) => JValue::String(s),
@@ -90,7 +90,7 @@ impl<E: DeserializeError> DeserializeFromValue<E> for JValue {
                     .map(|(index, x)| {
                         let result = Self::deserialize_from_value(
                             x.into_value(),
-                            current_location.push_index(index),
+                            location.push_index(index),
                         );
                         result
                     })
@@ -100,10 +100,8 @@ impl<E: DeserializeError> DeserializeFromValue<E> for JValue {
             Value::Map(map) => {
                 let mut jmap = JMap::with_capacity(map.len());
                 for (key, value) in map.into_iter() {
-                    let value = Self::deserialize_from_value(
-                        value.into_value(),
-                        current_location.push_key(&key),
-                    )?;
+                    let value =
+                        Self::deserialize_from_value(value.into_value(), location.push_key(&key))?;
                     jmap.insert(key, value);
                 }
                 JValue::Object(jmap)

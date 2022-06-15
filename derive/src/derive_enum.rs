@@ -38,16 +38,17 @@ pub fn generate_derive_tagged_enum_impl(
                                 location
                             )
                         })?;
-
-                        let tag_value_string = if let jayson::Value::String(x) = tag_value.into_value() {
-                            x
-                        } else {
-                            return ::std::result::Result::Err(
-                                <#err_ty as jayson::DeserializeError>::incorrect_value_kind(
-                                    &[jayson::ValueKind::String],
-                                    location
-                                )
-                            );
+                        let tag_value_string = match tag_value.into_value() {
+                            jayson::Value::String(x) => x,
+                            v @ _ => {
+                                return ::std::result::Result::Err(
+                                    <#err_ty as jayson::DeserializeError>::incorrect_value_kind(
+                                        v.kind(),
+                                        &[jayson::ValueKind::String],
+                                        location
+                                    )
+                                );
+                            }
                         };
 
                         match tag_value_string.as_str() {
@@ -66,9 +67,10 @@ pub fn generate_derive_tagged_enum_impl(
                         }
                     }
                     // this is the case where the value is not a map
-                    _ => {
+                    v @ _ => {
                         ::std::result::Result::Err(
                             <#err_ty as jayson::DeserializeError>::incorrect_value_kind(
+                                v.kind(),
                                 &[jayson::ValueKind::Map],
                                 location
                             )

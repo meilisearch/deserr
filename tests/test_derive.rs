@@ -1,4 +1,4 @@
-use jayson::{DeserializeError, DeserializeFromValue, ValuePointer, ValuePointerRef};
+use jayson::{DeserializeError, DeserializeFromValue, ValuePointerRef};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -429,7 +429,7 @@ fn test_de() {
             "y": true
         }
         "#,
-        MyError::CustomMissingField(0),
+        MyError::MissingField("lol".to_string()),
     );
     // struct with custom missing field error, error check 2
     assert_error_matches::<StructMissingFieldError>(
