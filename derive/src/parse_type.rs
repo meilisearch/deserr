@@ -145,13 +145,13 @@ impl DerivedTypeInfo {
                     return ::std::result::Result::Err(
                         <#err_ty as jayson::DeserializeError>::unexpected(
                             &format!("Found unexpected field: {}", key),
-                            current_location
+                            location
                         )
                     );
                 }
             }
             Some(DenyUnknownFields::Function(func)) => quote! {
-                return ::std::result::Result::Err(#func (key));
+                return ::std::result::Result::Err(#func (key, location));
             },
             None => quote! {},
         };
@@ -312,7 +312,7 @@ impl NamedFieldsInfo {
                     quote! {
                         <#err_ty as jayson::DeserializeError>::missing_field(
                             #key_name,
-                            current_location
+                            location
                         )
                     }
                 }

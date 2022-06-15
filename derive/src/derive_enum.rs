@@ -28,14 +28,14 @@ pub fn generate_derive_tagged_enum_impl(
 
     quote! {
          #impl_trait_tokens {
-            fn deserialize_from_value<V: jayson::IntoValue>(value: jayson::Value<V>, current_location: jayson::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
+            fn deserialize_from_value<V: jayson::IntoValue>(value: jayson::Value<V>, location: jayson::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
                 // The value must always be a map
                 match value {
                     jayson::Value::Map(mut map) => {
                         let tag_value = jayson::Map::remove(&mut map, #tag).ok_or_else(|| {
                             <#err_ty as jayson::DeserializeError>::missing_field(
                                 #tag,
-                                current_location
+                                location
                             )
                         })?;
 
@@ -45,7 +45,7 @@ pub fn generate_derive_tagged_enum_impl(
                             return ::std::result::Result::Err(
                                 <#err_ty as jayson::DeserializeError>::incorrect_value_kind(
                                     &[jayson::ValueKind::String],
-                                    current_location
+                                    location
                                 )
                             );
                         };
@@ -59,7 +59,7 @@ pub fn generate_derive_tagged_enum_impl(
                                     <#err_ty as jayson::DeserializeError>::unexpected(
                                         // TODO: expected one of {expected_tags_list}, found {actual_tag} error message
                                         "Incorrect tag value",
-                                        current_location
+                                        location
                                     )
                                 )
                             }
@@ -70,7 +70,7 @@ pub fn generate_derive_tagged_enum_impl(
                         ::std::result::Result::Err(
                             <#err_ty as jayson::DeserializeError>::incorrect_value_kind(
                                 &[jayson::ValueKind::Map],
-                                current_location
+                                location
                             )
                         )
                     }
@@ -141,7 +141,7 @@ fn generate_derive_tagged_enum_variant_impl(
                                     #field_names = ::std::option::Option::Some(
                                         <#field_tys as jayson::DeserializeFromValue<#err_ty>>::deserialize_from_value(
                                             jayson::IntoValue::into_value(value),
-                                            current_location.push_key(key.as_str())
+                                            location.push_key(key.as_str())
                                         )?
                                     );
                                 }

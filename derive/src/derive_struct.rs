@@ -24,7 +24,7 @@ pub fn generate_derive_struct_impl(
 
     quote! {
          #impl_trait_tokens {
-            fn deserialize_from_value<V: jayson::IntoValue>(value: jayson::Value<V>, current_location: jayson::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
+            fn deserialize_from_value<V: jayson::IntoValue>(value: jayson::Value<V>, location: jayson::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
                 match value {
                     // The value must always be a map
                     jayson::Value::Map(map) => {
@@ -47,7 +47,7 @@ pub fn generate_derive_struct_impl(
                                         #field_names = ::std::option::Option::Some(
                                             <#field_tys as jayson::DeserializeFromValue<#err_ty>>::deserialize_from_value(
                                                 jayson::IntoValue::into_value(value),
-                                                current_location.push_key(key.as_str())
+                                                location.push_key(key.as_str())
                                             )?
                                         );
                                     }
@@ -70,7 +70,7 @@ pub fn generate_derive_struct_impl(
                         ::std::result::Result::Err(
                             <#err_ty as jayson::DeserializeError>::incorrect_value_kind(
                                 &[jayson::ValueKind::Map],
-                                current_location
+                                location
                             )
                         )
                     }

@@ -1,4 +1,4 @@
-use jayson::{DeserializeFromValue, ValuePointerRef};
+use jayson::{DeserializeError, DeserializeFromValue, ValuePointer, ValuePointerRef};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -9,6 +9,7 @@ pub enum MyError {
     UnknownKey(String),
     CustomMissingField(u8),
 }
+
 impl jayson::DeserializeError for MyError {
     fn unexpected(s: &str, _location: ValuePointerRef) -> Self {
         Self::Unexpected(s.to_owned())
@@ -33,7 +34,15 @@ enum Tag {
     B,
 }
 
+fn unknown_field_error_gen<E>(k: &str, location: jayson::ValuePointerRef) -> E
+where
+    E: DeserializeError,
+{
+    E::unexpected(k, location)
+}
+
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[jayson(deny_unknown_fields = unknown_field_error_gen)]
 struct Example {
     x: String,
     t1: Tag,
@@ -135,7 +144,7 @@ struct StructDenyUnknownFields {
     x: bool,
 }
 
-fn unknown_field_error(k: &str) -> MyError {
+fn unknown_field_error(k: &str, _location: ValuePointerRef) -> MyError {
     MyError::UnknownKey(k.to_owned())
 }
 
@@ -165,7 +174,7 @@ enum EnumDenyUnknownFieldsCustom {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[jayson(error = MyError)]
 struct StructMissingFieldError {
-    #[jayson(missing_field_error = MyError::CustomMissingField(0))]
+    #[jayson(missing_field_error = MyError::missing_field("lol", location))]
     x: bool,
     #[jayson(missing_field_error = MyError::CustomMissingField(1))]
     y: bool,
