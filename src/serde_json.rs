@@ -1,6 +1,7 @@
-use std::collections::HashMap;
-
-use crate::{DeserializeError, DeserializeFromValue, IntoValue, Map, Sequence, Value, ValueKind};
+use crate::{
+    DeserializeError, DeserializeFromValue, IntoValue, Map, Sequence, Value, ValueKind,
+    ValuePointerRef,
+};
 use serde_json::{Map as JMap, Number, Value as JValue};
 
 impl Map for JMap<String, JValue> {
@@ -66,29 +67,43 @@ impl IntoValue for JValue {
 }
 
 impl<E: DeserializeError> DeserializeFromValue<E> for JValue {
-    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        current_location: ValuePointerRef,
+    ) -> Result<Self, E> {
         Ok(match value {
             Value::Null => JValue::Null,
             Value::Boolean(b) => JValue::Bool(b),
             Value::Integer(x) => JValue::Number(Number::from(x)),
             Value::NegativeInteger(x) => JValue::Number(Number::from(x)),
-            Value::Float(f) => JValue::Number(
-                Number::from_f64(f)
-                    .ok_or_else(|| E::unexpected(&format!("{f} is not representable in JSON")))?,
-            ),
+            Value::Float(f) => JValue::Number(Number::from_f64(f).ok_or_else(|| {
+                E::unexpected(
+                    &format!("The float {f} is not representable in JSON"),
+                    current_location,
+                )
+            })?),
             Value::String(s) => JValue::String(s),
             Value::Sequence(seq) => {
                 let vec = seq
                     .into_iter()
-                    .map(IntoValue::into_value)
-                    .map(Self::deserialize_from_value)
+                    .enumerate()
+                    .map(|(index, x)| {
+                        let result = Self::deserialize_from_value(
+                            x.into_value(),
+                            current_location.push_index(index),
+                        );
+                        result
+                    })
                     .collect::<Result<_, _>>()?;
                 JValue::Array(vec)
             }
             Value::Map(map) => {
                 let mut jmap = JMap::with_capacity(map.len());
                 for (key, value) in map.into_iter() {
-                    let value = Self::deserialize_from_value(value.into_value())?;
+                    let value = Self::deserialize_from_value(
+                        value.into_value(),
+                        current_location.push_key(&key),
+                    )?;
                     jmap.insert(key, value);
                 }
                 JValue::Object(jmap)

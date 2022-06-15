@@ -1,4 +1,7 @@
-use crate::{DeserializeError, DeserializeFromValue, IntoValue, Map, Sequence, Value, ValueKind};
+use crate::{
+    DeserializeError, DeserializeFromValue, IntoValue, Map, Sequence, Value, ValueKind,
+    ValuePointerRef,
+};
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     convert::TryFrom,
@@ -22,29 +25,53 @@ where
     }
 }
 
-impl<E: DeserializeError> DeserializeFromValue<E> for () {
-    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
+impl<E> DeserializeFromValue<E> for ()
+where
+    E: DeserializeError,
+{
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        current_location: ValuePointerRef,
+    ) -> Result<Self, E> {
         match value {
             Value::Null => Ok(()),
-            _ => Err(E::incorrect_value_kind(&[ValueKind::Null])),
+            _ => Err(E::incorrect_value_kind(
+                &[ValueKind::Null],
+                current_location,
+            )),
         }
     }
 }
 
-impl<E: DeserializeError> DeserializeFromValue<E> for bool {
-    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
+impl<E> DeserializeFromValue<E> for bool
+where
+    E: DeserializeError,
+{
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        current_location: ValuePointerRef,
+    ) -> Result<Self, E> {
         match value {
             Value::Boolean(b) => Ok(b),
-            _ => Err(E::incorrect_value_kind(&[ValueKind::Boolean])),
+            _ => Err(E::incorrect_value_kind(
+                &[ValueKind::Boolean],
+                current_location,
+            )),
         }
     }
 }
 
 macro_rules! deserialize_impl_integer {
     ($t:ty) => {
-        impl<E: DeserializeError> DeserializeFromValue<E> for $t {
-            fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
-                let err = || E::incorrect_value_kind(&[ValueKind::Integer]);
+        impl<E> DeserializeFromValue<E> for $t
+        where
+            E: DeserializeError,
+        {
+            fn deserialize_from_value<V: IntoValue>(
+                value: Value<V>,
+                current_location: ValuePointerRef,
+            ) -> Result<Self, E> {
+                let err = || E::incorrect_value_kind(&[ValueKind::Integer], current_location);
 
                 match value {
                     Value::Integer(x) => <$t>::try_from(x).ok(),
@@ -64,10 +91,20 @@ deserialize_impl_integer!(usize);
 
 macro_rules! deserialize_impl_negative_integer {
     ($t:ty) => {
-        impl<E: DeserializeError> DeserializeFromValue<E> for $t {
-            fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
-                let err =
-                    || E::incorrect_value_kind(&[ValueKind::Integer, ValueKind::NegativeInteger]);
+        impl<E> DeserializeFromValue<E> for $t
+        where
+            E: DeserializeError,
+        {
+            fn deserialize_from_value<V: IntoValue>(
+                value: Value<V>,
+                current_location: ValuePointerRef,
+            ) -> Result<Self, E> {
+                let err = || {
+                    E::incorrect_value_kind(
+                        &[ValueKind::Integer, ValueKind::NegativeInteger],
+                        current_location,
+                    )
+                };
 
                 match value {
                     Value::Integer(x) => <$t>::try_from(x).ok(),
@@ -88,8 +125,14 @@ deserialize_impl_negative_integer!(isize);
 
 macro_rules! deserialize_impl_float {
     ($t:ty) => {
-        impl<E: DeserializeError> DeserializeFromValue<E> for $t {
-            fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
+        impl<E> DeserializeFromValue<E> for $t
+        where
+            E: DeserializeError,
+        {
+            fn deserialize_from_value<V: IntoValue>(
+                value: Value<V>,
+                current_location: ValuePointerRef,
+            ) -> Result<Self, E> {
                 match value {
                     Value::Integer(x) => {
                         return Ok(x as $t);
@@ -101,11 +144,14 @@ macro_rules! deserialize_impl_float {
                         return Ok(x as $t);
                     }
                     _ => {
-                        return Err(E::incorrect_value_kind(&[
-                            ValueKind::Float,
-                            ValueKind::Integer,
-                            ValueKind::NegativeInteger,
-                        ]))
+                        return Err(E::incorrect_value_kind(
+                            &[
+                                ValueKind::Float,
+                                ValueKind::Integer,
+                                ValueKind::NegativeInteger,
+                            ],
+                            current_location,
+                        ))
                     }
                 };
             }
@@ -115,39 +161,65 @@ macro_rules! deserialize_impl_float {
 deserialize_impl_float!(f32);
 deserialize_impl_float!(f64);
 
-impl<E: DeserializeError> DeserializeFromValue<E> for String {
-    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
+impl<E> DeserializeFromValue<E> for String
+where
+    E: DeserializeError,
+{
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        current_location: ValuePointerRef,
+    ) -> Result<Self, E> {
         match value {
             Value::String(x) => Ok(x),
-            _ => Err(E::incorrect_value_kind(&[ValueKind::String])),
+            _ => Err(E::incorrect_value_kind(
+                &[ValueKind::String],
+                current_location,
+            )),
         }
     }
 }
 
-impl<T, E: DeserializeError> DeserializeFromValue<E> for Vec<T>
+impl<T, E> DeserializeFromValue<E> for Vec<T>
 where
     T: DeserializeFromValue<E>,
+    E: DeserializeError,
 {
-    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        current_location: ValuePointerRef,
+    ) -> Result<Self, E> {
         match value {
             Value::Sequence(seq) => seq
                 .into_iter()
-                .map(V::into_value)
-                .map(T::deserialize_from_value)
+                .enumerate()
+                .map(|(index, x)| {
+                    let result = T::deserialize_from_value(
+                        x.into_value(),
+                        current_location.push_index(index),
+                    );
+                    result
+                })
                 .collect(),
-            _ => Err(E::incorrect_value_kind(&[ValueKind::Sequence])),
+            _ => Err(E::incorrect_value_kind(
+                &[ValueKind::Sequence],
+                current_location,
+            )),
         }
     }
 }
 
-impl<T, E: DeserializeError> DeserializeFromValue<E> for Option<T>
+impl<T, E> DeserializeFromValue<E> for Option<T>
 where
     T: DeserializeFromValue<E>,
+    E: DeserializeError,
 {
-    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        current_location: ValuePointerRef,
+    ) -> Result<Self, E> {
         match value {
             Value::Null => Ok(None),
-            value => T::deserialize_from_value(value).map(Some),
+            value => T::deserialize_from_value(value, current_location).map(Some),
         }
     }
     fn default() -> Option<Self> {
@@ -155,147 +227,227 @@ where
     }
 }
 
-impl<T, E: DeserializeError> DeserializeFromValue<E> for Box<T>
+impl<T, E> DeserializeFromValue<E> for Box<T>
 where
     T: DeserializeFromValue<E>,
+    E: DeserializeError,
 {
-    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
-        T::deserialize_from_value(value).map(Box::new)
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        current_location: ValuePointerRef,
+    ) -> Result<Self, E> {
+        T::deserialize_from_value(value, current_location).map(Box::new)
     }
 }
 
-impl<Key, T, E: DeserializeError> DeserializeFromValue<E> for HashMap<Key, T>
+impl<Key, T, E> DeserializeFromValue<E> for HashMap<Key, T>
 where
     Key: FromStr + Hash + Eq,
     T: DeserializeFromValue<E>,
+    E: DeserializeError,
 {
-    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        current_location: ValuePointerRef,
+    ) -> Result<Self, E> {
         match value {
             Value::Map(map) => {
                 let mut res = HashMap::with_capacity(map.len());
-                for (key, value) in map.into_iter() {
-                    let key = Key::from_str(&key).map_err(|_| E::unexpected("todo"))?;
-                    let value = T::deserialize_from_value(value.into_value())?;
+                for (string_key, value) in map.into_iter() {
+                    let key = Key::from_str(&string_key).map_err(|_| {
+                        E::unexpected(&format!(
+                                "The key \"{string_key}\" could not be deserialized into the key type `{}`",
+                                std::any::type_name::<Key>()
+                            ), current_location
+                        )
+                    })?;
+                    let value = T::deserialize_from_value(
+                        value.into_value(),
+                        current_location.push_key(&string_key),
+                    )?;
                     res.insert(key, value);
                 }
                 Ok(res)
             }
-            _ => Err(E::incorrect_value_kind(&[ValueKind::Map])),
+            _ => Err(E::incorrect_value_kind(&[ValueKind::Map], current_location)),
         }
     }
 }
 
-impl<Key, T, E: DeserializeError> DeserializeFromValue<E> for BTreeMap<Key, T>
+impl<Key, T, E> DeserializeFromValue<E> for BTreeMap<Key, T>
 where
     Key: FromStr + Ord,
     T: DeserializeFromValue<E>,
+    E: DeserializeError,
 {
-    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        current_location: ValuePointerRef,
+    ) -> Result<Self, E> {
         match value {
             Value::Map(map) => {
                 let mut res = BTreeMap::new();
-                for (key, value) in map.into_iter() {
-                    let key = Key::from_str(&key).map_err(|_| E::unexpected("todo"))?;
-                    let value = T::deserialize_from_value(value.into_value())?;
+                for (string_key, value) in map.into_iter() {
+                    let key = Key::from_str(&string_key).map_err(|_| {
+                        E::unexpected(&format!(
+                                "The key \"{string_key}\" could not be deserialized into the key type `{}`",
+                                std::any::type_name::<Key>()
+                            ), current_location
+                        )}
+                    )?;
+                    let value = T::deserialize_from_value(
+                        value.into_value(),
+                        current_location.push_key(&string_key),
+                    )?;
                     res.insert(key, value);
                 }
                 Ok(res)
             }
-            _ => Err(E::incorrect_value_kind(&[ValueKind::Map])),
+            _ => Err(E::incorrect_value_kind(&[ValueKind::Map], current_location)),
         }
     }
 }
 
-impl<T, E: DeserializeError> DeserializeFromValue<E> for HashSet<T>
+impl<T, E> DeserializeFromValue<E> for HashSet<T>
 where
     T: DeserializeFromValue<E> + Hash + Eq,
+    E: DeserializeError,
 {
-    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        current_location: ValuePointerRef,
+    ) -> Result<Self, E> {
         match value {
             Value::Sequence(seq) => {
                 let mut res = HashSet::with_capacity(seq.len());
-                for value in seq.into_iter() {
-                    let value = T::deserialize_from_value(value.into_value())?;
+                for (i, value) in seq.into_iter().enumerate() {
+                    let value = T::deserialize_from_value(
+                        value.into_value(),
+                        current_location.push_index(i),
+                    )?;
                     res.insert(value);
                 }
                 Ok(res)
             }
-            _ => Err(E::incorrect_value_kind(&[ValueKind::Map])),
+            _ => Err(E::incorrect_value_kind(
+                &[ValueKind::Sequence],
+                current_location,
+            )),
         }
     }
 }
 
-impl<T, E: DeserializeError> DeserializeFromValue<E> for BTreeSet<T>
+impl<T, E> DeserializeFromValue<E> for BTreeSet<T>
 where
     T: DeserializeFromValue<E> + Ord,
+    E: DeserializeError,
 {
-    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        current_location: ValuePointerRef,
+    ) -> Result<Self, E> {
         match value {
             Value::Sequence(seq) => {
                 let mut res = BTreeSet::new();
-                for value in seq.into_iter() {
-                    let value = T::deserialize_from_value(value.into_value())?;
+                for (i, value) in seq.into_iter().enumerate() {
+                    let value = T::deserialize_from_value(
+                        value.into_value(),
+                        current_location.push_index(i),
+                    )?;
                     res.insert(value);
                 }
                 Ok(res)
             }
-            _ => Err(E::incorrect_value_kind(&[ValueKind::Map])),
+            _ => Err(E::incorrect_value_kind(
+                &[ValueKind::Sequence],
+                current_location,
+            )),
         }
     }
 }
 
-impl<A, B, E: DeserializeError> DeserializeFromValue<E> for (A, B)
+impl<A, B, E> DeserializeFromValue<E> for (A, B)
 where
     A: DeserializeFromValue<E>,
     B: DeserializeFromValue<E>,
+    E: DeserializeError,
 {
-    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        current_location: ValuePointerRef,
+    ) -> Result<Self, E> {
         match value {
             Value::Sequence(seq) => {
                 let len = seq.len();
-                if len < 2 {
-                    return Err(E::unexpected("todo"));
+                if len != 2 {
+                    return Err(E::unexpected(
+                        "The sequence should have exactly 2 elements.",
+                        current_location,
+                    ));
                 }
-                if len > 2 {
-                    return Err(E::unexpected("todo"));
-                }
+
                 let mut iter = seq.into_iter();
 
-                let a = A::deserialize_from_value(iter.next().unwrap().into_value())?;
-                let b = B::deserialize_from_value(iter.next().unwrap().into_value())?;
-
+                let a = A::deserialize_from_value(
+                    iter.next().unwrap().into_value(),
+                    current_location.push_index(0),
+                )?;
+                let b = B::deserialize_from_value(
+                    iter.next().unwrap().into_value(),
+                    current_location.push_index(1),
+                )?;
                 Ok((a, b))
             }
-            _ => Err(E::incorrect_value_kind(&[ValueKind::Sequence])),
+            _ => Err(E::incorrect_value_kind(
+                &[ValueKind::Sequence],
+                current_location,
+            )),
         }
     }
 }
 
-impl<A, B, C, E: DeserializeError> DeserializeFromValue<E> for (A, B, C)
+impl<A, B, C, E> DeserializeFromValue<E> for (A, B, C)
 where
     A: DeserializeFromValue<E>,
     B: DeserializeFromValue<E>,
     C: DeserializeFromValue<E>,
+    E: DeserializeError,
 {
-    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E> {
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        current_location: ValuePointerRef,
+    ) -> Result<Self, E> {
         match value {
             Value::Sequence(seq) => {
                 let len = seq.len();
-                if len < 3 {
-                    return Err(E::unexpected("todo"));
+                if len != 2 {
+                    return Err(E::unexpected(
+                        "The sequence should have exactly 3 elements.",
+                        current_location,
+                    ));
                 }
-                if len > 3 {
-                    return Err(E::unexpected("todo"));
-                }
+
                 let mut iter = seq.into_iter();
 
-                let a = A::deserialize_from_value(iter.next().unwrap().into_value())?;
-                let b = B::deserialize_from_value(iter.next().unwrap().into_value())?;
-                let c = C::deserialize_from_value(iter.next().unwrap().into_value())?;
+                let a = A::deserialize_from_value(
+                    iter.next().unwrap().into_value(),
+                    current_location.push_index(0),
+                )?;
+                let b = B::deserialize_from_value(
+                    iter.next().unwrap().into_value(),
+                    current_location.push_index(1),
+                )?;
+                let c = C::deserialize_from_value(
+                    iter.next().unwrap().into_value(),
+                    current_location.push_index(2),
+                )?;
 
                 Ok((a, b, c))
             }
-            _ => Err(E::incorrect_value_kind(&[ValueKind::Sequence])),
+            _ => Err(E::incorrect_value_kind(
+                &[ValueKind::Sequence],
+                current_location,
+            )),
         }
     }
 }

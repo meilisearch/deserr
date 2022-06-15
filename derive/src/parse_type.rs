@@ -129,7 +129,12 @@ impl DerivedTypeInfo {
         let unknown_key = match &attrs.deny_unknown_fields {
             Some(DenyUnknownFields::DefaultError) => {
                 quote! {
-                    return ::std::result::Result::Err(<#err_ty as jayson::DeserializeError>::unexpected(&format!("Found unexpected field: {}", key)));
+                    return ::std::result::Result::Err(
+                        <#err_ty as jayson::DeserializeError>::unexpected(
+                            &format!("Found unexpected field: {}", key),
+                            current_location
+                        )
+                    );
                 }
             }
             Some(DenyUnknownFields::Function(func)) => quote! {
@@ -291,7 +296,12 @@ impl NamedFieldsInfo {
                     quote! { #error_expr }
                 }
                 None => {
-                    quote! { <#err_ty as jayson::DeserializeError>::missing_field(#key_name) }
+                    quote! {
+                        <#err_ty as jayson::DeserializeError>::missing_field(
+                            #key_name,
+                            current_location
+                        )
+                    }
                 }
             };
 

@@ -28,16 +28,26 @@ pub fn generate_derive_tagged_enum_impl(
 
     quote! {
          #impl_trait_tokens {
-            fn deserialize_from_value<V: jayson::IntoValue>(value: jayson::Value<V>) -> ::std::result::Result<Self, #err_ty> {
+            fn deserialize_from_value<V: jayson::IntoValue>(value: jayson::Value<V>, current_location: jayson::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
                 // The value must always be a map
                 match value {
                     jayson::Value::Map(mut map) => {
-                        let tag_value = jayson::Map::remove(&mut map, #tag).ok_or_else(|| <#err_ty as jayson::DeserializeError>::missing_field(#tag))?;
+                        let tag_value = jayson::Map::remove(&mut map, #tag).ok_or_else(|| {
+                            <#err_ty as jayson::DeserializeError>::missing_field(
+                                #tag,
+                                current_location
+                            )
+                        })?;
 
                         let tag_value_string = if let jayson::Value::String(x) = tag_value.into_value() {
                             x
                         } else {
-                            return ::std::result::Result::Err(<#err_ty as jayson::DeserializeError>::unexpected("The tag should be a string"));
+                            return ::std::result::Result::Err(
+                                <#err_ty as jayson::DeserializeError>::incorrect_value_kind(
+                                    &[jayson::ValueKind::String],
+                                    current_location
+                                )
+                            );
                         };
 
                         match tag_value_string.as_str() {
@@ -45,13 +55,24 @@ pub fn generate_derive_tagged_enum_impl(
                             // this is the case where the tag exists and is a string, but its value does not
                             // correspond to any valid enum variant name
                             _ => {
-                                ::std::result::Result::Err(<#err_ty as jayson::DeserializeError>::unexpected("Incorrect tag value"))
+                                ::std::result::Result::Err(
+                                    <#err_ty as jayson::DeserializeError>::unexpected(
+                                        // TODO: expected one of {expected_tags_list}, found {actual_tag} error message
+                                        "Incorrect tag value",
+                                        current_location
+                                    )
+                                )
                             }
                         }
                     }
                     // this is the case where the value is not a map
                     _ => {
-                        ::std::result::Result::Err(<#err_ty as jayson::DeserializeError>::incorrect_value_kind(&[jayson::ValueKind::Map]))
+                        ::std::result::Result::Err(
+                            <#err_ty as jayson::DeserializeError>::incorrect_value_kind(
+                                &[jayson::ValueKind::Map],
+                                current_location
+                            )
+                        )
                     }
                 }
             }
@@ -117,7 +138,12 @@ fn generate_derive_tagged_enum_variant_impl(
                         match key.as_str() {
                             #(
                                 #key_names => {
-                                    #field_names = ::std::option::Option::Some(<#field_tys as jayson::DeserializeFromValue<#err_ty>>::deserialize_from_value(jayson::IntoValue::into_value(value))?);
+                                    #field_names = ::std::option::Option::Some(
+                                        <#field_tys as jayson::DeserializeFromValue<#err_ty>>::deserialize_from_value(
+                                            jayson::IntoValue::into_value(value),
+                                            current_location.push_key(key.as_str())
+                                        )?
+                                    );
                                 }
                             )*
                             key => { #unknown_key }

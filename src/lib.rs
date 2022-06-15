@@ -33,9 +33,65 @@ mod impls;
 #[cfg(feature = "serde_json")]
 mod serde_json;
 
-use std::fmt::Display;
-
 pub use jayson_internal::DeserializeFromValue;
+
+#[derive(Clone, Copy)]
+pub enum ValuePointerRef<'a> {
+    Origin,
+    Key {
+        key: &'a str,
+        prev: &'a ValuePointerRef<'a>,
+    },
+    Index {
+        index: usize,
+        prev: &'a ValuePointerRef<'a>,
+    },
+}
+impl<'a> Default for ValuePointerRef<'a> {
+    fn default() -> Self {
+        Self::Origin
+    }
+}
+impl<'a> ValuePointerRef<'a> {
+    #[must_use]
+    pub fn push_key(&'a self, key: &'a str) -> Self {
+        Self::Key { key, prev: self }
+    }
+    #[must_use]
+    pub fn push_index(&'a self, index: usize) -> Self {
+        Self::Index { index, prev: self }
+    }
+    pub fn to_owned(&'a self) -> ValuePointer {
+        let mut cur = self;
+        let mut components = vec![];
+        loop {
+            match cur {
+                ValuePointerRef::Origin => break,
+                ValuePointerRef::Key { key, prev } => {
+                    components.push(ValuePointerComponent::Key(key.to_string()));
+                    cur = prev;
+                }
+                ValuePointerRef::Index { index, prev } => {
+                    components.push(ValuePointerComponent::Index(*index));
+                    cur = prev;
+                }
+            }
+        }
+        ValuePointer { path: components }
+    }
+}
+
+#[derive(Debug)]
+pub enum ValuePointerComponent {
+    Key(String),
+    Index(usize),
+}
+
+/// Points to a subpart of a [`Value`].
+#[derive(Debug, Default)]
+pub struct ValuePointer {
+    pub path: Vec<ValuePointerComponent>,
+}
 
 /// Equivalent to [`Value`] but without the associated data.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -74,7 +130,6 @@ pub trait IntoValue: Sized {
     type Map: Map<Value = Self>;
 
     fn kind(&self) -> ValueKind;
-
     fn into_value(self) -> Value<Self>;
 }
 
@@ -101,46 +156,28 @@ pub trait Map {
 /// parameter `E` is the custom error that is returned when deserialization fails.
 pub trait DeserializeFromValue<E: DeserializeError>: Sized {
     /// Attempts to deserialize `Self` from the given value.
-    fn deserialize_from_value<V: IntoValue>(value: Value<V>) -> Result<Self, E>;
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        current_location: ValuePointerRef,
+    ) -> Result<Self, E>;
     /// The value of `Self`, if any, when deserializing from a non-existent value.
     fn default() -> Option<Self> {
         None
     }
 }
 
+pub fn deserialize<Ret, Val, E>(value: Val) -> Result<Ret, E>
+where
+    Ret: DeserializeFromValue<E>,
+    Val: IntoValue,
+    E: DeserializeError,
+{
+    Ret::deserialize_from_value(value.into_value(), ValuePointerRef::Origin)
+}
+
 /// A trait for errors returned by [`deserialize_from_value`](DeserializeFromValue::deserialize_from_value).
 pub trait DeserializeError {
-    fn incorrect_value_kind(accepted: &[ValueKind]) -> Self;
-    fn missing_field(field: &str) -> Self;
-    fn unexpected(msg: &str) -> Self;
-}
-
-/// A default error type implementing [`DeserializeError`], for convenience.
-#[derive(Debug)]
-pub enum Error {
-    IncorrectValueKind { accepted: Vec<ValueKind> },
-    Unexpected(String),
-    MissingField(String),
-}
-impl Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "error deserializing")
-    }
-}
-impl std::error::Error for Error {}
-
-impl DeserializeError for Error {
-    fn unexpected(s: &str) -> Self {
-        Self::Unexpected(s.to_owned())
-    }
-
-    fn missing_field(field: &str) -> Self {
-        Self::MissingField(field.to_owned())
-    }
-
-    fn incorrect_value_kind(accepted: &[ValueKind]) -> Self {
-        Self::IncorrectValueKind {
-            accepted: accepted.to_vec(),
-        }
-    }
+    fn incorrect_value_kind(accepted: &[ValueKind], location: ValuePointerRef) -> Self;
+    fn missing_field(field: &str, location: ValuePointerRef) -> Self;
+    fn unexpected(msg: &str, location: ValuePointerRef) -> Self;
 }

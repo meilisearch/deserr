@@ -24,7 +24,7 @@ pub fn generate_derive_struct_impl(
 
     quote! {
          #impl_trait_tokens {
-            fn deserialize_from_value<V: jayson::IntoValue>(value: jayson::Value<V>) -> ::std::result::Result<Self, #err_ty> {
+            fn deserialize_from_value<V: jayson::IntoValue>(value: jayson::Value<V>, current_location: jayson::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
                 match value {
                     // The value must always be a map
                     jayson::Value::Map(map) => {
@@ -35,7 +35,7 @@ pub fn generate_derive_struct_impl(
                         // The initial value of #field_names is `None` if the field has no initial value and
                         // thus must be given by the map, and `Some` otherwise.
                         #(
-                            let mut #field_names: Option<_> = #field_defaults;
+                            let mut #field_names = #field_defaults;
                         )*
                         // We traverse the entire map instead of looking for specific keys, because we want
                         // to handle the case where a key is unknown and the attribute `deny_unknown_fields` was used.
@@ -46,7 +46,8 @@ pub fn generate_derive_struct_impl(
                                     #key_names => {
                                         #field_names = ::std::option::Option::Some(
                                             <#field_tys as jayson::DeserializeFromValue<#err_ty>>::deserialize_from_value(
-                                                jayson::IntoValue::into_value(value)
+                                                jayson::IntoValue::into_value(value),
+                                                current_location.push_key(key.as_str())
                                             )?
                                         );
                                     }
@@ -68,7 +69,8 @@ pub fn generate_derive_struct_impl(
                     _ => {
                         ::std::result::Result::Err(
                             <#err_ty as jayson::DeserializeError>::incorrect_value_kind(
-                                &[jayson::ValueKind::Map]
+                                &[jayson::ValueKind::Map],
+                                current_location
                             )
                         )
                     }
