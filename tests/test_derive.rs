@@ -27,14 +27,13 @@ impl jayson::DeserializeError for MyError {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[serde(tag = "sometag")]
-#[jayson(error = MyError, tag = "sometag")]
+#[jayson(tag = "sometag")]
 enum Tag {
     A,
     B,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError)]
 struct Example {
     x: String,
     t1: Tag,
@@ -43,7 +42,6 @@ struct Example {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError)]
 struct Nested {
     y: Option<Vec<String>>,
     z: Option<String>,

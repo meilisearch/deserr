@@ -78,10 +78,10 @@ impl DerivedTypeInfo {
         let attrs = read_jayson_container_attributes(&input.attrs)?;
 
         // The error type as given by the attribute #[jayson(error = err_ty)]
-        let err_ty: &syn::Type = attrs
-            .err_ty
-            .as_ref()
-            .ok_or_else(|| syn::Error::new(Span::call_site(), "Missing associated error type."))?;
+        let err_ty_opt: Option<&syn::Type> = attrs.err_ty.as_ref();
+        let err_ty = err_ty_opt
+            .cloned()
+            .unwrap_or(parse_quote!(__Jayson_AnyErrorTypeParameter));
 
         // Create the token stream representing the line:
         // ```
@@ -93,19 +93,32 @@ impl DerivedTypeInfo {
         let impl_trait_tokens = {
             // The goal of creating these simple bindings is to be able to reference them in a quote! macro
             let ident = input.ident;
-            // existing generics/where clause
-            let (impl_generics, ty_generics, ..) = input.generics.split_for_impl();
 
             // append the additional clause to the existing where clause
-            let new_predicates = input
+            let mut new_predicates = input
                 .generics
                 .type_params()
                 .map::<WherePredicate, _>(|param| {
                     let param = &param.ident;
                     parse_quote!(#param : jayson::DeserializeFromValue<#err_ty>)
-                });
+                })
+                .collect::<Vec<_>>();
+
+            let mut generics_for_trait_impl = input.generics.clone();
+
+            if err_ty_opt.is_none() {
+                generics_for_trait_impl.params.push(parse_quote!(#err_ty));
+                new_predicates.push(parse_quote!(
+                    #err_ty : jayson::DeserializeError
+                ));
+            }
 
             let mut generics = input.generics.clone();
+
+            // existing generics/where clause
+            let (_, ty_generics, ..) = input.generics.split_for_impl();
+            let (impl_generics, ..) = generics_for_trait_impl.split_for_impl();
+
             generics
                 .make_where_clause()
                 .predicates
@@ -148,7 +161,7 @@ impl DerivedTypeInfo {
             Data::Struct(s) => {
                 match s.fields {
                     syn::Fields::Named(fields) => EnumOrStructDerivedTypeInfo::Struct(
-                        NamedFieldsInfo::parse(fields, &attrs, err_ty)?,
+                        NamedFieldsInfo::parse(fields, &attrs, &err_ty)?,
                     ),
                     syn::Fields::Unnamed(fields) => return Err(syn::Error::new(
                         fields.span(),
@@ -182,7 +195,7 @@ impl DerivedTypeInfo {
                     // Parse derive info for the content of the variants
                     let data = match variant.fields {
                         syn::Fields::Named(fields) => {
-                            VariantData::Named(NamedFieldsInfo::parse(fields, &effective_container_attrs, err_ty)?)
+                            VariantData::Named(NamedFieldsInfo::parse(fields, &effective_container_attrs, &err_ty)?)
                         }
                         syn::Fields::Unnamed(u) => return Err(syn::Error::new(
                         u.span(),
