@@ -33,7 +33,10 @@ mod impls;
 #[cfg(feature = "serde_json")]
 mod serde_json;
 
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    fmt::{Debug, Display},
+};
 
 pub use jayson_internal::DeserializeFromValue;
 
@@ -95,9 +98,24 @@ pub enum ValuePointerComponent {
 pub struct ValuePointer {
     pub path: Vec<ValuePointerComponent>,
 }
+impl Display for ValuePointer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for component in self.path.iter().rev() {
+            match component {
+                ValuePointerComponent::Index(i) => {
+                    write!(f, ".{i}")?;
+                }
+                ValuePointerComponent::Key(s) => {
+                    write!(f, ".{s}")?;
+                }
+            }
+        }
+        Ok(())
+    }
+}
 
 /// Equivalent to [`Value`] but without the associated data.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ValueKind {
     Null,
     Boolean,
@@ -107,6 +125,25 @@ pub enum ValueKind {
     String,
     Sequence,
     Map,
+}
+impl Display for ValueKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ValueKind::Null => write!(f, "Null"),
+            ValueKind::Boolean => write!(f, "Boolean"),
+            ValueKind::Integer => write!(f, "Integer"),
+            ValueKind::NegativeInteger => write!(f, "NegativeInteger"),
+            ValueKind::Float => write!(f, "Float"),
+            ValueKind::String => write!(f, "String"),
+            ValueKind::Sequence => write!(f, "Sequence"),
+            ValueKind::Map => write!(f, "Map"),
+        }
+    }
+}
+impl Debug for ValueKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self, f)
+    }
 }
 
 /// `Value<V>` is a view into the parsed serialization data (of type `V`) that
@@ -310,6 +347,25 @@ pub enum StandardError {
         message: String,
     },
 }
+impl Display for StandardError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            StandardError::IncorrectValueKind { actual, accepted } => {
+                writeln!(f, "Found a {actual} but expected one of {accepted:?}")
+            }
+            StandardError::MissingField { field } => {
+                writeln!(f, "Missing field {field}")
+            }
+            StandardError::UnknownKey { key, accepted } => {
+                writeln!(f, "Unknown key {key}. Expected one of {accepted:?}")
+            }
+            StandardError::Unexpected { message } => {
+                writeln!(f, "{message}")
+            }
+        }
+    }
+}
+impl std::error::Error for StandardError {}
 
 impl SingleDeserializeError for StandardError {
     fn incorrect_value_kind(
@@ -349,7 +405,7 @@ impl SingleDeserializeError for StandardError {
 
 #[derive(Debug)]
 pub struct AccumulatedErrors<E> {
-    locations: BTreeMap<ValuePointer, Vec<E>>,
+    pub locations: BTreeMap<ValuePointer, Vec<E>>,
 }
 impl<E> Default for AccumulatedErrors<E> {
     fn default() -> Self {
@@ -444,7 +500,23 @@ where
         Ok(self_)
     }
 }
+impl<E> Display for AccumulatedErrors<E>
+where
+    E: Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (location, errors) in self.locations.iter() {
+            writeln!(f, "Errors at {location}:")?;
+            for e in errors {
+                writeln!(f, "{e}")?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+}
 
+impl<E> std::error::Error for AccumulatedErrors<E> where E: std::error::Error {}
 #[doc(hidden)]
 pub enum FieldState<T> {
     Missing,
