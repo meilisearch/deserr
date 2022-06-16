@@ -28,15 +28,15 @@ pub fn generate_derive_tagged_enum_impl(
 
     quote! {
          #impl_trait_tokens {
-            fn deserialize_from_value<V: jayson::IntoValue>(value: jayson::Value<V>, location: jayson::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
+            fn deserialize_from_value<V: jayson::IntoValue>(jayson_value__: jayson::Value<V>, jayson_location__: jayson::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
                 // The value must always be a map
-                match value {
+                match jayson_value__ {
                     jayson::Value::Map(mut map) => {
                         let tag_value = jayson::Map::remove(&mut map, #tag).ok_or_else(|| {
                             jayson::take_result_content(<#err_ty as jayson::DeserializeError>::missing_field(
                                 None,
                                 #tag,
-                                location
+                                jayson_location__
                             ))
                         })?;
                         let tag_value_string = match tag_value.into_value() {
@@ -47,7 +47,7 @@ pub fn generate_derive_tagged_enum_impl(
                                         None,
                                         v.kind(),
                                         &[jayson::ValueKind::String],
-                                        location
+                                        jayson_location__.push_key(#tag)
                                     )?
                                 );
                             }
@@ -63,7 +63,7 @@ pub fn generate_derive_tagged_enum_impl(
                                         None,
                                         // TODO: expected one of {expected_tags_list}, found {actual_tag} error message
                                         "Incorrect tag value",
-                                        location
+                                        jayson_location__
                                     )?
                                 )
                             }
@@ -76,7 +76,7 @@ pub fn generate_derive_tagged_enum_impl(
                                 None,
                                 v.kind(),
                                 &[jayson::ValueKind::Map],
-                                location
+                                jayson_location__
                             )?
                         )
                     }
@@ -133,7 +133,7 @@ fn generate_derive_tagged_enum_variant_impl(
             // The code here is virtually identical to the code of `generate_derive_struct_impl`
             quote! {
                 #variant_key_name => {
-                    let mut error = None;
+                    let mut jayson_error__ = None;
                     // Start by declaring all the fields as mutable optionals
                     // Their initial value is given by the precomputed `#field_defaults`,
                     // see [NamedFieldsInfo] and [NamedFieldsInfo::parse].
@@ -145,26 +145,26 @@ fn generate_derive_tagged_enum_variant_impl(
                     )*
                     // We traverse the entire map instead of looking for specific keys, because we want
                     // to handle the case where a key is unknown and the attribute `deny_unknown_fields` was used.
-                    for (key, value) in jayson::Map::into_iter(map) {
-                        match key.as_str() {
+                    for (jayson_key__, jayson_value__) in jayson::Map::into_iter(map) {
+                        match jayson_key__.as_str() {
                             // For each known key, look at the corresponding value and try to deserialize it
                             #(
                                 #key_names => {
                                     #field_names = match
                                         <#field_tys as jayson::DeserializeFromValue<#err_ty>>::deserialize_from_value(
-                                            jayson::IntoValue::into_value(value),
-                                            location.push_key(key.as_str())
+                                            jayson::IntoValue::into_value(jayson_value__),
+                                            jayson_location__.push_key(jayson_key__.as_str())
                                         ) {
                                             Ok(x) => jayson::FieldState::Some(x),
                                             Err(e) => {
-                                                error = Some(<#err_ty as jayson::MergeWithError<_>>::merge(error, e)?);
+                                                jayson_error__ = Some(<#err_ty as jayson::MergeWithError<_>>::merge(jayson_error__, e)?);
                                                 jayson::FieldState::Err
                                             }
                                         };
                                 }
                             )*
                             // For an unknownn key, use the precomputed #unknown_key token stream
-                            key => { #unknown_key }
+                            jayson_key__ => { #unknown_key }
                         }
                     }
                     // Now we check whether any field was missing
@@ -174,8 +174,8 @@ fn generate_derive_tagged_enum_variant_impl(
                         }
                     )*
 
-                    if let Some(error) = error {
-                        ::std::result::Result::Err(error)
+                    if let Some(jayson_error__) = jayson_error__ {
+                        ::std::result::Result::Err(jayson_error__)
                     } else {
                         // If the deserialization was successful, then all #field_names are `Some(..)`
                         // Otherwise, an error was thrown earlier

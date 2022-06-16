@@ -52,7 +52,7 @@ enum Tag {
     B,
 }
 
-fn unknown_field_error_gen<E>(k: &str, location: jayson::ValuePointerRef) -> E
+fn unknown_field_error_gen<E>(k: &str, _accepted: &[&str], location: jayson::ValuePointerRef) -> E
 where
     E: DeserializeError,
 {
@@ -165,7 +165,7 @@ struct StructDenyUnknownFields {
     x: bool,
 }
 
-fn unknown_field_error(k: &str, _location: ValuePointerRef) -> MyError {
+fn unknown_field_error(k: &str, _accepted: &[&str], _location: ValuePointerRef) -> MyError {
     MyError::UnknownKey {
         key: k.to_owned(),
         accepted: vec!["don't know".to_string()],
@@ -198,7 +198,7 @@ enum EnumDenyUnknownFieldsCustom {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[jayson(error = MyError)]
 struct StructMissingFieldError {
-    #[jayson(missing_field_error = SingleDeserializeError::missing_field("lol", location) )]
+    #[jayson(missing_field_error = SingleDeserializeError::missing_field("lol", jayson_location__) )]
     x: bool,
     #[jayson(missing_field_error = MyError::CustomMissingField(1))]
     y: bool,
@@ -434,7 +434,7 @@ fn test_de() {
             "y": 8
         }
         "#,
-        unknown_field_error("y", ValuePointerRef::Origin),
+        unknown_field_error("y", &[], ValuePointerRef::Origin),
     );
 
     // struct with deny_unknown_fields with custom error function
@@ -455,7 +455,7 @@ fn test_de() {
             "other": true
         }
         "#,
-        unknown_field_error("other", ValuePointerRef::Origin),
+        unknown_field_error("other", &[], ValuePointerRef::Origin),
     );
 
     // struct with custom missing field error, error check 1
@@ -521,12 +521,11 @@ fn test_de() {
             "other": true
         }
         "#,
-        unknown_field_error("other", ValuePointerRef::Origin),
+        unknown_field_error("other", &[], ValuePointerRef::Origin),
     );
 }
 #[test]
 fn test_accumulated_errors() {
-    // TODO: should be generic over all errors that can be merged into AccumulatedErrors
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, DeserializeFromValue)]
     #[jayson(error = AccumulatedErrors<E>, deny_unknown_fields)]
     #[jayson(generic_param = E, where_predicate = E: DeserializeError)]

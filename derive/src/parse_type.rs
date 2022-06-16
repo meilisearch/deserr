@@ -67,13 +67,6 @@ pub enum VariantData {
     Named(NamedFieldsInfo),
 }
 
-/// Context needed to list the accepted keys when creating an unknown key error
-#[derive(Debug)]
-pub enum UnknownKeyContext {
-    EnumTag(String),
-    Struct,
-}
-
 impl DerivedTypeInfo {
     pub fn parse(input: DeriveInput) -> syn::Result<Self> {
         // First, read the attributes on the derived input
@@ -297,16 +290,16 @@ impl NamedFieldsInfo {
             let missing_field_error = match attrs.missing_field_error {
                 Some(error_expr) => {
                     quote! {
-                        let e = #error_expr ;
-                        error = ::std::option::Option::Some(<#err_ty as jayson::MergeWithError<_>>::merge(error, e)?);
+                        let jayson_e__ = #error_expr ;
+                        jayson_error__ = ::std::option::Option::Some(<#err_ty as jayson::MergeWithError<_>>::merge(jayson_error__, jayson_e__)?);
                     }
                 }
                 None => {
                     quote! {
-                        error = ::std::option::Option::Some(<#err_ty as jayson::DeserializeError>::missing_field(
-                            error,
+                        jayson_error__ = ::std::option::Option::Some(<#err_ty as jayson::DeserializeError>::missing_field(
+                            jayson_error__,
                             #key_name,
-                            location
+                            jayson_location__
                         )?);
                     }
                 }
@@ -329,19 +322,19 @@ impl NamedFieldsInfo {
             Some(DenyUnknownFields::DefaultError) => {
                 // Here we must give as argument the accepted keys
                 quote! {
-                    error = ::std::option::Option::Some(<#err_ty as jayson::DeserializeError>::unknown_key(
-                        error,
-                        key,
+                    jayson_error__ = ::std::option::Option::Some(<#err_ty as jayson::DeserializeError>::unknown_key(
+                        jayson_error__,
+                        jayson_key__,
                         &[#(#key_names),*],
-                        location
+                        jayson_location__
                     )?);
                 }
             }
             Some(DenyUnknownFields::Function(func)) => quote! {
-                let e = #func (key, location) ;
-                error = ::std::option::Option::Some(<#err_ty as jayson::MergeWithError<_>>::merge(
-                    error,
-                    e
+                let jayson_e__ = #func (jayson_key__, &[#(#key_names),*], jayson_location__) ;
+                jayson_error__ = ::std::option::Option::Some(<#err_ty as jayson::MergeWithError<_>>::merge(
+                    jayson_error__,
+                    jayson_e__
                 )?);
             },
             None => quote! {},

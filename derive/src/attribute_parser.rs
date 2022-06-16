@@ -2,10 +2,7 @@ use proc_macro2::{Ident, Span};
 use syn::{
     parenthesized,
     parse::{ParseBuffer, ParseStream},
-    parse2,
-    punctuated::Punctuated,
-    token::Comma,
-    Attribute, Expr, ExprPath, GenericParam, LitStr, Token, WherePredicate,
+    parse2, Attribute, Expr, ExprPath, GenericParam, LitStr, Token, WherePredicate,
 };
 
 /// Attributes that are applied to fields.

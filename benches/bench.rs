@@ -4,7 +4,7 @@
 
 extern crate test;
 
-use jayson::{DeserializeFromValue, Error, IntoValue};
+use jayson::DeserializeFromValue;
 use serde_derive::{Deserialize, Serialize};
 use test::Bencher;
 
@@ -17,7 +17,7 @@ fn bench_deserialize_jayson(b: &mut Bencher) {
     let j = input_json();
     b.iter(|| {
         let json = serde_json::from_str::<serde_json::Value>(&j).unwrap();
-        let _t = Twitter::deserialize_from_value(json.into_value()).unwrap();
+        let _t: Twitter = jayson::deserialize::<_, _, jayson::StandardError>(json).unwrap();
     });
 }
 
@@ -37,14 +37,12 @@ fn bench_deserialize_serdejson_value(b: &mut Bencher) {
 }
 
 #[derive(Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = Error)]
 struct Twitter {
     statuses: Vec<Status>,
     search_metadata: SearchMetadata,
 }
 
 #[derive(Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = Error)]
 struct Status {
     metadata: Metadata,
     created_at: String,
@@ -74,14 +72,12 @@ struct Status {
 }
 
 #[derive(Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = Error)]
 struct Metadata {
     result_type: String,
     iso_language_code: String,
 }
 
 #[derive(Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = Error)]
 struct User {
     id: u32,
     id_str: String,
@@ -126,20 +122,17 @@ struct User {
 }
 
 #[derive(Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = Error)]
 struct UserEntities {
     url: Option<UserUrl>,
     description: UserEntitiesDescription,
 }
 
 #[derive(Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = Error)]
 struct UserUrl {
     urls: Vec<Url>,
 }
 
 #[derive(Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = Error)]
 struct Url {
     url: String,
     expanded_url: String,
@@ -148,13 +141,11 @@ struct Url {
 }
 
 #[derive(Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = Error)]
 struct UserEntitiesDescription {
     urls: Vec<Url>,
 }
 
 #[derive(Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = Error)]
 struct StatusEntities {
     hashtags: Vec<Hashtag>,
     symbols: Vec<()>,
@@ -164,14 +155,12 @@ struct StatusEntities {
 }
 
 #[derive(Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = Error)]
 struct Hashtag {
     text: String,
     indices: Indices,
 }
 
 #[derive(Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = Error)]
 struct UserMention {
     screen_name: String,
     name: String,
@@ -181,7 +170,6 @@ struct UserMention {
 }
 
 #[derive(Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = Error)]
 struct Media {
     id: u64,
     id_str: String,
@@ -200,7 +188,6 @@ struct Media {
 }
 
 #[derive(Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = Error)]
 struct Sizes {
     medium: Size,
     small: Size,
@@ -209,7 +196,6 @@ struct Sizes {
 }
 
 #[derive(Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = Error)]
 struct Size {
     w: u16,
     h: u16,
@@ -219,7 +205,6 @@ struct Size {
 type Indices = (u8, u8);
 
 #[derive(Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = Error)]
 struct SearchMetadata {
     completed_in: f32,
     max_id: u64,
