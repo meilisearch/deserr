@@ -7,7 +7,7 @@ description = "JSON deserarialization library with focus on custom error handlin
 repository = "https://github.com/meilisearch/jayson"
 readme = "README.md"
 exclude = ["benches"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 serde_json = { version = "1.0", optional = true }

@@ -5,8 +5,7 @@ authors = ["David Tolnay <dtolnay@gmail.com>"]
 license = "MIT OR Apache-2.0"
 description = "Derive macros for Jayson. Use the re-exports from the jayson crate instead."
 repository = "https://github.com/meilisearch/jayson"
-edition = "2018"
-rust-version = "1.36"
+edition = "2021"
 
 [lib]
 proc-macro = true

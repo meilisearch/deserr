@@ -1,4 +1,7 @@
-use jayson::{DeserializeError, DeserializeFromValue, ValuePointerRef};
+use jayson::{
+    AccumulatedErrors, DeserializeError, DeserializeFromValue, SingleDeserializeError,
+    ValuePointerRef,
+};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -6,23 +9,38 @@ pub enum MyError {
     Unexpected(String),
     MissingField(String),
     IncorrectValueKind { accepted: Vec<jayson::ValueKind> },
-    UnknownKey(String),
+    UnknownKey { key: String, accepted: Vec<String> },
     CustomMissingField(u8),
 }
 
-impl jayson::DeserializeError for MyError {
-    fn unexpected(s: &str, _location: ValuePointerRef) -> Self {
-        Self::Unexpected(s.to_owned())
+impl SingleDeserializeError for MyError {
+    fn location(&self) -> Option<jayson::ValuePointer> {
+        None
+    }
+
+    fn incorrect_value_kind(
+        _actual: jayson::ValueKind,
+        accepted: &[jayson::ValueKind],
+        _location: ValuePointerRef,
+    ) -> Self {
+        Self::IncorrectValueKind {
+            accepted: accepted.into(),
+        }
     }
 
     fn missing_field(field: &str, _location: ValuePointerRef) -> Self {
-        Self::MissingField(field.to_owned())
+        Self::MissingField(field.to_string())
     }
 
-    fn incorrect_value_kind(accepted: &[jayson::ValueKind], _location: ValuePointerRef) -> Self {
-        Self::IncorrectValueKind {
-            accepted: accepted.to_vec(),
+    fn unknown_key(key: &str, accepted: &[&str], _location: ValuePointerRef) -> Self {
+        Self::UnknownKey {
+            key: key.to_string(),
+            accepted: accepted.into_iter().map(<_>::to_string).collect(),
         }
+    }
+
+    fn unexpected(msg: &str, _location: ValuePointerRef) -> Self {
+        Self::Unexpected(msg.to_string())
     }
 }
 
@@ -38,7 +56,10 @@ fn unknown_field_error_gen<E>(k: &str, location: jayson::ValuePointerRef) -> E
 where
     E: DeserializeError,
 {
-    E::unexpected(k, location)
+    match E::unexpected(None, k, location) {
+        Ok(e) => e,
+        Err(e) => e,
+    }
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
@@ -145,7 +166,10 @@ struct StructDenyUnknownFields {
 }
 
 fn unknown_field_error(k: &str, _location: ValuePointerRef) -> MyError {
-    MyError::UnknownKey(k.to_owned())
+    MyError::UnknownKey {
+        key: k.to_owned(),
+        accepted: vec!["don't know".to_string()],
+    }
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
@@ -174,7 +198,7 @@ enum EnumDenyUnknownFieldsCustom {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[jayson(error = MyError)]
 struct StructMissingFieldError {
-    #[jayson(missing_field_error = MyError::missing_field("lol", location))]
+    #[jayson(missing_field_error = SingleDeserializeError::missing_field("lol", location) )]
     x: bool,
     #[jayson(missing_field_error = MyError::CustomMissingField(1))]
     y: bool,
@@ -270,6 +294,16 @@ where
     let actual: MyError = jayson::deserialize::<T, _, _>(json).unwrap_err();
 
     assert_eq!(actual, expected);
+}
+#[track_caller]
+fn print_accumulated_error<T>(j: &str)
+where
+    T: DeserializeFromValue<AccumulatedErrors<MyError>> + PartialEq + std::fmt::Debug,
+{
+    let json: serde_json::Value = serde_json::from_str(j).unwrap();
+    let actual: AccumulatedErrors<MyError> = jayson::deserialize::<T, _, _>(json).unwrap_err();
+
+    println!("{actual:?}");
 }
 
 #[test]
@@ -399,7 +433,7 @@ fn test_de() {
             "y": 8
         }
         "#,
-        MyError::UnknownKey("y".to_owned()),
+        unknown_field_error("y", ValuePointerRef::Origin),
     );
 
     // struct with deny_unknown_fields with custom error function
@@ -420,7 +454,7 @@ fn test_de() {
             "other": true
         }
         "#,
-        MyError::UnknownKey("other".to_owned()),
+        unknown_field_error("other", ValuePointerRef::Origin),
     );
 
     // struct with custom missing field error, error check 1
@@ -477,4 +511,33 @@ fn test_de() {
             water_potential: true,
         },
     });
+
+    // enum with deny_unknown_fields with custom error function, error check
+    assert_error_matches::<EnumDenyUnknownFieldsCustom>(
+        r#"{
+            "t": "SomeField",
+            "my_field": true,
+            "other": true
+        }
+        "#,
+        unknown_field_error("other", ValuePointerRef::Origin),
+    );
+}
+#[test]
+fn test_accumulated_errors() {
+    // TODO: should be generic over all errors that can be merged into AccumulatedErrors
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, DeserializeFromValue)]
+    #[jayson(error = AccumulatedErrors<MyError>, deny_unknown_fields)]
+    struct S {
+        x: u8,
+        y: bool,
+    }
+
+    print_accumulated_error::<S>(
+        r#"{
+            "x": true,
+            "z": true
+        }
+        "#,
+    );
 }

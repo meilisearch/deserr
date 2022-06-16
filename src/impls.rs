@@ -36,10 +36,11 @@ where
         match value {
             Value::Null => Ok(()),
             v @ _ => Err(E::incorrect_value_kind(
+                None,
                 v.kind(),
                 &[ValueKind::Null],
                 location,
-            )),
+            )?),
         }
     }
 }
@@ -55,10 +56,11 @@ where
         match value {
             Value::Boolean(b) => Ok(b),
             v @ _ => Err(E::incorrect_value_kind(
+                None,
                 v.kind(),
                 &[ValueKind::Boolean],
                 location,
-            )),
+            )?),
         }
     }
 }
@@ -73,30 +75,32 @@ macro_rules! deserialize_impl_integer {
                 value: Value<V>,
                 location: ValuePointerRef,
             ) -> Result<Self, E> {
-                let err = |kind: ValueKind| {
-                    E::incorrect_value_kind(kind, &[ValueKind::Integer], location)
+                let err = |kind: ValueKind| -> Result<E, E> {
+                    E::incorrect_value_kind(None, kind, &[ValueKind::Integer], location)
                 };
 
                 match value {
-                    Value::Integer(x) => <$t>::try_from(x).map_err(|_| {
-                        E::unexpected(
+                    Value::Integer(x) => <$t>::try_from(x).or_else(|_| {
+                        Err(E::unexpected(
+                            None,
                             &format!(
                                 "Cannot deserialize {x} into a {}",
                                 std::any::type_name::<$t>()
                             ),
                             location,
-                        )
+                        )?)
                     }),
-                    Value::NegativeInteger(x) => <$t>::try_from(x).map_err(|_| {
-                        E::unexpected(
+                    Value::NegativeInteger(x) => <$t>::try_from(x).or_else(|_| {
+                        Err(E::unexpected(
+                            None,
                             &format!(
                                 "Cannot deserialize {x} into a {}",
                                 std::any::type_name::<$t>()
                             ),
                             location,
-                        )
+                        )?)
                     }),
-                    v @ _ => Err(err(v.kind())),
+                    v @ _ => Err(err(v.kind())?),
                 }
             }
         }
@@ -120,6 +124,7 @@ macro_rules! deserialize_impl_negative_integer {
             ) -> Result<Self, E> {
                 let err = |kind: ValueKind| {
                     E::incorrect_value_kind(
+                        None,
                         kind,
                         &[ValueKind::Integer, ValueKind::NegativeInteger],
                         location,
@@ -127,25 +132,27 @@ macro_rules! deserialize_impl_negative_integer {
                 };
 
                 match value {
-                    Value::Integer(x) => <$t>::try_from(x).map_err(|_| {
-                        E::unexpected(
+                    Value::Integer(x) => <$t>::try_from(x).or_else(|_| {
+                        Err(E::unexpected(
+                            None,
                             &format!(
                                 "Cannot deserialize {x} into a {}",
                                 std::any::type_name::<$t>()
                             ),
                             location,
-                        )
+                        )?)
                     }),
-                    Value::NegativeInteger(x) => <$t>::try_from(x).map_err(|_| {
-                        E::unexpected(
+                    Value::NegativeInteger(x) => <$t>::try_from(x).or_else(|_| {
+                        Err(E::unexpected(
+                            None,
                             &format!(
                                 "Cannot deserialize {x} into a {}",
                                 std::any::type_name::<$t>()
                             ),
                             location,
-                        )
+                        )?)
                     }),
-                    v @ _ => Err(err(v.kind())),
+                    v @ _ => Err(err(v.kind())?),
                 }
             }
         }
@@ -180,6 +187,7 @@ macro_rules! deserialize_impl_float {
                     }
                     v @ _ => {
                         return Err(E::incorrect_value_kind(
+                            None,
                             v.kind(),
                             &[
                                 ValueKind::Float,
@@ -187,7 +195,7 @@ macro_rules! deserialize_impl_float {
                                 ValueKind::NegativeInteger,
                             ],
                             location,
-                        ))
+                        )?)
                     }
                 };
             }
@@ -208,10 +216,11 @@ where
         match value {
             Value::String(x) => Ok(x),
             v @ _ => Err(E::incorrect_value_kind(
+                None,
                 v.kind(),
                 &[ValueKind::String],
                 location,
-            )),
+            )?),
         }
     }
 }
@@ -226,20 +235,33 @@ where
         location: ValuePointerRef,
     ) -> Result<Self, E> {
         match value {
-            Value::Sequence(seq) => seq
-                .into_iter()
-                .enumerate()
-                .map(|(index, x)| {
+            Value::Sequence(seq) => {
+                let mut error = None;
+                let mut vec = Vec::with_capacity(seq.len());
+                for (index, value) in seq.into_iter().enumerate() {
                     let result =
-                        T::deserialize_from_value(x.into_value(), location.push_index(index));
-                    result
-                })
-                .collect(),
+                        T::deserialize_from_value(value.into_value(), location.push_index(index));
+                    match result {
+                        Ok(value) => {
+                            vec.push(value);
+                        }
+                        Err(e) => {
+                            error = Some(E::merge(error, e)?);
+                        }
+                    }
+                }
+                if let Some(e) = error {
+                    Err(e)
+                } else {
+                    Ok(vec)
+                }
+            }
             v @ _ => Err(E::incorrect_value_kind(
+                None,
                 v.kind(),
                 &[ValueKind::Sequence],
                 location,
-            )),
+            )?),
         }
     }
 }
@@ -288,28 +310,39 @@ where
     ) -> Result<Self, E> {
         match value {
             Value::Map(map) => {
+                let mut error = None;
                 let mut res = HashMap::with_capacity(map.len());
                 for (string_key, value) in map.into_iter() {
-                    let key = Key::from_str(&string_key).map_err(|_| {
-                        E::unexpected(&format!(
-                                "The key \"{string_key}\" could not be deserialized into the key type `{}`",
+                    match Key::from_str(&string_key) {
+                        Ok(key) => {
+                            match T::deserialize_from_value(
+                                value.into_value(),
+                                location.push_key(&string_key),
+                            ) {
+                                Ok(value) => {
+                                    res.insert(key, value);
+                                }
+                                Err(e) => {
+                                    error = Some(E::merge(error, e)?);
+                                }
+                            }
+                        }
+                        Err(_) => {
+                            error = Some(E::unexpected(error,&format!(
+                                "The key \"{string_key}\" could not be deserialized into the key type `{}`.",
                                 std::any::type_name::<Key>()
-                            ), location
-                        )
-                    })?;
-                    let value = T::deserialize_from_value(
-                        value.into_value(),
-                        location.push_key(&string_key),
-                    )?;
-                    res.insert(key, value);
+                            ), location)?);
+                        }
+                    }
                 }
                 Ok(res)
             }
             v @ _ => Err(E::incorrect_value_kind(
+                None,
                 v.kind(),
                 &[ValueKind::Map],
                 location,
-            )),
+            )?),
         }
     }
 }
@@ -326,28 +359,39 @@ where
     ) -> Result<Self, E> {
         match value {
             Value::Map(map) => {
+                let mut error = None;
                 let mut res = BTreeMap::new();
                 for (string_key, value) in map.into_iter() {
-                    let key = Key::from_str(&string_key).map_err(|_| {
-                        E::unexpected(&format!(
-                                "The key \"{string_key}\" could not be deserialized into the key type `{}`",
+                    match Key::from_str(&string_key) {
+                        Ok(key) => {
+                            match T::deserialize_from_value(
+                                value.into_value(),
+                                location.push_key(&string_key),
+                            ) {
+                                Ok(value) => {
+                                    res.insert(key, value);
+                                }
+                                Err(e) => {
+                                    error = Some(E::merge(error, e)?);
+                                }
+                            }
+                        }
+                        Err(_) => {
+                            error = Some(E::unexpected(error,&format!(
+                                "The key \"{string_key}\" could not be deserialized into the key type `{}`.",
                                 std::any::type_name::<Key>()
-                            ), location
-                        )}
-                    )?;
-                    let value = T::deserialize_from_value(
-                        value.into_value(),
-                        location.push_key(&string_key),
-                    )?;
-                    res.insert(key, value);
+                            ), location)?);
+                        }
+                    }
                 }
                 Ok(res)
             }
             v @ _ => Err(E::incorrect_value_kind(
+                None,
                 v.kind(),
                 &[ValueKind::Map],
                 location,
-            )),
+            )?),
         }
     }
 }
@@ -363,19 +407,32 @@ where
     ) -> Result<Self, E> {
         match value {
             Value::Sequence(seq) => {
-                let mut res = HashSet::with_capacity(seq.len());
-                for (i, value) in seq.into_iter().enumerate() {
-                    let value =
-                        T::deserialize_from_value(value.into_value(), location.push_index(i))?;
-                    res.insert(value);
+                let mut error = None;
+                let mut set = HashSet::with_capacity(seq.len());
+                for (index, value) in seq.into_iter().enumerate() {
+                    let result =
+                        T::deserialize_from_value(value.into_value(), location.push_index(index));
+                    match result {
+                        Ok(value) => {
+                            set.insert(value);
+                        }
+                        Err(e) => {
+                            error = Some(E::merge(error, e)?);
+                        }
+                    }
                 }
-                Ok(res)
+                if let Some(e) = error {
+                    Err(e)
+                } else {
+                    Ok(set)
+                }
             }
             v @ _ => Err(E::incorrect_value_kind(
+                None,
                 v.kind(),
                 &[ValueKind::Sequence],
                 location,
-            )),
+            )?),
         }
     }
 }
@@ -391,19 +448,32 @@ where
     ) -> Result<Self, E> {
         match value {
             Value::Sequence(seq) => {
-                let mut res = BTreeSet::new();
-                for (i, value) in seq.into_iter().enumerate() {
-                    let value =
-                        T::deserialize_from_value(value.into_value(), location.push_index(i))?;
-                    res.insert(value);
+                let mut error = None;
+                let mut set = BTreeSet::new();
+                for (index, value) in seq.into_iter().enumerate() {
+                    let result =
+                        T::deserialize_from_value(value.into_value(), location.push_index(index));
+                    match result {
+                        Ok(value) => {
+                            set.insert(value);
+                        }
+                        Err(e) => {
+                            error = Some(E::merge(error, e)?);
+                        }
+                    }
                 }
-                Ok(res)
+                if let Some(e) = error {
+                    Err(e)
+                } else {
+                    Ok(set)
+                }
             }
             v @ _ => Err(E::incorrect_value_kind(
+                None,
                 v.kind(),
                 &[ValueKind::Sequence],
                 location,
-            )),
+            )?),
         }
     }
 }
@@ -423,28 +493,49 @@ where
                 let len = seq.len();
                 if len != 2 {
                     return Err(E::unexpected(
+                        None,
                         "The sequence should have exactly 2 elements.",
                         location,
-                    ));
+                    )?);
                 }
-
+                let mut error = None;
                 let mut iter = seq.into_iter();
 
                 let a = A::deserialize_from_value(
                     iter.next().unwrap().into_value(),
                     location.push_index(0),
-                )?;
+                );
+                let a = match a {
+                    Ok(a) => Some(a),
+                    Err(e) => {
+                        error = Some(E::merge(error, e)?);
+                        None
+                    }
+                };
                 let b = B::deserialize_from_value(
                     iter.next().unwrap().into_value(),
                     location.push_index(1),
-                )?;
-                Ok((a, b))
+                );
+                let b = match b {
+                    Ok(b) => Some(b),
+                    Err(e) => {
+                        error = Some(E::merge(error, e)?);
+                        None
+                    }
+                };
+
+                if let Some(error) = error {
+                    Err(error)
+                } else {
+                    Ok((a.unwrap(), b.unwrap()))
+                }
             }
             v @ _ => Err(E::incorrect_value_kind(
+                None,
                 v.kind(),
                 &[ValueKind::Sequence],
                 location,
-            )),
+            )?),
         }
     }
 }
@@ -465,33 +556,60 @@ where
                 let len = seq.len();
                 if len != 2 {
                     return Err(E::unexpected(
-                        "The sequence should have exactly 3 elements.",
+                        None,
+                        "The sequence should have exactly 2 elements.",
                         location,
-                    ));
+                    )?);
                 }
-
+                let mut error = None;
                 let mut iter = seq.into_iter();
 
                 let a = A::deserialize_from_value(
                     iter.next().unwrap().into_value(),
                     location.push_index(0),
-                )?;
+                );
+                let a = match a {
+                    Ok(a) => Some(a),
+                    Err(e) => {
+                        error = Some(E::merge(error, e)?);
+                        None
+                    }
+                };
                 let b = B::deserialize_from_value(
                     iter.next().unwrap().into_value(),
                     location.push_index(1),
-                )?;
+                );
+                let b = match b {
+                    Ok(b) => Some(b),
+                    Err(e) => {
+                        error = Some(E::merge(error, e)?);
+                        None
+                    }
+                };
                 let c = C::deserialize_from_value(
                     iter.next().unwrap().into_value(),
                     location.push_index(2),
-                )?;
+                );
+                let c = match c {
+                    Ok(c) => Some(c),
+                    Err(e) => {
+                        error = Some(E::merge(error, e)?);
+                        None
+                    }
+                };
 
-                Ok((a, b, c))
+                if let Some(error) = error {
+                    Err(error)
+                } else {
+                    Ok((a.unwrap(), b.unwrap(), c.unwrap()))
+                }
             }
             v @ _ => Err(E::incorrect_value_kind(
+                None,
                 v.kind(),
                 &[ValueKind::Sequence],
                 location,
-            )),
+            )?),
         }
     }
 }

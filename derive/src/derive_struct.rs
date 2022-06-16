@@ -10,7 +10,6 @@ pub fn generate_derive_struct_impl(
 ) -> TokenStream {
     let CommonDerivedTypeInfo {
         impl_trait_tokens,
-        unknown_key,
         err_ty,
     } = info;
 
@@ -20,6 +19,7 @@ pub fn generate_derive_struct_impl(
         field_defaults,
         missing_field_errors,
         key_names,
+        unknown_key,
     } = fields;
 
     quote! {
@@ -28,6 +28,7 @@ pub fn generate_derive_struct_impl(
                 match value {
                     // The value must always be a map
                     jayson::Value::Map(map) => {
+                        let mut error = None;
                         // Start by declaring all the fields as mutable optionals
                         // Their initial value is given by the precomputed `#field_defaults`,
                         // see [NamedFieldsInfo] and [NamedFieldsInfo::parse].
@@ -35,7 +36,7 @@ pub fn generate_derive_struct_impl(
                         // The initial value of #field_names is `None` if the field has no initial value and
                         // thus must be given by the map, and `Some` otherwise.
                         #(
-                            let mut #field_names = #field_defaults;
+                            let mut #field_names : jayson::FieldState<_> = #field_defaults .into();
                         )*
                         // We traverse the entire map instead of looking for specific keys, because we want
                         // to handle the case where a key is unknown and the attribute `deny_unknown_fields` was used.
@@ -44,35 +45,51 @@ pub fn generate_derive_struct_impl(
                                 // For each known key, look at the corresponding value and try to deserialize it
                                 #(
                                     #key_names => {
-                                        #field_names = ::std::option::Option::Some(
+                                        #field_names = match
                                             <#field_tys as jayson::DeserializeFromValue<#err_ty>>::deserialize_from_value(
                                                 jayson::IntoValue::into_value(value),
                                                 location.push_key(key.as_str())
-                                            )?
-                                        );
+                                            ) {
+                                                Ok(x) => jayson::FieldState::Some(x),
+                                                Err(e) => {
+                                                    error = Some(<#err_ty as jayson::MergeWithError<_>>::merge(error, e)?);
+                                                    jayson::FieldState::Err
+                                                }
+                                            };
                                     }
                                 )*
-                                // For an unknownn key, use the precomputed #unknown_key token stream
+                                // For an unknown key, use the precomputed #unknown_key token stream
                                 key => { #unknown_key }
                             }
                         }
+                        // Now we check whether any field was missing
+                        #(
+                            if #field_names .is_missing() {
+                                #missing_field_errors
+                            }
+                        )*
 
-                        // If the deserialization was successful, then all #field_names are `Some(..)`
-                        // Otherwise, it means the map was missing a key
-                        ::std::result::Result::Ok(Self {
-                            #(
-                                #field_names : #field_names.ok_or_else(|| #missing_field_errors)?,
-                            )*
-                        })
+                        if let Some(error) = error {
+                            ::std::result::Result::Err(error)
+                        } else {
+                            // If the deserialization was successful, then all #field_names are `Some(..)`
+                            // Otherwise, an error was thrown earlier
+                            ::std::result::Result::Ok(Self {
+                                #(
+                                    #field_names : #field_names.unwrap(),
+                                )*
+                            })
+                        }
                     }
                     // this is the case where the value is not a map
                     v @ _ => {
                         ::std::result::Result::Err(
-                            <#err_ty as jayson::DeserializeError>::incorrect_value_kind(
+                            jayson::take_result_content(<#err_ty as jayson::DeserializeError>::incorrect_value_kind(
+                                None,
                                 v.kind(),
                                 &[jayson::ValueKind::Map],
                                 location
-                            )
+                            ))
                         )
                     }
                 }

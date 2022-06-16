@@ -27,10 +27,6 @@ pub struct DerivedTypeInfo {
 pub struct CommonDerivedTypeInfo {
     /// A token stream representing the `impl<..> DeserializeFromValue for #ident .. where ..` line.
     pub impl_trait_tokens: TokenStream,
-    /// A token stream representing the code to handle an unknown field key.
-    ///
-    /// It is relevant to the `deny_unknown_fields` attribute.
-    pub unknown_key: TokenStream,
     /// The custom error type `E` that is the generic parameter
     /// of the derived `DeserializeFromValue<E>` trait implementation.
     ///
@@ -69,6 +65,13 @@ pub enum VariantData {
     Unit,
     /// The variant is a variant with named fields, such as `Position { line: usize, col: usize }`
     Named(NamedFieldsInfo),
+}
+
+/// Context needed to list the accepted keys when creating an unknown key error
+#[derive(Debug)]
+pub enum UnknownKeyContext {
+    EnumTag(String),
+    Struct,
 }
 
 impl DerivedTypeInfo {
@@ -132,29 +135,6 @@ impl DerivedTypeInfo {
         };
         {}; // the `impl` above breaks my text editor's syntax highlighting, inserting a pair
             // of curly braces here fixes it
-
-        // Create the token stream representing the code to handle an unknown field key.
-        // By default, we ignore unknown keys, so the token stream is empty.
-        //
-        // If the #[jayson(deny_unknown_fields)] or #[jayson(deny_unknown_fields = func)] attribute exists,
-        // we return an error: either the default error, or an error created by the custom function given by
-        // the user.
-        let unknown_key = match &attrs.deny_unknown_fields {
-            Some(DenyUnknownFields::DefaultError) => {
-                quote! {
-                    return ::std::result::Result::Err(
-                        <#err_ty as jayson::DeserializeError>::unexpected(
-                            &format!("Found unexpected field: {}", key),
-                            location
-                        )
-                    );
-                }
-            }
-            Some(DenyUnknownFields::Function(func)) => quote! {
-                return ::std::result::Result::Err(#func (key, location));
-            },
-            None => quote! {},
-        };
 
         // Now we parse derive information specific to structs or enums
         let data = match input.data {
@@ -225,7 +205,6 @@ impl DerivedTypeInfo {
         Ok(Self {
             common: CommonDerivedTypeInfo {
                 impl_trait_tokens,
-                unknown_key,
                 err_ty: err_ty.clone(),
             },
             data,
@@ -255,6 +234,10 @@ pub struct NamedFieldsInfo {
     pub field_defaults: Vec<TokenStream>,
     pub missing_field_errors: Vec<TokenStream>,
     pub key_names: Vec<String>,
+    /// A token stream representing the code to handle an unknown field key.
+    ///
+    /// It is relevant to the `deny_unknown_fields` attribute.
+    pub unknown_key: TokenStream,
 }
 
 impl NamedFieldsInfo {
@@ -306,14 +289,18 @@ impl NamedFieldsInfo {
 
             let missing_field_error = match attrs.missing_field_error {
                 Some(error_expr) => {
-                    quote! { #error_expr }
+                    quote! {
+                        let e = #error_expr ;
+                        error = ::std::option::Option::Some(<#err_ty as jayson::MergeWithError<_>>::merge(error, e)?);
+                    }
                 }
                 None => {
                     quote! {
-                        <#err_ty as jayson::DeserializeError>::missing_field(
+                        error = ::std::option::Option::Some(<#err_ty as jayson::DeserializeError>::missing_field(
+                            error,
                             #key_name,
                             location
-                        )
+                        )?);
                     }
                 }
             };
@@ -325,12 +312,40 @@ impl NamedFieldsInfo {
             missing_field_errors.push(missing_field_error);
         }
 
+        // Create the token stream representing the code to handle an unknown field key.
+        // By default, we ignore unknown keys, so the token stream is empty.
+        //
+        // If the #[jayson(deny_unknown_fields)] or #[jayson(deny_unknown_fields = func)] attribute exists,
+        // we return an error: either the default error, or an error created by the custom function given by
+        // the user.
+        let unknown_key = match &data_attrs.deny_unknown_fields {
+            Some(DenyUnknownFields::DefaultError) => {
+                // Here we must give as argument the accepted keys
+                quote! {
+                    error = ::std::option::Option::Some(<#err_ty as jayson::DeserializeError>::unknown_key(
+                        error,
+                        key,
+                        &[#(#key_names),*],
+                        location
+                    )?);
+                }
+            }
+            Some(DenyUnknownFields::Function(func)) => quote! {
+                let e = #func (key, location) ;
+                error = ::std::option::Option::Some(<#err_ty as jayson::MergeWithError<_>>::merge(
+                    error,
+                    e
+                )?);
+            },
+            None => quote! {},
+        };
         Ok(Self {
             field_names,
             field_tys,
             key_names,
             field_defaults,
             missing_field_errors,
+            unknown_key,
         })
     }
 }

@@ -33,6 +33,8 @@ mod impls;
 #[cfg(feature = "serde_json")]
 mod serde_json;
 
+use std::collections::BTreeMap;
+
 pub use jayson_internal::DeserializeFromValue;
 
 #[derive(Clone, Copy)]
@@ -81,14 +83,15 @@ impl<'a> ValuePointerRef<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ValuePointerComponent {
     Key(String),
     Index(usize),
 }
 
+// TODO: custom Ord impl
 /// Points to a subpart of a [`Value`].
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ValuePointer {
     pub path: Vec<ValuePointerComponent>,
 }
@@ -189,14 +192,289 @@ where
     Ret::deserialize_from_value(value.into_value(), ValuePointerRef::Origin)
 }
 
-/// A trait for errors returned by [`deserialize_from_value`](DeserializeFromValue::deserialize_from_value).
-pub trait DeserializeError {
+pub trait SingleDeserializeError {
+    fn location(&self) -> Option<ValuePointer>;
+    #[must_use]
     fn incorrect_value_kind(
         actual: ValueKind,
         accepted: &[ValueKind],
         location: ValuePointerRef,
     ) -> Self;
+    #[must_use]
     fn missing_field(field: &str, location: ValuePointerRef) -> Self;
+    #[must_use]
     fn unknown_key(key: &str, accepted: &[&str], location: ValuePointerRef) -> Self;
+    #[must_use]
     fn unexpected(msg: &str, location: ValuePointerRef) -> Self;
+}
+
+pub trait MergeWithError<T>: Sized {
+    fn merge(self_: Option<Self>, other: T) -> Result<Self, Self>;
+}
+
+impl<T> MergeWithError<T> for T
+where
+    T: SingleDeserializeError,
+{
+    fn merge(self_: Option<Self>, other: T) -> Result<Self, Self> {
+        assert!(self_.is_none());
+        Err(other)
+    }
+}
+impl<T> DeserializeError for T
+where
+    T: SingleDeserializeError,
+{
+    fn incorrect_value_kind(
+        self_: Option<Self>,
+        actual: ValueKind,
+        accepted: &[ValueKind],
+        location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        assert!(self_.is_none());
+        Err(Self::incorrect_value_kind(actual, accepted, location))
+    }
+
+    fn missing_field(
+        self_: Option<Self>,
+        field: &str,
+        location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        assert!(self_.is_none());
+        Err(Self::missing_field(field, location))
+    }
+
+    fn unknown_key(
+        self_: Option<Self>,
+        key: &str,
+        accepted: &[&str],
+        location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        assert!(self_.is_none());
+        Err(Self::unknown_key(key, accepted, location))
+    }
+
+    fn unexpected(self_: Option<Self>, msg: &str, location: ValuePointerRef) -> Result<Self, Self> {
+        assert!(self_.is_none());
+        Err(Self::unexpected(msg, location))
+    }
+
+    fn location(&self) -> Option<ValuePointer> {
+        <Self as SingleDeserializeError>::location(self)
+    }
+}
+
+/// A trait for errors returned by [`deserialize_from_value`](DeserializeFromValue::deserialize_from_value).
+pub trait DeserializeError: Sized + MergeWithError<Self> {
+    fn location(&self) -> Option<ValuePointer>;
+
+    #[must_use]
+    fn incorrect_value_kind(
+        self_: Option<Self>,
+        actual: ValueKind,
+        accepted: &[ValueKind],
+        location: ValuePointerRef,
+    ) -> Result<Self, Self>;
+    #[must_use]
+    fn missing_field(
+        self_: Option<Self>,
+        field: &str,
+        location: ValuePointerRef,
+    ) -> Result<Self, Self>;
+    #[must_use]
+    fn unknown_key(
+        self_: Option<Self>,
+        key: &str,
+        accepted: &[&str],
+        location: ValuePointerRef,
+    ) -> Result<Self, Self>;
+    #[must_use]
+    fn unexpected(self_: Option<Self>, msg: &str, location: ValuePointerRef) -> Result<Self, Self>;
+}
+
+#[derive(Clone, Debug)]
+pub enum StandardError {
+    IncorrectValueKind {
+        actual: ValueKind,
+        accepted: Vec<ValueKind>,
+    },
+    MissingField {
+        field: String,
+    },
+    UnknownKey {
+        key: String,
+        accepted: Vec<String>,
+    },
+    Unexpected {
+        message: String,
+    },
+}
+
+impl SingleDeserializeError for StandardError {
+    fn incorrect_value_kind(
+        actual: ValueKind,
+        accepted: &[ValueKind],
+        _location: ValuePointerRef,
+    ) -> Self {
+        Self::IncorrectValueKind {
+            actual,
+            accepted: accepted.to_vec(),
+        }
+    }
+
+    fn missing_field(field: &str, _location: ValuePointerRef) -> Self {
+        Self::MissingField {
+            field: field.to_string(),
+        }
+    }
+
+    fn unknown_key(key: &str, accepted: &[&str], _location: ValuePointerRef) -> Self {
+        Self::UnknownKey {
+            key: key.to_string(),
+            accepted: accepted.into_iter().map(<_>::to_string).collect(),
+        }
+    }
+
+    fn unexpected(msg: &str, _location: ValuePointerRef) -> Self {
+        Self::Unexpected {
+            message: msg.to_string(),
+        }
+    }
+
+    fn location(&self) -> Option<ValuePointer> {
+        None
+    }
+}
+
+#[derive(Debug)]
+pub struct AccumulatedErrors<E> {
+    locations: BTreeMap<ValuePointer, Vec<E>>,
+}
+impl<E> Default for AccumulatedErrors<E> {
+    fn default() -> Self {
+        Self {
+            locations: Default::default(),
+        }
+    }
+}
+
+impl<E> MergeWithError<Self> for AccumulatedErrors<E>
+where
+    E: DeserializeError,
+{
+    fn merge(self_: Option<Self>, other: Self) -> Result<Self, Self> {
+        let mut self_ = self_.unwrap_or_default();
+        for (key, value) in other.locations {
+            self_.locations.entry(key).or_default().extend(value);
+        }
+        Ok(self_)
+    }
+}
+#[allow(unused)]
+impl<E> MergeWithError<E> for AccumulatedErrors<E>
+where
+    E: DeserializeError,
+{
+    fn merge(self_: Option<Self>, other: E) -> Result<Self, Self> {
+        let mut self_ = self_.unwrap_or_default();
+        // If the added error has no location, we add it to the origin
+        let location = other.location().unwrap_or_default();
+        self_.locations.entry(location).or_default().push(other);
+        Ok(self_)
+    }
+}
+#[allow(unused)]
+impl<E> DeserializeError for AccumulatedErrors<E>
+where
+    E: DeserializeError,
+{
+    fn location(&self) -> Option<ValuePointer> {
+        if let Some((_, value)) = self.locations.iter().next() {
+            value[0].location()
+        } else {
+            None
+        }
+    }
+
+    fn incorrect_value_kind(
+        self_: Option<Self>,
+        actual: ValueKind,
+        accepted: &[ValueKind],
+        location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        let mut self_ = self_.unwrap_or_default();
+        let new_err =
+            take_result_content(E::incorrect_value_kind(None, actual, accepted, location));
+        let location = location.to_owned();
+        self_.locations.entry(location).or_default().push(new_err);
+        Ok(self_)
+    }
+
+    fn missing_field(
+        self_: Option<Self>,
+        field: &str,
+        location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        let mut self_ = self_.unwrap_or_default();
+        let new_err = take_result_content(E::missing_field(None, field, location));
+        let location = location.to_owned();
+        self_.locations.entry(location).or_default().push(new_err);
+        Ok(self_)
+    }
+
+    fn unknown_key(
+        self_: Option<Self>,
+        key: &str,
+        accepted: &[&str],
+        location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        let mut self_ = self_.unwrap_or_default();
+        let new_err = take_result_content(E::unknown_key(None, key, accepted, location));
+        let location = location.to_owned();
+        self_.locations.entry(location).or_default().push(new_err);
+        Ok(self_)
+    }
+
+    fn unexpected(self_: Option<Self>, msg: &str, location: ValuePointerRef) -> Result<Self, Self> {
+        let mut self_ = self_.unwrap_or_default();
+        let new_err = take_result_content(E::unexpected(None, msg, location));
+        let location = location.to_owned();
+        self_.locations.entry(location).or_default().push(new_err);
+        Ok(self_)
+    }
+}
+
+#[doc(hidden)]
+pub enum FieldState<T> {
+    Missing,
+    Err,
+    Some(T),
+}
+impl<T> From<Option<T>> for FieldState<T> {
+    fn from(x: Option<T>) -> Self {
+        match x {
+            Some(x) => FieldState::Some(x),
+            None => FieldState::Missing,
+        }
+    }
+}
+impl<T> FieldState<T> {
+    pub fn is_missing(&self) -> bool {
+        matches!(self, FieldState::Missing)
+    }
+    #[track_caller]
+    pub fn unwrap(self) -> T {
+        match self {
+            FieldState::Some(x) => x,
+            _ => panic!("Unwrapping an empty field state"),
+        }
+    }
+}
+
+#[doc(hidden)]
+pub fn take_result_content<T>(r: Result<T, T>) -> T {
+    match r {
+        Ok(x) => x,
+        Err(x) => x,
+    }
 }

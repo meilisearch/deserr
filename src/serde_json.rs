@@ -71,40 +71,64 @@ impl<E: DeserializeError> DeserializeFromValue<E> for JValue {
         value: Value<V>,
         location: ValuePointerRef,
     ) -> Result<Self, E> {
+        let mut error: Option<E> = None;
         Ok(match value {
             Value::Null => JValue::Null,
             Value::Boolean(b) => JValue::Bool(b),
             Value::Integer(x) => JValue::Number(Number::from(x)),
             Value::NegativeInteger(x) => JValue::Number(Number::from(x)),
-            Value::Float(f) => JValue::Number(Number::from_f64(f).ok_or_else(|| {
-                E::unexpected(
-                    &format!("The float {f} is not representable in JSON"),
-                    location,
-                )
-            })?),
+            Value::Float(f) => match Number::from_f64(f) {
+                Some(n) => JValue::Number(n),
+                None => {
+                    return Err(E::unexpected(
+                        error,
+                        &format!("The float {f} is not representable in JSON"),
+                        location,
+                    )?);
+                }
+            },
             Value::String(s) => JValue::String(s),
             Value::Sequence(seq) => {
-                let vec = seq
-                    .into_iter()
-                    .enumerate()
-                    .map(|(index, x)| {
-                        let result = Self::deserialize_from_value(
-                            x.into_value(),
-                            location.push_index(index),
-                        );
-                        result
-                    })
-                    .collect::<Result<_, _>>()?;
-                JValue::Array(vec)
+                let mut jseq = Vec::with_capacity(seq.len());
+                for (index, value) in seq.into_iter().enumerate() {
+                    let result = Self::deserialize_from_value(
+                        value.into_value(),
+                        location.push_index(index),
+                    );
+                    match result {
+                        Ok(value) => {
+                            jseq.push(value);
+                        }
+                        Err(e) => {
+                            error = Some(E::merge(error, e)?);
+                        }
+                    }
+                }
+                if let Some(e) = error {
+                    return Err(e);
+                } else {
+                    JValue::Array(jseq)
+                }
             }
             Value::Map(map) => {
                 let mut jmap = JMap::with_capacity(map.len());
                 for (key, value) in map.into_iter() {
-                    let value =
-                        Self::deserialize_from_value(value.into_value(), location.push_key(&key))?;
-                    jmap.insert(key, value);
+                    let result =
+                        Self::deserialize_from_value(value.into_value(), location.push_key(&key));
+                    match result {
+                        Ok(value) => {
+                            jmap.insert(key, value);
+                        }
+                        Err(e) => {
+                            error = Some(E::merge(error, e)?);
+                        }
+                    }
                 }
-                JValue::Object(jmap)
+                if let Some(e) = error {
+                    return Err(e);
+                } else {
+                    JValue::Object(jmap)
+                }
             }
         })
     }
