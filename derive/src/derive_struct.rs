@@ -17,6 +17,7 @@ pub fn generate_derive_struct_impl(
         field_names,
         field_tys,
         field_defaults,
+        field_errs,
         missing_field_errors,
         key_names,
         unknown_key,
@@ -46,7 +47,7 @@ pub fn generate_derive_struct_impl(
                                 #(
                                     #key_names => {
                                         #field_names = match
-                                            <#field_tys as jayson::DeserializeFromValue<#err_ty>>::deserialize_from_value(
+                                            <#field_tys as jayson::DeserializeFromValue<#field_errs>>::deserialize_from_value(
                                                 jayson::IntoValue::into_value(jayson_value__),
                                                 jayson_location__.push_key(jayson_key__.as_str())
                                             ) {

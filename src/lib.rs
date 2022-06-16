@@ -212,13 +212,14 @@ pub trait MergeWithError<T>: Sized {
     fn merge(self_: Option<Self>, other: T) -> Result<Self, Self>;
 }
 
-impl<T> MergeWithError<T> for T
+impl<T, U> MergeWithError<U> for T
 where
     T: SingleDeserializeError,
+    T: From<U>,
 {
-    fn merge(self_: Option<Self>, other: T) -> Result<Self, Self> {
+    fn merge(self_: Option<Self>, other: U) -> Result<Self, Self> {
         assert!(self_.is_none());
-        Err(other)
+        Err(other.into())
     }
 }
 impl<T> DeserializeError for T

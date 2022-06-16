@@ -27,7 +27,8 @@ pub struct FieldAttributesInfo {
     pub default: Option<DefaultFieldAttribute>,
     /// The error to return when the field is missing and no default value exists.
     pub missing_field_error: Option<Expr>,
-
+    /// The type of the error used to deserialize the field
+    pub error: Option<syn::Type>,
     /// Span of the `default` attribute, if any, for compile error reporting purposes
     default_span: Option<Span>,
 }
@@ -87,6 +88,15 @@ impl FieldAttributesInfo {
             }
             self.missing_field_error = Some(missing_field_error)
         }
+        if let Some(error) = other.error {
+            if let Some(self_error) = &self.error {
+                return Err(syn::Error::new_spanned(
+                    self_error,
+                    "The `error` field attribute is defined twice.",
+                ));
+            }
+            self.error = Some(error)
+        }
 
         Ok(())
     }
@@ -132,6 +142,12 @@ impl syn::parse::Parse for FieldAttributesInfo {
                     let expr = input.parse::<Expr>()?;
                     // #[jayson( ... missing_field_error = expr )]
                     this.missing_field_error = Some(expr);
+                }
+                "error" => {
+                    let _eq = input.parse::<Token![=]>()?;
+                    let err_ty = input.parse::<syn::Type>()?;
+                    // #[jayson( ... error = err_ty )]
+                    this.error = Some(err_ty);
                 }
                 _ => {
                     let message = format!("Unknown jayson field attribute: {}", attr_name);

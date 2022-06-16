@@ -75,9 +75,7 @@ impl DerivedTypeInfo {
 
         // The error type as given by the attribute #[jayson(error = err_ty)]
         let err_ty_opt: Option<&syn::Type> = attrs.err_ty.as_ref();
-        let err_ty = err_ty_opt
-            .cloned()
-            .unwrap_or(parse_quote!(__Jayson_AnyErrorTypeParameter));
+        let err_ty = err_ty_opt.cloned().unwrap_or(parse_quote!(__Jayson_E));
 
         // Create the token stream representing the line:
         // ```
@@ -232,6 +230,7 @@ pub struct NamedFieldsInfo {
     pub field_names: Vec<syn::Ident>,
     pub field_tys: Vec<syn::Type>,
     pub field_defaults: Vec<TokenStream>,
+    pub field_errs: Vec<syn::Type>,
     pub missing_field_errors: Vec<TokenStream>,
     pub key_names: Vec<String>,
     /// A token stream representing the code to handle an unknown field key.
@@ -256,6 +255,8 @@ impl NamedFieldsInfo {
         // the token stream that give the optional value of the field when its key is missing
         // influenced by the `default` attribute
         let mut field_defaults = vec![];
+        // the type of the error used to deserialize the field
+        let mut field_errs = vec![];
         // the token stream representing the error to return when the field is missing and has no default value
         let mut missing_field_errors = vec![];
 
@@ -304,11 +305,19 @@ impl NamedFieldsInfo {
                     }
                 }
             };
+            let error = match attrs.error {
+                Some(error) => error,
+                None => data_attrs
+                    .err_ty
+                    .clone()
+                    .unwrap_or(parse_quote!(__Jayson_E)),
+            };
 
             field_names.push(field_name);
             field_tys.push(field_ty.clone());
             key_names.push(key_name.clone());
             field_defaults.push(field_default);
+            field_errs.push(error);
             missing_field_errors.push(missing_field_error);
         }
 
@@ -344,6 +353,7 @@ impl NamedFieldsInfo {
             field_tys,
             key_names,
             field_defaults,
+            field_errs,
             missing_field_errors,
             unknown_key,
         })

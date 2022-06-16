@@ -1,6 +1,6 @@
 use jayson::{
-    AccumulatedErrors, DeserializeError, DeserializeFromValue, SingleDeserializeError,
-    ValuePointerRef,
+    AccumulatedErrors, DeserializeError, DeserializeFromValue, MergeWithError,
+    SingleDeserializeError, StandardError, ValuePointerRef,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -252,6 +252,13 @@ enum EnumRenamedAllVariant {
 #[jayson(error = MyError)]
 struct Generic<A> {
     some_field: A,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[jayson(where_predicate = __Jayson_E: MergeWithError<StandardError>, where_predicate = A: DeserializeFromValue<StandardError>)]
+struct Generic2<A> {
+    #[jayson(error = StandardError)]
+    some_field: Option<A>,
 }
 
 #[track_caller]
