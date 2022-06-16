@@ -296,12 +296,13 @@ where
     assert_eq!(actual, expected);
 }
 #[track_caller]
-fn print_accumulated_error<T>(j: &str)
+fn print_accumulated_error<T, E>(j: &str)
 where
-    T: DeserializeFromValue<AccumulatedErrors<MyError>> + PartialEq + std::fmt::Debug,
+    T: DeserializeFromValue<AccumulatedErrors<E>> + PartialEq + std::fmt::Debug,
+    E: DeserializeError + std::fmt::Debug,
 {
     let json: serde_json::Value = serde_json::from_str(j).unwrap();
-    let actual: AccumulatedErrors<MyError> = jayson::deserialize::<T, _, _>(json).unwrap_err();
+    let actual: AccumulatedErrors<E> = jayson::deserialize::<T, _, _>(json).unwrap_err();
 
     println!("{actual:?}");
 }
@@ -527,13 +528,14 @@ fn test_de() {
 fn test_accumulated_errors() {
     // TODO: should be generic over all errors that can be merged into AccumulatedErrors
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, DeserializeFromValue)]
-    #[jayson(error = AccumulatedErrors<MyError>, deny_unknown_fields)]
+    #[jayson(error = AccumulatedErrors<E>, deny_unknown_fields)]
+    #[jayson(generic_param = E, where_predicate = E: DeserializeError)]
     struct S {
         x: u8,
         y: bool,
     }
 
-    print_accumulated_error::<S>(
+    print_accumulated_error::<S, MyError>(
         r#"{
             "x": true,
             "z": true

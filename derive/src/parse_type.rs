@@ -116,6 +116,10 @@ impl DerivedTypeInfo {
                 ));
             }
 
+            generics_for_trait_impl
+                .params
+                .extend(attrs.generic_params.clone());
+
             let mut generics = input.generics.clone();
 
             // existing generics/where clause
@@ -127,7 +131,10 @@ impl DerivedTypeInfo {
                 .predicates
                 .extend(new_predicates);
 
-            let bounded_where_clause = generics.where_clause.unwrap();
+            let mut bounded_where_clause = generics.where_clause.unwrap();
+            bounded_where_clause
+                .predicates
+                .extend(attrs.where_predicates.clone());
 
             quote! {
                 impl #impl_generics jayson::DeserializeFromValue<#err_ty> for #ident #ty_generics #bounded_where_clause

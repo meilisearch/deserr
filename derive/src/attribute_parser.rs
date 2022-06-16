@@ -2,7 +2,10 @@ use proc_macro2::{Ident, Span};
 use syn::{
     parenthesized,
     parse::{ParseBuffer, ParseStream},
-    parse2, Attribute, Expr, ExprPath, LitStr, Token,
+    parse2,
+    punctuated::Punctuated,
+    token::Comma,
+    Attribute, Expr, ExprPath, GenericParam, LitStr, Token, WherePredicate,
 };
 
 /// Attributes that are applied to fields.
@@ -228,6 +231,9 @@ pub struct ContainerAttributesInfo {
     pub tag: TagType,
     pub deny_unknown_fields: Option<DenyUnknownFields>,
 
+    pub generic_params: Vec<GenericParam>,
+    pub where_predicates: Vec<WherePredicate>,
+
     rename_all_span: Option<Span>,
     tag_span: Option<Span>,
     deny_unknown_fields_span: Option<Span>,
@@ -283,6 +289,8 @@ impl ContainerAttributesInfo {
             }
             self.deny_unknown_fields = Some(x);
         }
+        self.generic_params.extend(other.generic_params);
+        self.where_predicates.extend(other.where_predicates);
 
         Ok(())
     }
@@ -355,6 +363,18 @@ impl syn::parse::Parse for ContainerAttributesInfo {
                         this.deny_unknown_fields = Some(DenyUnknownFields::DefaultError);
                     }
                     this.deny_unknown_fields_span = Some(attr_name.span());
+                }
+                "generic_param" => {
+                    let _eq = input.parse::<Token![=]>()?;
+                    let param = input.parse::<GenericParam>()?;
+                    // #[jayson( ... generic_params = P )]
+                    this.generic_params.push(param);
+                }
+                "where_predicate" => {
+                    let _eq = input.parse::<Token![=]>()?;
+                    let pred = input.parse::<WherePredicate>()?;
+                    // #[jayson( ... where_predicate = P: Display + Debug )]
+                    this.where_predicates.push(pred);
                 }
                 _ => {
                     let message = format!("Unknown jayson container attribute: {}", attr_name);
