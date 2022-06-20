@@ -246,7 +246,7 @@ pub trait SingleDeserializeError {
 }
 
 pub trait MergeWithError<T>: Sized {
-    fn merge(self_: Option<Self>, other: T) -> Result<Self, Self>;
+    fn merge(self_: Option<Self>, other: T, merge_location: ValuePointerRef) -> Result<Self, Self>;
 }
 
 impl<T, U> MergeWithError<U> for T
@@ -254,7 +254,11 @@ where
     T: SingleDeserializeError,
     T: From<U>,
 {
-    fn merge(self_: Option<Self>, other: U) -> Result<Self, Self> {
+    fn merge(
+        self_: Option<Self>,
+        other: U,
+        _merge_location: ValuePointerRef,
+    ) -> Result<Self, Self> {
         assert!(self_.is_none());
         Err(other.into())
     }
@@ -419,7 +423,11 @@ impl<E> MergeWithError<Self> for AccumulatedErrors<E>
 where
     E: DeserializeError,
 {
-    fn merge(self_: Option<Self>, other: Self) -> Result<Self, Self> {
+    fn merge(
+        self_: Option<Self>,
+        other: Self,
+        _merge_location: ValuePointerRef,
+    ) -> Result<Self, Self> {
         let mut self_ = self_.unwrap_or_default();
         for (key, value) in other.locations {
             self_.locations.entry(key).or_default().extend(value);
@@ -432,7 +440,7 @@ impl<E> MergeWithError<E> for AccumulatedErrors<E>
 where
     E: DeserializeError,
 {
-    fn merge(self_: Option<Self>, other: E) -> Result<Self, Self> {
+    fn merge(self_: Option<Self>, other: E, merge_location: ValuePointerRef) -> Result<Self, Self> {
         let mut self_ = self_.unwrap_or_default();
         // If the added error has no location, we add it to the origin
         let location = other.location().unwrap_or_default();

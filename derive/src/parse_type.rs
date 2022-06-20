@@ -1,6 +1,7 @@
 use crate::attribute_parser::{
     read_jayson_container_attributes, read_jayson_field_attributes, read_jayson_variant_attributes,
-    ContainerAttributesInfo, DefaultFieldAttribute, DenyUnknownFields, RenameAll, TagType,
+    validate_container_attributes, ContainerAttributesInfo, DefaultFieldAttribute,
+    DenyUnknownFields, FunctionReturningError, RenameAll, TagType,
 };
 
 use convert_case::{Case, Casing};
@@ -8,7 +9,7 @@ use proc_macro2::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{parse_quote, Data, DeriveInput, WherePredicate};
+use syn::{parse_quote, Data, DeriveInput, ExprPath, WherePredicate};
 
 /// Contains all the information needed to generate a
 /// `DeserializeFromValue` implementation for the derived type,
@@ -19,7 +20,7 @@ pub struct DerivedTypeInfo {
     /// Information that is common to both structs and enums
     pub common: CommonDerivedTypeInfo,
     /// Information specific to structs or enums
-    pub data: EnumOrStructDerivedTypeInfo,
+    pub data: TraitImplementationInfo,
 }
 
 /// The subset of [`DerivedTypeInfo`] that contains information
@@ -32,15 +33,22 @@ pub struct CommonDerivedTypeInfo {
     ///
     /// It is relevant to the `error` attribute, which is necessary for now.
     pub err_ty: syn::Type,
+
+    pub validate: TokenStream,
 }
 
 /// The subset of [`DerivedTypeInfo`] that contains information
 /// specific to structs or enums
-pub enum EnumOrStructDerivedTypeInfo {
+pub enum TraitImplementationInfo {
     Struct(NamedFieldsInfo),
     Enum {
         tag: TagType,
         variants: Vec<VariantInfo>,
+    },
+    UserProvidedFunction {
+        from_type: syn::Type,
+        function_path: ExprPath,
+        function_error_type: syn::Type,
     },
 }
 
@@ -73,9 +81,89 @@ impl DerivedTypeInfo {
         // e.g. `#[jayson(error = MyError, tag = "mytag", rename_all = camelCase)]`
         let attrs = read_jayson_container_attributes(&input.attrs)?;
 
+        validate_container_attributes(&attrs, &input)?;
+
         // The error type as given by the attribute #[jayson(error = err_ty)]
-        let err_ty_opt: Option<&syn::Type> = attrs.err_ty.as_ref();
-        let err_ty = err_ty_opt.cloned().unwrap_or(parse_quote!(__Jayson_E));
+        let user_provided_err_ty: Option<&syn::Type> = attrs.err_ty.as_ref();
+        let err_ty = user_provided_err_ty
+            .cloned()
+            .unwrap_or(parse_quote!(__Jayson_E));
+
+        // Now we build the TraitImplementationInfo structure
+
+        let data = if let Some(from) = &attrs.from {
+            // if there was a container `from` attribute, then it doesn't matter what the derived input
+            // is, we just call the provided function to deserialise it
+            TraitImplementationInfo::UserProvidedFunction {
+                from_type: from.from_ty.clone(),
+                function_path: from.function.function.clone(),
+                function_error_type: from.function.error_ty.clone(),
+            }
+        } else {
+            // Otherwise, we parse derive information specific to structs or enums
+            match input.data {
+                Data::Struct(s) => match s.fields {
+                    syn::Fields::Named(fields) => TraitImplementationInfo::Struct(
+                        NamedFieldsInfo::parse(fields, &attrs, &err_ty)?,
+                    ),
+                    syn::Fields::Unnamed(fields) => return Err(syn::Error::new(
+                        fields.span(),
+                        "Tuple structs aren't supported by the DeserializeFromValue derive macro",
+                    )),
+                    syn::Fields::Unit => return Err(syn::Error::new(
+                        Span::call_site(),
+                        "Unit structs aren't supported by the DeserializeFromValue derive macro",
+                    )),
+                },
+                Data::Enum(e) => {
+                    // parse a VariantInfo for each variant in the enum
+                    let mut parsed_variants = vec![];
+                    for variant in e.variants {
+                        let variant_attrs = read_jayson_variant_attributes(&variant.attrs)?;
+
+                        let renamed = variant_attrs.rename.as_ref().map(|i| i.value());
+
+                        // The key in the serialized value representing the variant, which is influenced by the
+                        // `rename` and `rename_all` attributes
+                        let key_name = key_name_for_ident(
+                            variant.ident.to_string(),
+                            attrs.rename_all.as_ref(),
+                            renamed.as_deref(),
+                        );
+
+                        let mut effective_container_attrs = attrs.clone();
+                        effective_container_attrs.merge_variant(&variant_attrs);
+
+                        // Parse derive info for the content of the variants
+                        let data = match variant.fields {
+                        syn::Fields::Named(fields) => {
+                            VariantData::Named(NamedFieldsInfo::parse(fields, &effective_container_attrs, &err_ty)?)
+                        }
+                        syn::Fields::Unnamed(u) => return Err(syn::Error::new(
+                        u.span(),
+                        "Enum variants with unnamed associated data aren't supported by the DeserializeFromValue derive macro.",
+                    )),
+                        syn::Fields::Unit => VariantData::Unit,
+                    };
+                        parsed_variants.push(VariantInfo {
+                            ident: variant.ident,
+                            key_name,
+                            data,
+                        });
+                    }
+                    TraitImplementationInfo::Enum {
+                        tag: attrs.tag,
+                        variants: parsed_variants,
+                    }
+                }
+                Data::Union(u) => {
+                    return Err(syn::Error::new(
+                        u.union_token.span,
+                        "Unions aren't supported by the DeserializeFromValue derive macro",
+                    ))
+                }
+            }
+        };
 
         // Create the token stream representing the line:
         // ```
@@ -100,11 +188,56 @@ impl DerivedTypeInfo {
 
             let mut generics_for_trait_impl = input.generics.clone();
 
-            if err_ty_opt.is_none() {
+            if user_provided_err_ty.is_none() {
                 generics_for_trait_impl.params.push(parse_quote!(#err_ty));
                 new_predicates.push(parse_quote!(
                     #err_ty : jayson::DeserializeError
                 ));
+            }
+
+            // Add MergeWithError<FromFunctionError> requirement
+            if let Some(from) = &attrs.from {
+                let from_error = &from.function.error_ty;
+                new_predicates.push(parse_quote!(
+                    #err_ty : jayson::MergeWithError<#from_error>
+                ));
+            }
+            // Add MergeWithError<ValidateFunctionError> requirement
+            if let Some(validate) = &attrs.validate {
+                let validate_error = &validate.error_ty;
+                new_predicates.push(parse_quote!(
+                    #err_ty : jayson::MergeWithError<#validate_error>
+                ));
+            }
+
+            // Add FieldTy: DeserializeFromValue<ErrTy> for each field with the needs_predicate attribute
+            {
+                let collect_needs_pred = |fields: &NamedFieldsInfo| {
+                    fields
+                        .field_tys
+                        .iter()
+                        .zip(fields.needs_predicate.iter())
+                        .filter_map(|(ty, pred)| if *pred { Some(ty.clone()) } else { None })
+                        .collect::<Vec<_>>()
+                };
+                let all_fields_needing_pred = match &data {
+                    TraitImplementationInfo::Struct(fields) => collect_needs_pred(fields),
+                    TraitImplementationInfo::Enum { variants, .. } => variants
+                        .iter()
+                        .flat_map(|v| match &v.data {
+                            VariantData::Named(fields) => collect_needs_pred(fields),
+                            _ => vec![],
+                        })
+                        .collect(),
+                    TraitImplementationInfo::UserProvidedFunction { .. } => {
+                        vec![]
+                    }
+                };
+                for field_ty in all_fields_needing_pred {
+                    new_predicates.push(parse_quote! {
+                        #field_ty : jayson::DeserializeFromValue<#err_ty>
+                    });
+                }
             }
 
             generics_for_trait_impl
@@ -134,76 +267,31 @@ impl DerivedTypeInfo {
         {}; // the `impl` above breaks my text editor's syntax highlighting, inserting a pair
             // of curly braces here fixes it
 
-        // Now we parse derive information specific to structs or enums
-        let data = match input.data {
-            Data::Struct(s) => {
-                match s.fields {
-                    syn::Fields::Named(fields) => EnumOrStructDerivedTypeInfo::Struct(
-                        NamedFieldsInfo::parse(fields, &attrs, &err_ty)?,
-                    ),
-                    syn::Fields::Unnamed(fields) => return Err(syn::Error::new(
-                        fields.span(),
-                        "Tuple structs aren't supported by the DeserializeFromValue derive macro",
-                    )),
-                    syn::Fields::Unit => return Err(syn::Error::new(
-                        Span::call_site(),
-                        "Unit structs aren't supported by the DeserializeFromValue derive macro",
-                    )),
-                }
+        let validate = if let Some(validate_func) = attrs.validate {
+            let FunctionReturningError {
+                function: validate_func,
+                error_ty: func_error_type,
+            } = validate_func;
+            quote! {
+                #validate_func (jayson_final__) .map_err(|validate_error__|{
+                    jayson::take_result_content(
+                        <#err_ty as jayson::MergeWithError<#func_error_type>>::merge(
+                            None,
+                            validate_error__,
+                            jayson_location__
+                        )
+                    )
+                })
             }
-            Data::Enum(e) => {
-                // parse a VariantInfo for each variant in the enum
-                let mut parsed_variants = vec![];
-                for variant in e.variants {
-                    let variant_attrs = read_jayson_variant_attributes(&variant.attrs)?;
-
-                    let renamed = variant_attrs.rename.as_ref().map(|i| i.value());
-
-                    // The key in the serialized value representing the variant, which is influenced by the
-                    // `rename` and `rename_all` attributes
-                    let key_name = key_name_for_ident(
-                        variant.ident.to_string(),
-                        attrs.rename_all.as_ref(),
-                        renamed.as_deref(),
-                    );
-
-                    let mut effective_container_attrs = attrs.clone();
-                    effective_container_attrs.merge_variant(&variant_attrs);
-
-                    // Parse derive info for the content of the variants
-                    let data = match variant.fields {
-                        syn::Fields::Named(fields) => {
-                            VariantData::Named(NamedFieldsInfo::parse(fields, &effective_container_attrs, &err_ty)?)
-                        }
-                        syn::Fields::Unnamed(u) => return Err(syn::Error::new(
-                        u.span(),
-                        "Enum variants with unnamed associated data aren't supported by the DeserializeFromValue derive macro.",
-                    )),
-                        syn::Fields::Unit => VariantData::Unit,
-                    };
-                    parsed_variants.push(VariantInfo {
-                        ident: variant.ident,
-                        key_name,
-                        data,
-                    });
-                }
-                EnumOrStructDerivedTypeInfo::Enum {
-                    tag: attrs.tag,
-                    variants: parsed_variants,
-                }
-            }
-            Data::Union(u) => {
-                return Err(syn::Error::new(
-                    u.union_token.span,
-                    "Unions aren't supported by the DeserializeFromValue derive macro",
-                ))
-            }
+        } else {
+            quote! { Ok(jayson_final__) }
         };
 
         Ok(Self {
             common: CommonDerivedTypeInfo {
                 impl_trait_tokens,
                 err_ty: err_ty.clone(),
+                validate,
             },
             data,
         })
@@ -233,6 +321,8 @@ pub struct NamedFieldsInfo {
     pub field_errs: Vec<syn::Type>,
     pub missing_field_errors: Vec<TokenStream>,
     pub key_names: Vec<String>,
+
+    pub needs_predicate: Vec<bool>,
     /// A token stream representing the code to handle an unknown field key.
     ///
     /// It is relevant to the `deny_unknown_fields` attribute.
@@ -259,6 +349,8 @@ impl NamedFieldsInfo {
         let mut field_errs = vec![];
         // the token stream representing the error to return when the field is missing and has no default value
         let mut missing_field_errors = vec![];
+        // `true` iff the field has the needs_predicate attribute
+        let mut needs_predicate = vec![];
 
         for field in fields.named.iter() {
             let field_name = field.ident.clone().unwrap();
@@ -292,7 +384,11 @@ impl NamedFieldsInfo {
                 Some(error_expr) => {
                     quote! {
                         let jayson_e__ = #error_expr ;
-                        jayson_error__ = ::std::option::Option::Some(<#err_ty as jayson::MergeWithError<_>>::merge(jayson_error__, jayson_e__)?);
+                        jayson_error__ = ::std::option::Option::Some(<#err_ty as jayson::MergeWithError<_>>::merge(
+                            jayson_error__,
+                            jayson_e__,
+                            jayson_location__
+                        )?);
                     }
                 }
                 None => {
@@ -319,6 +415,7 @@ impl NamedFieldsInfo {
             field_defaults.push(field_default);
             field_errs.push(error);
             missing_field_errors.push(missing_field_error);
+            needs_predicate.push(attrs.needs_predicate);
         }
 
         // Create the token stream representing the code to handle an unknown field key.
@@ -343,7 +440,8 @@ impl NamedFieldsInfo {
                 let jayson_e__ = #func (jayson_key__, &[#(#key_names),*], jayson_location__) ;
                 jayson_error__ = ::std::option::Option::Some(<#err_ty as jayson::MergeWithError<_>>::merge(
                     jayson_error__,
-                    jayson_e__
+                    jayson_e__,
+                    jayson_location__,
                 )?);
             },
             None => quote! {},
@@ -354,6 +452,7 @@ impl NamedFieldsInfo {
             key_names,
             field_defaults,
             field_errs,
+            needs_predicate,
             missing_field_errors,
             unknown_key,
         })

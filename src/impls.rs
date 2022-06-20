@@ -246,7 +246,7 @@ where
                             vec.push(value);
                         }
                         Err(e) => {
-                            error = Some(E::merge(error, e)?);
+                            error = Some(E::merge(error, e, location.push_index(index))?);
                         }
                     }
                 }
@@ -323,7 +323,8 @@ where
                                     res.insert(key, value);
                                 }
                                 Err(e) => {
-                                    error = Some(E::merge(error, e)?);
+                                    error =
+                                        Some(E::merge(error, e, location.push_key(&string_key))?);
                                 }
                             }
                         }
@@ -372,7 +373,8 @@ where
                                     res.insert(key, value);
                                 }
                                 Err(e) => {
-                                    error = Some(E::merge(error, e)?);
+                                    error =
+                                        Some(E::merge(error, e, location.push_key(&string_key))?);
                                 }
                             }
                         }
@@ -417,7 +419,7 @@ where
                             set.insert(value);
                         }
                         Err(e) => {
-                            error = Some(E::merge(error, e)?);
+                            error = Some(E::merge(error, e, location.push_index(index))?);
                         }
                     }
                 }
@@ -458,7 +460,7 @@ where
                             set.insert(value);
                         }
                         Err(e) => {
-                            error = Some(E::merge(error, e)?);
+                            error = Some(E::merge(error, e, location.push_index(index))?);
                         }
                     }
                 }
@@ -508,7 +510,7 @@ where
                 let a = match a {
                     Ok(a) => Some(a),
                     Err(e) => {
-                        error = Some(E::merge(error, e)?);
+                        error = Some(E::merge(error, e, location.push_index(0))?);
                         None
                     }
                 };
@@ -519,7 +521,7 @@ where
                 let b = match b {
                     Ok(b) => Some(b),
                     Err(e) => {
-                        error = Some(E::merge(error, e)?);
+                        error = Some(E::merge(error, e, location.push_index(1))?);
                         None
                     }
                 };
@@ -571,7 +573,7 @@ where
                 let a = match a {
                     Ok(a) => Some(a),
                     Err(e) => {
-                        error = Some(E::merge(error, e)?);
+                        error = Some(E::merge(error, e, location.push_index(0))?);
                         None
                     }
                 };
@@ -582,7 +584,7 @@ where
                 let b = match b {
                     Ok(b) => Some(b),
                     Err(e) => {
-                        error = Some(E::merge(error, e)?);
+                        error = Some(E::merge(error, e, location.push_index(1))?);
                         None
                     }
                 };
@@ -593,7 +595,7 @@ where
                 let c = match c {
                     Ok(c) => Some(c),
                     Err(e) => {
-                        error = Some(E::merge(error, e)?);
+                        error = Some(E::merge(error, e, location.push_index(2))?);
                         None
                     }
                 };

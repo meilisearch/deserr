@@ -11,6 +11,7 @@ pub fn generate_derive_struct_impl(
     let CommonDerivedTypeInfo {
         impl_trait_tokens,
         err_ty,
+        validate,
     } = info;
 
     let NamedFieldsInfo {
@@ -21,12 +22,13 @@ pub fn generate_derive_struct_impl(
         missing_field_errors,
         key_names,
         unknown_key,
+        needs_predicate: _,
     } = fields;
 
     quote! {
          #impl_trait_tokens {
             fn deserialize_from_value<V: jayson::IntoValue>(jayson_value__: jayson::Value<V>, jayson_location__: jayson::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
-                match jayson_value__ {
+                let jayson_final__ = match jayson_value__ {
                     // The value must always be a map
                     jayson::Value::Map(jayson_map__) => {
                         let mut jayson_error__ = None;
@@ -53,7 +55,11 @@ pub fn generate_derive_struct_impl(
                                             ) {
                                                 Ok(x) => jayson::FieldState::Some(x),
                                                 Err(e) => {
-                                                    jayson_error__ = Some(<#err_ty as jayson::MergeWithError<_>>::merge(jayson_error__, e)?);
+                                                    jayson_error__ = Some(<#err_ty as jayson::MergeWithError<_>>::merge(
+                                                        jayson_error__,
+                                                        e,
+                                                        jayson_location__.push_key(jayson_key__.as_str())
+                                                    )?);
                                                     jayson::FieldState::Err
                                                 }
                                             };
@@ -95,7 +101,8 @@ pub fn generate_derive_struct_impl(
                             ))
                         )
                     }
-                }
+                }?;
+                #validate
             }
         }
     }

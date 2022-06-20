@@ -100,7 +100,7 @@ impl<E: DeserializeError> DeserializeFromValue<E> for JValue {
                             jseq.push(value);
                         }
                         Err(e) => {
-                            error = Some(E::merge(error, e)?);
+                            error = Some(E::merge(error, e, location.push_index(index))?);
                         }
                     }
                 }
@@ -120,7 +120,7 @@ impl<E: DeserializeError> DeserializeFromValue<E> for JValue {
                             jmap.insert(key, value);
                         }
                         Err(e) => {
-                            error = Some(E::merge(error, e)?);
+                            error = Some(E::merge(error, e, location.push_key(&key))?);
                         }
                     }
                 }

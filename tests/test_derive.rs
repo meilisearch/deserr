@@ -3,6 +3,7 @@ use jayson::{
     SingleDeserializeError, StandardError, ValuePointerRef,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum MyError {
@@ -11,6 +12,7 @@ pub enum MyError {
     IncorrectValueKind { accepted: Vec<jayson::ValueKind> },
     UnknownKey { key: String, accepted: Vec<String> },
     CustomMissingField(u8),
+    Validation,
 }
 
 impl SingleDeserializeError for MyError {
@@ -198,7 +200,7 @@ enum EnumDenyUnknownFieldsCustom {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[jayson(error = MyError)]
 struct StructMissingFieldError {
-    #[jayson(missing_field_error = SingleDeserializeError::missing_field("lol", jayson_location__) )]
+    #[jayson(missing_field_error = MyError::MissingField("lol".to_string()))]
     x: bool,
     #[jayson(missing_field_error = MyError::CustomMissingField(1))]
     y: bool,
@@ -261,6 +263,127 @@ struct Generic2<A> {
     some_field: Option<A>,
 }
 
+// For AscDesc, we have __Jayson_E where __Jayson_E: MergeWithError<AscDescError>
+// Then for the struct that contains AscDesc, we don't want to repeat this whole requirement
+// so instead we do: AscDesc: DeserializeFromValue<__Jayson_E>
+// but that's only if it's generic! If it's not, we don't even need to have any requirements
+
+// #[jayson(where_predicates_from_fields)]
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[jayson(where_predicate = Option<u8> : DeserializeFromValue<__Jayson_E>)]
+struct FieldConditions {
+    some_field: Option<u8>,
+}
+
+pub enum NeverError {}
+
+fn parse_hello(b: bool) -> Result<Hello, NeverError> {
+    match b {
+        true => Ok(Hello::A),
+        false => Ok(Hello::B),
+    }
+}
+fn parse_hello2(b: bool) -> Result<Hello2, NeverError> {
+    match b {
+        true => Ok(Hello2::A),
+        false => Ok(Hello2::B),
+    }
+}
+
+#[derive(DeserializeFromValue)]
+#[jayson(from(bool) = parse_hello -> NeverError)]
+enum Hello {
+    A,
+    B,
+}
+#[derive(DeserializeFromValue)]
+#[jayson(error = StandardError, from(bool) = parse_hello2 -> NeverError)]
+enum Hello2 {
+    A,
+    B,
+}
+
+#[derive(DeserializeFromValue)]
+#[jayson(where_predicate = Hello: DeserializeFromValue<__Jayson_E>)]
+struct ContainsHello {
+    _x: Hello,
+}
+
+#[derive(DeserializeFromValue)]
+#[jayson(error = StandardError)]
+struct ContainsHello2 {
+    _x: Hello,
+}
+
+#[derive(DeserializeFromValue)]
+struct ContainsHello3 {
+    #[jayson(needs_predicate)]
+    _x: Hello,
+}
+
+struct MyValidationError;
+impl MergeWithError<MyValidationError> for StandardError {
+    fn merge(
+        _self_: Option<Self>,
+        _other: MyValidationError,
+        _merge_location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        Err(StandardError::Unexpected {
+            message: "validation errror".to_string(),
+        })
+    }
+}
+
+fn validate_it(x: Validated) -> Result<Validated, MyValidationError> {
+    if x.x as u16 > x.y {
+        Err(MyValidationError)
+    } else {
+        Ok(x)
+    }
+}
+fn validate_it2(x: Validated2) -> Result<Validated2, MyValidationError> {
+    if x.x as u16 > x.y {
+        Err(MyValidationError)
+    } else {
+        Ok(x)
+    }
+}
+
+#[derive(Debug, DeserializeFromValue)]
+#[jayson(validate = validate_it -> MyValidationError)]
+struct Validated {
+    x: u8,
+    y: u16,
+}
+
+#[derive(Debug, DeserializeFromValue)]
+#[jayson(error = MyError, validate = validate_it2 -> MyValidationError)]
+struct Validated2 {
+    x: u8,
+    y: u16,
+}
+
+impl MergeWithError<MyValidationError> for MyError {
+    fn merge(
+        _self_: Option<Self>,
+        _other: MyValidationError,
+        _merge_location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        Err(MyError::Validation)
+    }
+}
+
+impl MergeWithError<NeverError> for StandardError {
+    fn merge(
+        _self_: Option<Self>,
+        _other: NeverError,
+        _merge_location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        unreachable!()
+    }
+}
+
 #[track_caller]
 fn compare_with_serde_roundtrip<T>(x: T)
 where
@@ -277,7 +400,7 @@ fn compare_with_serde<T>(j: &str)
 where
     T: DeserializeOwned + DeserializeFromValue<MyError> + PartialEq + std::fmt::Debug,
 {
-    let json: serde_json::Value = serde_json::from_str(j).unwrap();
+    let json: Value = serde_json::from_str(j).unwrap();
 
     let actual_serde: Result<T, _> = serde_json::from_str(j);
     let actual_jayson: Result<T, _> = jayson::deserialize(json);
@@ -293,12 +416,13 @@ where
 }
 
 #[track_caller]
-fn assert_error_matches<T>(j: &str, expected: MyError)
+fn assert_error_matches<T, E>(j: &str, expected: E)
 where
-    T: DeserializeFromValue<MyError> + PartialEq + std::fmt::Debug,
+    E: DeserializeError + PartialEq + std::fmt::Debug,
+    T: DeserializeFromValue<E> + std::fmt::Debug,
 {
-    let json: serde_json::Value = serde_json::from_str(j).unwrap();
-    let actual: MyError = jayson::deserialize::<T, _, _>(json).unwrap_err();
+    let json: Value = serde_json::from_str(j).unwrap();
+    let actual: E = jayson::deserialize::<T, _, _>(json).unwrap_err();
 
     assert_eq!(actual, expected);
 }
@@ -308,7 +432,7 @@ where
     T: DeserializeFromValue<AccumulatedErrors<E>> + PartialEq + std::fmt::Debug,
     E: DeserializeError + std::fmt::Debug,
 {
-    let json: serde_json::Value = serde_json::from_str(j).unwrap();
+    let json: Value = serde_json::from_str(j).unwrap();
     let actual: AccumulatedErrors<E> = jayson::deserialize::<T, _, _>(json).unwrap_err();
 
     println!("{actual:?}");
@@ -435,7 +559,7 @@ fn test_de() {
     // struct with deny_unknown_fields with custom error function
     // assert error value is correct
 
-    assert_error_matches::<StructDenyUnknownFieldsCustom>(
+    assert_error_matches::<StructDenyUnknownFieldsCustom, MyError>(
         r#"{
             "x": true,
             "y": 8
@@ -455,7 +579,7 @@ fn test_de() {
     );
 
     // enum with deny_unknown_fields with custom error function, error check
-    assert_error_matches::<EnumDenyUnknownFieldsCustom>(
+    assert_error_matches::<EnumDenyUnknownFieldsCustom, MyError>(
         r#"{
             "t": "SomeField",
             "my_field": true,
@@ -466,7 +590,7 @@ fn test_de() {
     );
 
     // struct with custom missing field error, error check 1
-    assert_error_matches::<StructMissingFieldError>(
+    assert_error_matches::<StructMissingFieldError, MyError>(
         r#"{
             "y": true
         }
@@ -474,7 +598,7 @@ fn test_de() {
         MyError::MissingField("lol".to_string()),
     );
     // struct with custom missing field error, error check 2
-    assert_error_matches::<StructMissingFieldError>(
+    assert_error_matches::<StructMissingFieldError, MyError>(
         r#"{
             "x": true
         }
@@ -483,7 +607,7 @@ fn test_de() {
     );
 
     // enum with custom missing field error, error check 1
-    assert_error_matches::<EnumMissingFieldError>(
+    assert_error_matches::<EnumMissingFieldError, MyError>(
         r#"{
             "t": "A"
         }
@@ -492,7 +616,7 @@ fn test_de() {
     );
 
     // enum with custom missing field error, error check 2
-    assert_error_matches::<EnumMissingFieldError>(
+    assert_error_matches::<EnumMissingFieldError, MyError>(
         r#"{
             "t": "B"
         }
@@ -521,7 +645,7 @@ fn test_de() {
     });
 
     // enum with deny_unknown_fields with custom error function, error check
-    assert_error_matches::<EnumDenyUnknownFieldsCustom>(
+    assert_error_matches::<EnumDenyUnknownFieldsCustom, MyError>(
         r#"{
             "t": "SomeField",
             "my_field": true,
@@ -529,6 +653,18 @@ fn test_de() {
         }
         "#,
         unknown_field_error("other", &[], ValuePointerRef::Origin),
+    );
+
+    let hello: Hello = jayson::deserialize::<_, _, StandardError>(Value::Bool(true)).unwrap();
+    assert!(matches!(hello, Hello::A));
+
+    assert_error_matches::<Validated, MyError>(
+        r#"{
+            "x": 2,
+            "y": 1
+        }
+        "#,
+        MyError::Validation,
     );
 }
 #[test]

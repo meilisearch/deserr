@@ -2,22 +2,10 @@ use proc_macro2::{Ident, Span};
 use syn::{
     parenthesized,
     parse::{ParseBuffer, ParseStream},
-    parse2, Attribute, Expr, ExprPath, GenericParam, LitStr, Token, WherePredicate,
+    parse2, Attribute, DeriveInput, Expr, ExprPath, GenericParam, LitStr, Token, WherePredicate,
 };
 
 /// Attributes that are applied to fields.
-///
-/// There are currently three supported field attributes: `rename`, `default`, and `missing_field_error`.
-/// For example:
-/// ```ignore
-/// struct X {
-///     #[jayson(rename = "apple", default, missing_field_error = MissingFruitError::Apple)]
-///     fruit: Apple,
-///     #[jayson(rename = "key")]
-///     #[jayson(default = get_key().to_string())]
-///     b: Key
-/// }
-/// ```
 #[derive(Default, Debug, Clone)]
 pub struct FieldAttributesInfo {
     /// Whether the key corresponding to the field should be renamed to something different
@@ -29,6 +17,10 @@ pub struct FieldAttributesInfo {
     pub missing_field_error: Option<Expr>,
     /// The type of the error used to deserialize the field
     pub error: Option<syn::Type>,
+
+    /// Whether an additional where clause should be added to deserialize this field
+    pub needs_predicate: bool,
+
     /// Span of the `default` attribute, if any, for compile error reporting purposes
     default_span: Option<Span>,
 }
@@ -97,6 +89,7 @@ impl FieldAttributesInfo {
             }
             self.error = Some(error)
         }
+        self.needs_predicate |= other.needs_predicate;
 
         Ok(())
     }
@@ -143,6 +136,7 @@ impl syn::parse::Parse for FieldAttributesInfo {
                     // #[jayson( ... missing_field_error = expr )]
                     this.missing_field_error = Some(expr);
                 }
+                "needs_predicate" => this.needs_predicate = true,
                 "error" => {
                     let _eq = input.parse::<Token![=]>()?;
                     let err_ty = input.parse::<syn::Type>()?;
@@ -226,15 +220,20 @@ pub enum DenyUnknownFields {
     Function(syn::ExprPath),
 }
 
+#[derive(Debug, Clone)]
+pub struct AttributeFrom {
+    pub from_ty: syn::Type,
+    pub function: FunctionReturningError,
+    span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct FunctionReturningError {
+    pub function: ExprPath,
+    pub error_ty: syn::Type,
+}
+
 /// Attributes that are applied to containers
-///
-/// There are currently four supported container attributes: `error`, `tag`, `rename_all`, `deny_unknown_fields`.
-/// For example:
-/// ```ignore
-/// #[jayson(error = MyError, tag = "sometag", rename_all = camelCase)]
-/// #[jayson(deny_unknown_fields = some_func)]
-/// enum X { ... }
-/// ```
 ///
 /// The `tag` attribute can only be applied to enums.
 #[derive(Default, Debug, Clone)]
@@ -247,6 +246,13 @@ pub struct ContainerAttributesInfo {
     pub generic_params: Vec<GenericParam>,
     pub where_predicates: Vec<WherePredicate>,
 
+    /// The function used to deserialize the whole container
+    pub from: Option<AttributeFrom>,
+
+    /// A function to call on the deserialized value to validate it
+    pub validate: Option<FunctionReturningError>,
+
+    validate_span: Option<Span>,
     rename_all_span: Option<Span>,
     tag_span: Option<Span>,
     deny_unknown_fields_span: Option<Span>,
@@ -302,6 +308,25 @@ impl ContainerAttributesInfo {
             }
             self.deny_unknown_fields = Some(x);
         }
+        if let Some(x) = other.from {
+            if let Some(self_from) = &self.from {
+                return Err(syn::Error::new(
+                    self_from.span,
+                    "The `from` attribute is defined twice.",
+                ));
+            }
+            self.from = Some(x);
+        }
+        if let Some(x) = other.validate {
+            if let Some(self_validate_span) = &self.validate_span {
+                return Err(syn::Error::new(
+                    self_validate_span.clone(),
+                    "The `validate` attribute is defined twice.",
+                ));
+            }
+            self.validate = Some(x);
+        }
+
         self.generic_params.extend(other.generic_params);
         self.where_predicates.extend(other.where_predicates);
 
@@ -331,6 +356,33 @@ fn parse_rename_all(input: &ParseBuffer) -> Result<RenameAll, syn::Error> {
         }
     };
     Ok(rename_all)
+}
+
+fn parse_function_returning_error(
+    input: &ParseBuffer,
+) -> Result<FunctionReturningError, syn::Error> {
+    let function = input.parse::<ExprPath>()?;
+    // #[jayson( .. from(from_ty) = function::path::<_> )]
+    let _arrow = input.parse::<Token![->]>()?;
+    let error_ty = input.parse::<syn::Type>()?;
+    Ok(FunctionReturningError { function, error_ty })
+}
+
+fn parse_attribute_from(span: Span, input: &ParseBuffer) -> Result<AttributeFrom, syn::Error> {
+    let content;
+    let _ = parenthesized!(content in input);
+    // #[jayson( .. from(..) ..)]
+    let from_ty = content.parse::<syn::Type>()?;
+    // #[jayson( .. from(from_ty) ..)]
+    let _eq = input.parse::<Token![=]>()?;
+    // #[jayson( .. from(from_ty) = ..)]
+    let function = parse_function_returning_error(input)?;
+
+    Ok(AttributeFrom {
+        from_ty,
+        function,
+        span,
+    })
 }
 
 impl syn::parse::Parse for ContainerAttributesInfo {
@@ -377,6 +429,18 @@ impl syn::parse::Parse for ContainerAttributesInfo {
                     }
                     this.deny_unknown_fields_span = Some(attr_name.span());
                 }
+                "from" => {
+                    let from_attr = parse_attribute_from(attr_name.span(), &input)?;
+                    this.from = Some(from_attr);
+                }
+                "validate" => {
+                    // #[jayson( ... validate .. )]
+                    let _eq = input.parse::<Token![=]>()?;
+                    // #[jayson( ... validate = .. )]
+                    let validate_func = parse_function_returning_error(&input)?;
+                    // #[jayson( ... validate = some::func<T> )]
+                    this.validate = Some(validate_func);
+                }
                 "generic_param" => {
                     let _eq = input.parse::<Token![=]>()?;
                     let param = input.parse::<GenericParam>()?;
@@ -407,8 +471,45 @@ impl syn::parse::Parse for ContainerAttributesInfo {
                 return Result::Err(syn::Error::new(input.span(), "Expected end of attribute"));
             }
         }
+
         Ok(this)
     }
+}
+
+#[must_use]
+pub fn validate_container_attributes(
+    attributes: &ContainerAttributesInfo,
+    container: &DeriveInput,
+) -> Result<(), syn::Error> {
+    if attributes.from.is_some() {
+        if let Some(rename_all_span) = attributes.rename_all_span {
+            return Err(syn::Error::new(
+                rename_all_span,
+                "Cannot use the `rename_all` attribute together with the `from` attribute",
+            ));
+        }
+        if let Some(tag) = attributes.tag_span {
+            return Err(syn::Error::new(
+                tag,
+                "Cannot use the `tag` attribute together with the `from` attribute",
+            ));
+        }
+        if let Some(span) = attributes.deny_unknown_fields_span {
+            return Err(syn::Error::new(
+                span,
+                "Cannot use the `deny_unknown_fields` attribute together with the `from` attribute",
+            ));
+        }
+    }
+    if matches!(container.data, syn::Data::Struct(..)) {
+        if let Some(tag) = attributes.tag_span {
+            return Err(syn::Error::new(
+                tag,
+                "Cannot use the `tag` attribute on structs",
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Parses an array of `syn::Attribute` into a single `FieldAttributesInfo` containing the

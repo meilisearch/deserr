@@ -23,14 +23,14 @@ pub fn generate_derive_tagged_enum_impl(
     let CommonDerivedTypeInfo {
         impl_trait_tokens,
         err_ty,
-        ..
+        validate,
     } = info;
 
     quote! {
          #impl_trait_tokens {
             fn deserialize_from_value<V: jayson::IntoValue>(jayson_value__: jayson::Value<V>, jayson_location__: jayson::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
                 // The value must always be a map
-                match jayson_value__ {
+                let jayson_final__ = match jayson_value__ {
                     jayson::Value::Map(mut map) => {
                         let tag_value = jayson::Map::remove(&mut map, #tag).ok_or_else(|| {
                             jayson::take_result_content(<#err_ty as jayson::DeserializeError>::missing_field(
@@ -80,7 +80,8 @@ pub fn generate_derive_tagged_enum_impl(
                             )?
                         )
                     }
-                }
+                }?;
+                #validate
             }
         }
     }
@@ -129,6 +130,7 @@ fn generate_derive_tagged_enum_variant_impl(
                 missing_field_errors,
                 key_names,
                 unknown_key,
+                needs_predicate: _,
             } = fields;
 
             // The code here is virtually identical to the code of `generate_derive_struct_impl`
@@ -158,7 +160,11 @@ fn generate_derive_tagged_enum_variant_impl(
                                         ) {
                                             Ok(x) => jayson::FieldState::Some(x),
                                             Err(e) => {
-                                                jayson_error__ = Some(<#err_ty as jayson::MergeWithError<_>>::merge(jayson_error__, e)?);
+                                                jayson_error__ = Some(<#err_ty as jayson::MergeWithError<_>>::merge(
+                                                    jayson_error__,
+                                                    e,
+                                                    jayson_location__.push_key(jayson_key__.as_str())
+                                                )?);
                                                 jayson::FieldState::Err
                                             }
                                         };
