@@ -2,11 +2,13 @@ extern crate proc_macro;
 
 mod attribute_parser;
 mod derive_enum;
+mod derive_named_fields;
 mod derive_struct;
 mod derive_user_provided_function;
 mod parse_type;
 
 use attribute_parser::TagType;
+use derive_named_fields::generate_named_fields_impl;
 use parse_type::{DerivedTypeInfo, TraitImplementationInfo};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
