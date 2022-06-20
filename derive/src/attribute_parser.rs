@@ -222,6 +222,7 @@ pub enum DenyUnknownFields {
 
 #[derive(Debug, Clone)]
 pub struct AttributeFrom {
+    pub is_ref: bool,
     pub from_ty: syn::Type,
     pub function: FunctionReturningError,
     span: Span,
@@ -372,6 +373,8 @@ fn parse_attribute_from(span: Span, input: &ParseBuffer) -> Result<AttributeFrom
     let content;
     let _ = parenthesized!(content in input);
     // #[jayson( .. from(..) ..)]
+    let is_ref = content.parse::<Token![&]>().is_ok();
+
     let from_ty = content.parse::<syn::Type>()?;
     // #[jayson( .. from(from_ty) ..)]
     let _eq = input.parse::<Token![=]>()?;
@@ -379,6 +382,7 @@ fn parse_attribute_from(span: Span, input: &ParseBuffer) -> Result<AttributeFrom
     let function = parse_function_returning_error(input)?;
 
     Ok(AttributeFrom {
+        is_ref,
         from_ty,
         function,
         span,

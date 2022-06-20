@@ -33,8 +33,8 @@ pub fn derive_deserialize(input: TokenStream) -> TokenStream {
                     r##"Externally tagged enums are not supported yet by jayson. Add #[jayson(tag = "some_tag_key")]"##,
                 ).to_compile_error().into(),
             },
-            TraitImplementationInfo::UserProvidedFunction { from_type, function_path, function_error_type } => {
-                derive_user_provided_function::generate_derive_user_function(derived_type_info.common, from_type, function_path, function_error_type).into()
+            TraitImplementationInfo::UserProvidedFunction { from_attr } => {
+                derive_user_provided_function::generate_derive_user_function(derived_type_info.common, from_attr).into()
             },
 
         },

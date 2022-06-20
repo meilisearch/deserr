@@ -290,6 +290,13 @@ fn parse_hello2(b: bool) -> Result<Hello2, NeverError> {
         false => Ok(Hello2::B),
     }
 }
+fn parse_hello3(b: &str) -> Result<Hello3, MyError> {
+    match b {
+        "A" => Ok(Hello3::A),
+        "B" => Ok(Hello3::B),
+        _ => Err(MyError::Unexpected("Hello3 from error".to_string())),
+    }
+}
 
 #[derive(DeserializeFromValue)]
 #[jayson(from(bool) = parse_hello -> NeverError)]
@@ -300,6 +307,12 @@ enum Hello {
 #[derive(DeserializeFromValue)]
 #[jayson(error = StandardError, from(bool) = parse_hello2 -> NeverError)]
 enum Hello2 {
+    A,
+    B,
+}
+#[derive(DeserializeFromValue)]
+#[jayson(from(& String) = parse_hello3 -> MyError)]
+enum Hello3 {
     A,
     B,
 }

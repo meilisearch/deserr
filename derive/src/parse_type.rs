@@ -1,6 +1,6 @@
 use crate::attribute_parser::{
     read_jayson_container_attributes, read_jayson_field_attributes, read_jayson_variant_attributes,
-    validate_container_attributes, ContainerAttributesInfo, DefaultFieldAttribute,
+    validate_container_attributes, AttributeFrom, ContainerAttributesInfo, DefaultFieldAttribute,
     DenyUnknownFields, FunctionReturningError, RenameAll, TagType,
 };
 
@@ -9,7 +9,7 @@ use proc_macro2::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{parse_quote, Data, DeriveInput, ExprPath, WherePredicate};
+use syn::{parse_quote, Data, DeriveInput, WherePredicate};
 
 /// Contains all the information needed to generate a
 /// `DeserializeFromValue` implementation for the derived type,
@@ -46,9 +46,7 @@ pub enum TraitImplementationInfo {
         variants: Vec<VariantInfo>,
     },
     UserProvidedFunction {
-        from_type: syn::Type,
-        function_path: ExprPath,
-        function_error_type: syn::Type,
+        from_attr: AttributeFrom,
     },
 }
 
@@ -95,9 +93,7 @@ impl DerivedTypeInfo {
             // if there was a container `from` attribute, then it doesn't matter what the derived input
             // is, we just call the provided function to deserialise it
             TraitImplementationInfo::UserProvidedFunction {
-                from_type: from.from_ty.clone(),
-                function_path: from.function.function.clone(),
-                function_error_type: from.function.error_ty.clone(),
+                from_attr: from.clone(),
             }
         } else {
             // Otherwise, we parse derive information specific to structs or enums
