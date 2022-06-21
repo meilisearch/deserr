@@ -179,6 +179,14 @@ struct StructWithRenamedField {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[jayson(error = MyError, rename_all = camelCase)]
+struct StructWithRenamedFieldAndRenameAll {
+    #[jayson(rename = "renamed_field")]
+    #[serde(rename = "renamed_field")]
+    x: bool,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[jayson(error = MyError, deny_unknown_fields)]
 #[serde(deny_unknown_fields)]
 struct StructDenyUnknownFields {
@@ -281,6 +289,19 @@ struct Generic2<A> {
     some_field: Option<A>,
 }
 
+fn map_option(x: Option<u8>) -> Option<u8> {
+    match x {
+        Some(0) => None,
+        Some(x) => Some(x),
+        None => Some(1),
+    }
+}
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+struct FieldMap {
+    #[jayson(map = map_option)]
+    some_field: Option<u8>,
+}
+
 // For AscDesc, we have __Jayson_E where __Jayson_E: MergeWithError<AscDescError>
 // Then for the struct that contains AscDesc, we don't want to repeat this whole requirement
 // so instead we do: AscDesc: DeserializeFromValue<__Jayson_E>
@@ -316,38 +337,38 @@ fn parse_hello3(b: &str) -> Result<Hello3, MyError> {
     }
 }
 
-#[derive(DeserializeFromValue)]
+#[derive(Debug, PartialEq, DeserializeFromValue)]
 #[jayson(from(bool) = parse_hello -> NeverError)]
 enum Hello {
     A,
     B,
 }
-#[derive(DeserializeFromValue)]
+#[derive(Debug, PartialEq, DeserializeFromValue)]
 #[jayson(error = MyError, from(bool) = parse_hello2 -> NeverError)]
 enum Hello2 {
     A,
     B,
 }
-#[derive(DeserializeFromValue)]
+#[derive(Debug, PartialEq, DeserializeFromValue)]
 #[jayson(from(& String) = parse_hello3 -> MyError)]
 enum Hello3 {
     A,
     B,
 }
 
-#[derive(DeserializeFromValue)]
+#[derive(Debug, PartialEq, DeserializeFromValue)]
 #[jayson(where_predicate = Hello: DeserializeFromValue<__Jayson_E>)]
 struct ContainsHello {
     _x: Hello,
 }
 
-#[derive(DeserializeFromValue)]
+#[derive(Debug, PartialEq, DeserializeFromValue)]
 #[jayson(error = MyError)]
 struct ContainsHello2 {
     _x: Hello,
 }
 
-#[derive(DeserializeFromValue)]
+#[derive(Debug, PartialEq, DeserializeFromValue)]
 struct ContainsHello3 {
     #[jayson(needs_predicate)]
     _x: Hello,
@@ -445,6 +466,17 @@ where
 
     assert_eq!(actual, expected);
 }
+#[track_caller]
+fn assert_ok_matches<T, E>(j: &str, expected: T)
+where
+    E: DeserializeError + PartialEq + std::fmt::Debug,
+    T: DeserializeFromValue<E> + std::fmt::Debug + PartialEq,
+{
+    let json: Value = serde_json::from_str(j).unwrap();
+    let actual: T = jayson::deserialize::<T, _, E>(json).unwrap();
+
+    assert_eq!(actual, expected);
+}
 
 #[test]
 fn test_de() {
@@ -514,6 +546,13 @@ fn test_de() {
 
     // struct with renamed field, roundtrip
     compare_with_serde_roundtrip(StructWithRenamedField { x: true });
+
+    // struct with renamed field and rename_all rule, roundtrip
+    compare_with_serde_roundtrip(StructWithRenamedFieldAndRenameAll { x: true });
+    assert_ok_matches(
+        r#"{ "renamed_field": true }"#,
+        StructWithRenamedFieldAndRenameAll { x: true },
+    );
 
     // struct with deny_unknown_fields, with unknown fields
     compare_with_serde::<StructDenyUnknownFields>(
@@ -663,8 +702,7 @@ fn test_de() {
         unknown_field_error("other", &[], ValuePointerRef::Origin),
     );
 
-    let hello: Hello = jayson::deserialize::<_, _, MyError>(Value::Bool(true)).unwrap();
-    assert!(matches!(hello, Hello::A));
+    assert_ok_matches::<Hello, MyError>("true", Hello::A);
 
     assert_error_matches::<Validated, MyError>(
         r#"{
@@ -673,5 +711,25 @@ fn test_de() {
         }
         "#,
         MyError::Validation,
+    );
+
+    assert_ok_matches::<FieldMap, MyError>(
+        r#"{ "some_field": null }"#,
+        FieldMap {
+            some_field: Some(1),
+        },
+    );
+    assert_ok_matches::<FieldMap, MyError>(
+        r#"{  }"#,
+        FieldMap {
+            some_field: Some(1),
+        },
+    );
+    assert_ok_matches::<FieldMap, MyError>(r#"{ "some_field": 0 }"#, FieldMap { some_field: None });
+    assert_ok_matches::<FieldMap, MyError>(
+        r#"{ "some_field": 2 }"#,
+        FieldMap {
+            some_field: Some(2),
+        },
     );
 }

@@ -12,6 +12,7 @@ pub fn generate_named_fields_impl(
         field_tys,
         field_defaults,
         field_errs,
+        field_maps,
         missing_field_errors,
         key_names,
         unknown_key,
@@ -71,7 +72,7 @@ pub fn generate_named_fields_impl(
             // Otherwise, an error was thrown earlier
             ::std::result::Result::Ok(#create {
                 #(
-                    #field_names : #field_names.unwrap(),
+                    #field_names : #field_names.map(#field_maps).unwrap(),
                 )*
             })
         }

@@ -6,8 +6,25 @@ use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     convert::TryFrom,
     hash::Hash,
+    marker::PhantomData,
     str::FromStr,
 };
+
+impl<T, E> DeserializeFromValue<E> for PhantomData<T>
+where
+    E: DeserializeError,
+{
+    fn deserialize_from_value<V: IntoValue>(
+        _value: Value<V>,
+        _location: ValuePointerRef,
+    ) -> Result<Self, E> {
+        Ok(Self)
+    }
+
+    fn default() -> Option<Self> {
+        Some(Self)
+    }
+}
 
 impl<T> Sequence for Vec<T>
 where

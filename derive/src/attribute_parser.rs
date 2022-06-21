@@ -5,6 +5,11 @@ use syn::{
     parse2, Attribute, DeriveInput, Expr, ExprPath, GenericParam, LitStr, Token, WherePredicate,
 };
 
+// pub struct MapFieldAttribute {
+//     // from_ty: Option<syn::Type>,
+//     map_func: syn::ExprPath,
+// }
+
 /// Attributes that are applied to fields.
 #[derive(Default, Debug, Clone)]
 pub struct FieldAttributesInfo {
@@ -17,7 +22,8 @@ pub struct FieldAttributesInfo {
     pub missing_field_error: Option<Expr>,
     /// The type of the error used to deserialize the field
     pub error: Option<syn::Type>,
-
+    /// The function to apply to the result after it has been deserialised successfully
+    pub map: Option<syn::ExprPath>,
     /// Whether an additional where clause should be added to deserialize this field
     pub needs_predicate: bool,
 
@@ -89,6 +95,15 @@ impl FieldAttributesInfo {
             }
             self.error = Some(error)
         }
+        if let Some(map) = other.map {
+            if let Some(self_map) = &self.map {
+                return Err(syn::Error::new_spanned(
+                    self_map,
+                    "The `map` field attribute is defined twice.",
+                ));
+            }
+            self.map = Some(map)
+        }
         self.needs_predicate |= other.needs_predicate;
 
         Ok(())
@@ -142,6 +157,12 @@ impl syn::parse::Parse for FieldAttributesInfo {
                     let err_ty = input.parse::<syn::Type>()?;
                     // #[jayson( ... error = err_ty )]
                     this.error = Some(err_ty);
+                }
+                "map" => {
+                    let _eq = input.parse::<Token![=]>()?;
+                    let func = input.parse::<syn::ExprPath>()?;
+                    // #[jayson( ... map = func )]
+                    this.map = Some(func);
                 }
                 _ => {
                     let message = format!("Unknown jayson field attribute: {}", attr_name);

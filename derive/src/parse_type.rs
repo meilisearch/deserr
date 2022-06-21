@@ -317,6 +317,7 @@ pub struct NamedFieldsInfo {
     pub field_tys: Vec<syn::Type>,
     pub field_defaults: Vec<TokenStream>,
     pub field_errs: Vec<syn::Type>,
+    pub field_maps: Vec<TokenStream>,
     pub missing_field_errors: Vec<TokenStream>,
     pub key_names: Vec<String>,
 
@@ -347,6 +348,8 @@ impl NamedFieldsInfo {
         let mut field_errs = vec![];
         // the token stream representing the error to return when the field is missing and has no default value
         let mut missing_field_errors = vec![];
+        // the token stream which maps the deserialised field value
+        let mut field_maps = vec![];
         // `true` iff the field has the needs_predicate attribute
         let mut needs_predicate = vec![];
 
@@ -407,11 +410,23 @@ impl NamedFieldsInfo {
                     .unwrap_or_else(|| parse_quote!(__Jayson_E)),
             };
 
+            let field_map = match attrs.map {
+                Some(func) => {
+                    quote! {
+                        #func
+                    }
+                }
+                None => {
+                    quote! { ::std::convert::identity }
+                }
+            };
+
             field_names.push(field_name);
             field_tys.push(field_ty.clone());
             key_names.push(key_name.clone());
             field_defaults.push(field_default);
             field_errs.push(error);
+            field_maps.push(field_map);
             missing_field_errors.push(missing_field_error);
             needs_predicate.push(attrs.needs_predicate);
         }
@@ -450,6 +465,7 @@ impl NamedFieldsInfo {
             key_names,
             field_defaults,
             field_errs,
+            field_maps,
             needs_predicate,
             missing_field_errors,
             unknown_key,
