@@ -310,27 +310,23 @@ where
 pub trait DeserializeError: Sized + MergeWithError<Self> {
     fn location(&self) -> Option<ValuePointer>;
 
-    #[must_use]
     fn incorrect_value_kind(
         self_: Option<Self>,
         actual: ValueKind,
         accepted: &[ValueKind],
         location: ValuePointerRef,
     ) -> Result<Self, Self>;
-    #[must_use]
     fn missing_field(
         self_: Option<Self>,
         field: &str,
         location: ValuePointerRef,
     ) -> Result<Self, Self>;
-    #[must_use]
     fn unknown_key(
         self_: Option<Self>,
         key: &str,
         accepted: &[&str],
         location: ValuePointerRef,
     ) -> Result<Self, Self>;
-    #[must_use]
     fn unexpected(self_: Option<Self>, msg: &str, location: ValuePointerRef) -> Result<Self, Self>;
 }
 
@@ -392,7 +388,7 @@ impl SingleDeserializeError for StandardError {
     fn unknown_key(key: &str, accepted: &[&str], _location: ValuePointerRef) -> Self {
         Self::UnknownKey {
             key: key.to_string(),
-            accepted: accepted.into_iter().map(<_>::to_string).collect(),
+            accepted: accepted.iter().map(<_>::to_string).collect(),
         }
     }
 

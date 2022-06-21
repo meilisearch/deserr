@@ -39,6 +39,7 @@ pub struct CommonDerivedTypeInfo {
 
 /// The subset of [`DerivedTypeInfo`] that contains information
 /// specific to structs or enums
+#[allow(clippy::large_enum_variant)]
 pub enum TraitImplementationInfo {
     Struct(NamedFieldsInfo),
     Enum {
@@ -66,6 +67,7 @@ pub struct VariantInfo {
 /// Contains the information needed to generate the deserialization code
 /// for the content of an enum variant.
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum VariantData {
     /// The variant is a unit variant, such as `Option::None`
     Unit,
@@ -85,7 +87,7 @@ impl DerivedTypeInfo {
         let user_provided_err_ty: Option<&syn::Type> = attrs.err_ty.as_ref();
         let err_ty = user_provided_err_ty
             .cloned()
-            .unwrap_or(parse_quote!(__Jayson_E));
+            .unwrap_or_else(|| parse_quote!(__Jayson_E));
 
         // Now we build the TraitImplementationInfo structure
 
@@ -286,7 +288,7 @@ impl DerivedTypeInfo {
         Ok(Self {
             common: CommonDerivedTypeInfo {
                 impl_trait_tokens,
-                err_ty: err_ty.clone(),
+                err_ty,
                 validate,
             },
             data,
@@ -402,7 +404,7 @@ impl NamedFieldsInfo {
                 None => data_attrs
                     .err_ty
                     .clone()
-                    .unwrap_or(parse_quote!(__Jayson_E)),
+                    .unwrap_or_else(|| parse_quote!(__Jayson_E)),
             };
 
             field_names.push(field_name);

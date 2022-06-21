@@ -321,7 +321,7 @@ impl ContainerAttributesInfo {
         if let Some(x) = other.validate {
             if let Some(self_validate_span) = &self.validate_span {
                 return Err(syn::Error::new(
-                    self_validate_span.clone(),
+                    *self_validate_span,
                     "The `validate` attribute is defined twice.",
                 ));
             }
@@ -480,7 +480,6 @@ impl syn::parse::Parse for ContainerAttributesInfo {
     }
 }
 
-#[must_use]
 pub fn validate_container_attributes(
     attributes: &ContainerAttributesInfo,
     container: &DeriveInput,

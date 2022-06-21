@@ -123,8 +123,8 @@ fn generate_derive_tagged_enum_variant_impl(
         }
         Named(fields) => {
             let fields_impl = crate::generate_named_fields_impl(
-                &fields,
-                &err_ty,
+                fields,
+                err_ty,
                 quote! { Self :: #variant_ident },
             );
             // The code here is virtually identical to the code of `generate_derive_struct_impl`

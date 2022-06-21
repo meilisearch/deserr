@@ -35,7 +35,7 @@ where
     ) -> Result<Self, E> {
         match value {
             Value::Null => Ok(()),
-            v @ _ => Err(E::incorrect_value_kind(
+            v => Err(E::incorrect_value_kind(
                 None,
                 v.kind(),
                 &[ValueKind::Null],
@@ -55,7 +55,7 @@ where
     ) -> Result<Self, E> {
         match value {
             Value::Boolean(b) => Ok(b),
-            v @ _ => Err(E::incorrect_value_kind(
+            v => Err(E::incorrect_value_kind(
                 None,
                 v.kind(),
                 &[ValueKind::Boolean],
@@ -100,7 +100,7 @@ macro_rules! deserialize_impl_integer {
                             location,
                         )?)
                     }),
-                    v @ _ => Err(err(v.kind())?),
+                    v => Err(err(v.kind())?),
                 }
             }
         }
@@ -152,7 +152,7 @@ macro_rules! deserialize_impl_negative_integer {
                             location,
                         )?)
                     }),
-                    v @ _ => Err(err(v.kind())?),
+                    v => Err(err(v.kind())?),
                 }
             }
         }
@@ -185,7 +185,7 @@ macro_rules! deserialize_impl_float {
                     Value::Float(x) => {
                         return Ok(x as $t);
                     }
-                    v @ _ => {
+                    v => {
                         return Err(E::incorrect_value_kind(
                             None,
                             v.kind(),
@@ -215,7 +215,7 @@ where
     ) -> Result<Self, E> {
         match value {
             Value::String(x) => Ok(x),
-            v @ _ => Err(E::incorrect_value_kind(
+            v => Err(E::incorrect_value_kind(
                 None,
                 v.kind(),
                 &[ValueKind::String],
@@ -256,7 +256,7 @@ where
                     Ok(vec)
                 }
             }
-            v @ _ => Err(E::incorrect_value_kind(
+            v => Err(E::incorrect_value_kind(
                 None,
                 v.kind(),
                 &[ValueKind::Sequence],
@@ -338,7 +338,7 @@ where
                 }
                 Ok(res)
             }
-            v @ _ => Err(E::incorrect_value_kind(
+            v => Err(E::incorrect_value_kind(
                 None,
                 v.kind(),
                 &[ValueKind::Map],
@@ -388,7 +388,7 @@ where
                 }
                 Ok(res)
             }
-            v @ _ => Err(E::incorrect_value_kind(
+            v => Err(E::incorrect_value_kind(
                 None,
                 v.kind(),
                 &[ValueKind::Map],
@@ -429,7 +429,7 @@ where
                     Ok(set)
                 }
             }
-            v @ _ => Err(E::incorrect_value_kind(
+            v => Err(E::incorrect_value_kind(
                 None,
                 v.kind(),
                 &[ValueKind::Sequence],
@@ -470,7 +470,7 @@ where
                     Ok(set)
                 }
             }
-            v @ _ => Err(E::incorrect_value_kind(
+            v => Err(E::incorrect_value_kind(
                 None,
                 v.kind(),
                 &[ValueKind::Sequence],
@@ -532,7 +532,7 @@ where
                     Ok((a.unwrap(), b.unwrap()))
                 }
             }
-            v @ _ => Err(E::incorrect_value_kind(
+            v => Err(E::incorrect_value_kind(
                 None,
                 v.kind(),
                 &[ValueKind::Sequence],
@@ -606,7 +606,7 @@ where
                     Ok((a.unwrap(), b.unwrap(), c.unwrap()))
                 }
             }
-            v @ _ => Err(E::incorrect_value_kind(
+            v => Err(E::incorrect_value_kind(
                 None,
                 v.kind(),
                 &[ValueKind::Sequence],
