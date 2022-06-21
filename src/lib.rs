@@ -8,21 +8,25 @@ the already-parsed serialized data into the final type. For example:
 
 ```ignore
 // bytes of the serialized value
-let s: &str = .. ;
+let s: &str = "{ "x": 7 }" ;
 // parsed serialized data
 let json: serde_json::Value = serde_json::from_str(s)?;
 // finally deserialize with Jayson
-let data = T::deserialize_from_value(json.into_value())?;
+let data = jayson::deserialize::<T, serde_json::Value, MyError>(json)?;
 ```
 
-Thus, Jayson
-is a bit slower than crates that immediately deserialize a value while
+Thus, Jayson is a bit slower than crates that immediately deserialize a value while
 parsing at the same time.
 
 The main parts of Jayson are:
 1. [`DeserializeFromValue<E>`] is the main trait for deserialization
 2. [`IntoValue`] and [`Value`] describe the shape that the parsed serialized data must have
 3. [`DeserializeError`] is the trait that all deserialization errors must conform to
+4. [`MergeWithError<E>`] describes how to combine multiple errors together. It allows Jayson
+to return multiple deserialization errors at once.
+5. [`ValuePointerRef`] and [`ValuePointer`] point to locations within the value. They are
+used to locate the origin of an error.
+6. [`deserialize`] is the main function to use to deserialize a value
 
 If the feature `serde` is activated, then an implementation of [`IntoValue`] is provided
 for the type `serde_json::Value`. This allows using Jayson to deserialize from JSON.
@@ -33,13 +37,25 @@ mod impls;
 #[cfg(feature = "serde_json")]
 mod serde_json;
 
-use std::{
-    collections::BTreeMap,
-    fmt::{Debug, Display},
-};
-
 pub use jayson_internal::DeserializeFromValue;
+use std::fmt::{Debug, Display};
 
+/// A location within a [`Value`].
+///
+/// Conceptually, it is a list of choices that one has to make to go to a certain place within
+/// the value. In practice, it is used to locate the origin of a deserialization error.
+///
+/// ## Example
+/// ```
+/// let mut pointer = ValuePointerRef::Origin;
+/// pointer = pointer.push_key("a");
+/// pointer = pointer.push_index(2);
+/// // now `pointer` points to "a".2
+/// ```
+///
+/// A `ValuePointerRef` is an immutable data structure, so it is cheap to extend and to copy.
+/// However, if you want to store it inside an owned type, you may want to convert it to a
+/// [`ValuePointer`] instead using [`self.to_owned()`](ValuePointerRef::to_owned).
 #[derive(Clone, Copy)]
 pub enum ValuePointerRef<'a> {
     Origin,
@@ -58,15 +74,18 @@ impl<'a> Default for ValuePointerRef<'a> {
     }
 }
 impl<'a> ValuePointerRef<'a> {
+    /// Extend `self` such that it points to the next subvalue at the given `key`.
     #[must_use]
     pub fn push_key(&'a self, key: &'a str) -> Self {
         Self::Key { key, prev: self }
     }
     #[must_use]
+    /// Extend `self` such that it points to the next subvalue at the given index.
     pub fn push_index(&'a self, index: usize) -> Self {
         Self::Index { index, prev: self }
     }
-    pub fn to_owned(&'a self) -> ValuePointer {
+    /// Convert `self` to its owned version
+    pub fn to_owned(&self) -> ValuePointer {
         let mut cur = self;
         let mut components = vec![];
         loop {
@@ -82,18 +101,19 @@ impl<'a> ValuePointerRef<'a> {
                 }
             }
         }
+        let components = components.into_iter().rev().collect();
         ValuePointer { path: components }
     }
 }
 
+/// Part of a [`ValuePointer`]
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ValuePointerComponent {
     Key(String),
     Index(usize),
 }
 
-// TODO: custom Ord impl
-/// Points to a subpart of a [`Value`].
+/// The owned version of a [`ValuePointerRef`].
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ValuePointer {
     pub path: Vec<ValuePointerComponent>,
@@ -209,7 +229,8 @@ pub trait Map {
 /// A trait for types that can be deserialized from a [`Value`]. The generic type
 /// parameter `E` is the custom error that is returned when deserialization fails.
 pub trait DeserializeFromValue<E: DeserializeError>: Sized {
-    /// Attempts to deserialize `Self` from the given value.
+    /// Attempts to deserialize `Self` from the given value. Note that this method is an
+    /// implementation detail. You probably want to use the [`deserialize`] function directly instead.
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
         location: ValuePointerRef,
@@ -220,6 +241,12 @@ pub trait DeserializeFromValue<E: DeserializeError>: Sized {
     }
 }
 
+/// Deserialize the given value.
+///
+/// This function has three generic arguments, two of which can often be inferred.
+/// 1. `Ret` is the type we want to deserialize to. For example: `MyStruct`
+/// 2. `Val` is the type of the value given as argument. For example: `serde_json::Value`
+/// 3. `E` is the error type we want to get when deserialization fails. For example: `MyError`
 pub fn deserialize<Ret, Val, E>(value: Val) -> Result<Ret, E>
 where
     Ret: DeserializeFromValue<E>,
@@ -229,298 +256,91 @@ where
     Ret::deserialize_from_value(value.into_value(), ValuePointerRef::Origin)
 }
 
-pub trait SingleDeserializeError {
-    fn location(&self) -> Option<ValuePointer>;
-    #[must_use]
-    fn incorrect_value_kind(
-        actual: ValueKind,
-        accepted: &[ValueKind],
-        location: ValuePointerRef,
-    ) -> Self;
-    #[must_use]
-    fn missing_field(field: &str, location: ValuePointerRef) -> Self;
-    #[must_use]
-    fn unknown_key(key: &str, accepted: &[&str], location: ValuePointerRef) -> Self;
-    #[must_use]
-    fn unexpected(msg: &str, location: ValuePointerRef) -> Self;
-}
-
+/// A trait which describes how to combine two errors together.
 pub trait MergeWithError<T>: Sized {
+    /// Merge two errors together.
+    ///
+    /// ## Arguments:
+    /// - `self_`: the existing error, if any
+    /// - `other`: the new error
+    /// - `merge_location`: the location where the merging happens.
+    ///
+    /// ## Return value
+    /// It should return the merged error inside a `Result`.
+    ///
+    /// The variant of the returned result should be `Ok(e)` to signal that the deserialization
+    /// should continue (to accumulate more errors), or `Err(e)` to stop the deserialization immediately.
+    ///
+    /// Note that in both cases, the deserialization should eventually fail.
+    ///
+    /// ## Example
+    /// Imagine you have the following json:
+    /// ```json
+    /// {
+    ///    "w": true,
+    ///    "x" : { "y": 1 }
+    /// }
+    /// ```
+    /// It may be that deserializing the first field, `w`, fails with error `suberror: E`. This is the
+    /// first deserialization error we encounter, so the current error value is `None`. The function `Self::merge`
+    /// is called as follows:
+    /// ```ignore
+    /// // let mut error = None;
+    /// // let mut location : ValuePointerRef::Origin;
+    /// error = Some(Self::merge(error, suberror, location.push_key("w"))?);
+    /// // if the returned value was Err(e), then we returned early from the deserialize method
+    /// // otherwise, `error` is now set
+    /// ```
+    /// Later on, we encounter a new suberror originating from `x.y`. The `merge` function is called again:
+    /// ```ignore
+    /// // let mut error = Some(..);
+    /// // let mut location : ValuePointerRef::Origin;
+    /// error = Some(Self::merge(error, suberror, location.push_key("x"))?);
+    /// // if the returned value was Err(e), then we returned early from the deserialize method
+    /// // otherwise, `error` is now the result of its merging with suberror.
+    /// ```
+    /// Note that even though the suberror originated at `x.y`, the `merge_location` argument was `x`
+    /// because that is where the merge happened.
     fn merge(self_: Option<Self>, other: T, merge_location: ValuePointerRef) -> Result<Self, Self>;
-}
-
-impl<T, U> MergeWithError<U> for T
-where
-    T: SingleDeserializeError,
-    T: From<U>,
-{
-    fn merge(
-        self_: Option<Self>,
-        other: U,
-        _merge_location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        assert!(self_.is_none());
-        Err(other.into())
-    }
-}
-impl<T> DeserializeError for T
-where
-    T: SingleDeserializeError,
-{
-    fn incorrect_value_kind(
-        self_: Option<Self>,
-        actual: ValueKind,
-        accepted: &[ValueKind],
-        location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        assert!(self_.is_none());
-        Err(Self::incorrect_value_kind(actual, accepted, location))
-    }
-
-    fn missing_field(
-        self_: Option<Self>,
-        field: &str,
-        location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        assert!(self_.is_none());
-        Err(Self::missing_field(field, location))
-    }
-
-    fn unknown_key(
-        self_: Option<Self>,
-        key: &str,
-        accepted: &[&str],
-        location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        assert!(self_.is_none());
-        Err(Self::unknown_key(key, accepted, location))
-    }
-
-    fn unexpected(self_: Option<Self>, msg: &str, location: ValuePointerRef) -> Result<Self, Self> {
-        assert!(self_.is_none());
-        Err(Self::unexpected(msg, location))
-    }
-
-    fn location(&self) -> Option<ValuePointer> {
-        <Self as SingleDeserializeError>::location(self)
-    }
 }
 
 /// A trait for errors returned by [`deserialize_from_value`](DeserializeFromValue::deserialize_from_value).
 pub trait DeserializeError: Sized + MergeWithError<Self> {
+    /// Return the origin of the error, if it can be found
     fn location(&self) -> Option<ValuePointer>;
-
+    /// Create a new error due to an unexpected value kind.
+    ///
+    /// Return `Ok` to continue deserializing or `Err` to fail early.
     fn incorrect_value_kind(
         self_: Option<Self>,
         actual: ValueKind,
         accepted: &[ValueKind],
         location: ValuePointerRef,
     ) -> Result<Self, Self>;
+    /// Create a new error due to a missing key.
+    ///
+    /// Return `Ok` to continue deserializing or `Err` to fail early.
     fn missing_field(
         self_: Option<Self>,
         field: &str,
         location: ValuePointerRef,
     ) -> Result<Self, Self>;
+    /// Create a new error due to finding an unknown key.
+    ///
+    /// Return `Ok` to continue deserializing or `Err` to fail early.
     fn unknown_key(
         self_: Option<Self>,
         key: &str,
         accepted: &[&str],
         location: ValuePointerRef,
     ) -> Result<Self, Self>;
+    /// Create a new error with the custom message.
+    ///
+    /// Return `Ok` to continue deserializing or `Err` to fail early.
     fn unexpected(self_: Option<Self>, msg: &str, location: ValuePointerRef) -> Result<Self, Self>;
 }
 
-#[derive(Clone, Debug)]
-pub enum StandardError {
-    IncorrectValueKind {
-        actual: ValueKind,
-        accepted: Vec<ValueKind>,
-    },
-    MissingField {
-        field: String,
-    },
-    UnknownKey {
-        key: String,
-        accepted: Vec<String>,
-    },
-    Unexpected {
-        message: String,
-    },
-}
-impl Display for StandardError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            StandardError::IncorrectValueKind { actual, accepted } => {
-                writeln!(f, "Found a {actual} but expected one of {accepted:?}")
-            }
-            StandardError::MissingField { field } => {
-                writeln!(f, "Missing field {field}")
-            }
-            StandardError::UnknownKey { key, accepted } => {
-                writeln!(f, "Unknown key {key}. Expected one of {accepted:?}")
-            }
-            StandardError::Unexpected { message } => {
-                writeln!(f, "{message}")
-            }
-        }
-    }
-}
-impl std::error::Error for StandardError {}
-
-impl SingleDeserializeError for StandardError {
-    fn incorrect_value_kind(
-        actual: ValueKind,
-        accepted: &[ValueKind],
-        _location: ValuePointerRef,
-    ) -> Self {
-        Self::IncorrectValueKind {
-            actual,
-            accepted: accepted.to_vec(),
-        }
-    }
-
-    fn missing_field(field: &str, _location: ValuePointerRef) -> Self {
-        Self::MissingField {
-            field: field.to_string(),
-        }
-    }
-
-    fn unknown_key(key: &str, accepted: &[&str], _location: ValuePointerRef) -> Self {
-        Self::UnknownKey {
-            key: key.to_string(),
-            accepted: accepted.iter().map(<_>::to_string).collect(),
-        }
-    }
-
-    fn unexpected(msg: &str, _location: ValuePointerRef) -> Self {
-        Self::Unexpected {
-            message: msg.to_string(),
-        }
-    }
-
-    fn location(&self) -> Option<ValuePointer> {
-        None
-    }
-}
-
-#[derive(Debug)]
-pub struct AccumulatedErrors<E> {
-    pub locations: BTreeMap<ValuePointer, Vec<E>>,
-}
-impl<E> Default for AccumulatedErrors<E> {
-    fn default() -> Self {
-        Self {
-            locations: Default::default(),
-        }
-    }
-}
-
-impl<E> MergeWithError<Self> for AccumulatedErrors<E>
-where
-    E: DeserializeError,
-{
-    fn merge(
-        self_: Option<Self>,
-        other: Self,
-        _merge_location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        let mut self_ = self_.unwrap_or_default();
-        for (key, value) in other.locations {
-            self_.locations.entry(key).or_default().extend(value);
-        }
-        Ok(self_)
-    }
-}
-#[allow(unused)]
-impl<E> MergeWithError<E> for AccumulatedErrors<E>
-where
-    E: DeserializeError,
-{
-    fn merge(self_: Option<Self>, other: E, merge_location: ValuePointerRef) -> Result<Self, Self> {
-        let mut self_ = self_.unwrap_or_default();
-        // If the added error has no location, we add it to the origin
-        let location = other.location().unwrap_or_default();
-        self_.locations.entry(location).or_default().push(other);
-        Ok(self_)
-    }
-}
-#[allow(unused)]
-impl<E> DeserializeError for AccumulatedErrors<E>
-where
-    E: DeserializeError,
-{
-    fn location(&self) -> Option<ValuePointer> {
-        if let Some((_, value)) = self.locations.iter().next() {
-            value[0].location()
-        } else {
-            None
-        }
-    }
-
-    fn incorrect_value_kind(
-        self_: Option<Self>,
-        actual: ValueKind,
-        accepted: &[ValueKind],
-        location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        let mut self_ = self_.unwrap_or_default();
-        let new_err =
-            take_result_content(E::incorrect_value_kind(None, actual, accepted, location));
-        let location = location.to_owned();
-        self_.locations.entry(location).or_default().push(new_err);
-        Ok(self_)
-    }
-
-    fn missing_field(
-        self_: Option<Self>,
-        field: &str,
-        location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        let mut self_ = self_.unwrap_or_default();
-        let new_err = take_result_content(E::missing_field(None, field, location));
-        let location = location.to_owned();
-        self_.locations.entry(location).or_default().push(new_err);
-        Ok(self_)
-    }
-
-    fn unknown_key(
-        self_: Option<Self>,
-        key: &str,
-        accepted: &[&str],
-        location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        let mut self_ = self_.unwrap_or_default();
-        let new_err = take_result_content(E::unknown_key(None, key, accepted, location));
-        let location = location.to_owned();
-        self_.locations.entry(location).or_default().push(new_err);
-        Ok(self_)
-    }
-
-    fn unexpected(self_: Option<Self>, msg: &str, location: ValuePointerRef) -> Result<Self, Self> {
-        let mut self_ = self_.unwrap_or_default();
-        let new_err = take_result_content(E::unexpected(None, msg, location));
-        let location = location.to_owned();
-        self_.locations.entry(location).or_default().push(new_err);
-        Ok(self_)
-    }
-}
-impl<E> Display for AccumulatedErrors<E>
-where
-    E: Display,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (location, errors) in self.locations.iter() {
-            writeln!(f, "Errors at {location}:")?;
-            for e in errors {
-                writeln!(f, "{e}")?;
-            }
-            writeln!(f)?;
-        }
-        Ok(())
-    }
-}
-
-impl<E> std::error::Error for AccumulatedErrors<E> where E: std::error::Error {}
+/// Used by the derive proc macro. Do not use.
 #[doc(hidden)]
 pub enum FieldState<T> {
     Missing,
@@ -548,6 +368,7 @@ impl<T> FieldState<T> {
     }
 }
 
+/// Used by the derive proc macro. Do not use.
 #[doc(hidden)]
 pub fn take_result_content<T>(r: Result<T, T>) -> T {
     match r {

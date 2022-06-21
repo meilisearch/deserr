@@ -1,7 +1,4 @@
-use jayson::{
-    AccumulatedErrors, DeserializeError, DeserializeFromValue, MergeWithError,
-    SingleDeserializeError, StandardError, ValuePointerRef,
-};
+use jayson::{DeserializeError, DeserializeFromValue, MergeWithError, ValuePointerRef};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 
@@ -14,35 +11,56 @@ pub enum MyError {
     CustomMissingField(u8),
     Validation,
 }
-
-impl SingleDeserializeError for MyError {
+impl MergeWithError<MyError> for MyError {
+    fn merge(
+        _self_: Option<Self>,
+        other: MyError,
+        _merge_location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        Err(other)
+    }
+}
+impl DeserializeError for MyError {
     fn location(&self) -> Option<jayson::ValuePointer> {
         None
     }
-
     fn incorrect_value_kind(
+        _self_: Option<Self>,
         _actual: jayson::ValueKind,
         accepted: &[jayson::ValueKind],
         _location: ValuePointerRef,
-    ) -> Self {
-        Self::IncorrectValueKind {
+    ) -> Result<Self, Self> {
+        Err(Self::IncorrectValueKind {
             accepted: accepted.into(),
-        }
+        })
     }
 
-    fn missing_field(field: &str, _location: ValuePointerRef) -> Self {
-        Self::MissingField(field.to_string())
+    fn missing_field(
+        _self_: Option<Self>,
+        field: &str,
+        _location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        Err(Self::MissingField(field.to_string()))
     }
 
-    fn unknown_key(key: &str, accepted: &[&str], _location: ValuePointerRef) -> Self {
-        Self::UnknownKey {
+    fn unknown_key(
+        _self_: Option<Self>,
+        key: &str,
+        accepted: &[&str],
+        _location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        Err(Self::UnknownKey {
             key: key.to_string(),
             accepted: accepted.into_iter().map(<_>::to_string).collect(),
-        }
+        })
     }
 
-    fn unexpected(msg: &str, _location: ValuePointerRef) -> Self {
-        Self::Unexpected(msg.to_string())
+    fn unexpected(
+        _self_: Option<Self>,
+        msg: &str,
+        _location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        Err(Self::Unexpected(msg.to_string()))
     }
 }
 
@@ -257,9 +275,9 @@ struct Generic<A> {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(where_predicate = __Jayson_E: MergeWithError<StandardError>, where_predicate = A: DeserializeFromValue<StandardError>)]
+#[jayson(where_predicate = __Jayson_E: MergeWithError<MyError>, where_predicate = A: DeserializeFromValue<MyError>)]
 struct Generic2<A> {
-    #[jayson(error = StandardError)]
+    #[jayson(error = MyError)]
     some_field: Option<A>,
 }
 
@@ -305,7 +323,7 @@ enum Hello {
     B,
 }
 #[derive(DeserializeFromValue)]
-#[jayson(error = StandardError, from(bool) = parse_hello2 -> NeverError)]
+#[jayson(error = MyError, from(bool) = parse_hello2 -> NeverError)]
 enum Hello2 {
     A,
     B,
@@ -324,7 +342,7 @@ struct ContainsHello {
 }
 
 #[derive(DeserializeFromValue)]
-#[jayson(error = StandardError)]
+#[jayson(error = MyError)]
 struct ContainsHello2 {
     _x: Hello,
 }
@@ -336,15 +354,13 @@ struct ContainsHello3 {
 }
 
 struct MyValidationError;
-impl MergeWithError<MyValidationError> for StandardError {
+impl MergeWithError<MyValidationError> for MyError {
     fn merge(
         _self_: Option<Self>,
         _other: MyValidationError,
         _merge_location: ValuePointerRef,
     ) -> Result<Self, Self> {
-        Err(StandardError::Unexpected {
-            message: "validation errror".to_string(),
-        })
+        Err(MyError::Validation)
     }
 }
 
@@ -377,17 +393,7 @@ struct Validated2 {
     y: u16,
 }
 
-impl MergeWithError<MyValidationError> for MyError {
-    fn merge(
-        _self_: Option<Self>,
-        _other: MyValidationError,
-        _merge_location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(MyError::Validation)
-    }
-}
-
-impl MergeWithError<NeverError> for StandardError {
+impl MergeWithError<NeverError> for MyError {
     fn merge(
         _self_: Option<Self>,
         _other: NeverError,
@@ -438,17 +444,6 @@ where
     let actual: E = jayson::deserialize::<T, _, _>(json).unwrap_err();
 
     assert_eq!(actual, expected);
-}
-#[track_caller]
-fn print_accumulated_error<T, E>(j: &str)
-where
-    T: DeserializeFromValue<AccumulatedErrors<E>> + PartialEq + std::fmt::Debug,
-    E: DeserializeError + std::fmt::Debug,
-{
-    let json: Value = serde_json::from_str(j).unwrap();
-    let actual: AccumulatedErrors<E> = jayson::deserialize::<T, _, _>(json).unwrap_err();
-
-    println!("{actual:?}");
 }
 
 #[test]
@@ -668,7 +663,7 @@ fn test_de() {
         unknown_field_error("other", &[], ValuePointerRef::Origin),
     );
 
-    let hello: Hello = jayson::deserialize::<_, _, StandardError>(Value::Bool(true)).unwrap();
+    let hello: Hello = jayson::deserialize::<_, _, MyError>(Value::Bool(true)).unwrap();
     assert!(matches!(hello, Hello::A));
 
     assert_error_matches::<Validated, MyError>(
@@ -678,23 +673,5 @@ fn test_de() {
         }
         "#,
         MyError::Validation,
-    );
-}
-#[test]
-fn test_accumulated_errors() {
-    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, DeserializeFromValue)]
-    #[jayson(error = AccumulatedErrors<E>, deny_unknown_fields)]
-    #[jayson(generic_param = E, where_predicate = E: DeserializeError)]
-    struct S {
-        x: u8,
-        y: bool,
-    }
-
-    print_accumulated_error::<S, MyError>(
-        r#"{
-            "x": true,
-            "z": true
-        }
-        "#,
     );
 }
