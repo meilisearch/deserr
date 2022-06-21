@@ -27,6 +27,7 @@ to return multiple deserialization errors at once.
 5. [`ValuePointerRef`] and [`ValuePointer`] point to locations within the value. They are
 used to locate the origin of an error.
 6. [`deserialize`] is the main function to use to deserialize a value
+7. The [`DeserializeFromValue`](derive@DeserializeFromValue) derive proc macro
 
 If the feature `serde` is activated, then an implementation of [`IntoValue`] is provided
 for the type `serde_json::Value`. This allows using Jayson to deserialize from JSON.
@@ -37,7 +38,66 @@ mod impls;
 #[cfg(feature = "serde_json")]
 mod serde_json;
 
+/**
+It is possible to derive the `DeserializeFromValue` trait for structs and enums with named fields.
+The derive proc macro accept many arguments, explained below:
+
+The basic usage is as follows:
+```
+#[derive(DeserializeFromValue)]
+struct MyStruct {
+    x: bool,
+    y: u8,
+}
+```
+This will implement `impl<E> DeserializeFromValue<E> MyStruct` for all `E: DeserializeError`.
+
+To use it on enums, the attribute `tag` must be added:
+```
+#[derive(DeserializeFromValue)]
+#[jayson(tag = "my_enum_tag")]
+enum MyEnum {
+    A,
+    B { x: bool, y: u8 }
+}
+```
+This will correctly deserialize the given enum for values of this shape:
+```json
+{
+    "my_enum_tag": "A"
+}
+// or
+{
+    "my_enum_tag": "B",
+    "x": true,
+    "y": 1
+}
+```
+
+It is possible to change the name of the keys corresponding to each field using the `rename` and `rename_all`
+attributes:
+
+```rust
+#[derive(DeserializeFromValue)]
+#[jayson(rename_all = camelCale)]
+struct MyStruct {
+    my_field: bool,
+    #[rename = "goodbye_world"]
+    hello_world: u8,
+}
+```
+will parse the following:
+```json
+{
+    "myField": 1,
+    "goodbye_world": 2
+}
+```
+
+
+*/
 pub use jayson_internal::DeserializeFromValue;
+
 use std::fmt::{Debug, Display};
 
 /// A location within a [`Value`].
@@ -364,6 +424,13 @@ impl<T> FieldState<T> {
         match self {
             FieldState::Some(x) => x,
             _ => panic!("Unwrapping an empty field state"),
+        }
+    }
+    pub fn map<U>(self, f: impl Fn(T) -> U) -> FieldState<U> {
+        match self {
+            FieldState::Some(x) => FieldState::Some(f(x)),
+            FieldState::Missing => FieldState::Missing,
+            FieldState::Err => FieldState::Err,
         }
     }
 }
