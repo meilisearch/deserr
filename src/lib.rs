@@ -44,6 +44,8 @@ The derive proc macro accept many arguments, explained below:
 
 The basic usage is as follows:
 ```
+use jayson::DeserializeFromValue;
+
 #[derive(DeserializeFromValue)]
 struct MyStruct {
     x: bool,
@@ -54,6 +56,8 @@ This will implement `impl<E> DeserializeFromValue<E> MyStruct` for all `E: Deser
 
 To use it on enums, the attribute `tag` must be added:
 ```
+use jayson::DeserializeFromValue;
+
 #[derive(DeserializeFromValue)]
 #[jayson(tag = "my_enum_tag")]
 enum MyEnum {
@@ -78,11 +82,12 @@ It is possible to change the name of the keys corresponding to each field using 
 attributes:
 
 ```rust
+use jayson::DeserializeFromValue;
 #[derive(DeserializeFromValue)]
-#[jayson(rename_all = camelCale)]
+#[jayson(rename_all = camelCase)]
 struct MyStruct {
     my_field: bool,
-    #[rename = "goodbye_world"]
+    #[jayson(rename = "goodbye_world")]
     hello_world: u8,
 }
 ```
@@ -107,9 +112,11 @@ use std::fmt::{Debug, Display};
 ///
 /// ## Example
 /// ```
-/// let mut pointer = ValuePointerRef::Origin;
-/// pointer = pointer.push_key("a");
-/// pointer = pointer.push_index(2);
+/// use jayson::ValuePointerRef;
+///
+/// let pointer = ValuePointerRef::Origin;
+/// let pointer = pointer.push_key("a");
+/// let pointer = pointer.push_index(2);
 /// // now `pointer` points to "a".2
 /// ```
 ///
