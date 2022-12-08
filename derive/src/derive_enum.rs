@@ -41,7 +41,7 @@ pub fn generate_derive_tagged_enum_impl(
                         })?;
                         let tag_value_string = match tag_value.into_value() {
                             deserr::Value::String(x) => x,
-                            v @ _ => {
+                            v => {
                                 return ::std::result::Result::Err(
                                     <#err_ty as deserr::DeserializeError>::incorrect_value_kind(
                                         None,
@@ -70,7 +70,7 @@ pub fn generate_derive_tagged_enum_impl(
                         }
                     }
                     // this is the case where the value is not a map
-                    v @ _ => {
+                    v => {
                         ::std::result::Result::Err(
                             <#err_ty as deserr::DeserializeError>::incorrect_value_kind(
                                 None,

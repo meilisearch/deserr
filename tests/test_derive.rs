@@ -51,7 +51,7 @@ impl DeserializeError for MyError {
     ) -> Result<Self, Self> {
         Err(Self::UnknownKey {
             key: key.to_string(),
-            accepted: accepted.into_iter().map(<_>::to_string).collect(),
+            accepted: accepted.iter().map(<_>::to_string).collect(),
         })
     }
 

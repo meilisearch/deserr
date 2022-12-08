@@ -26,7 +26,7 @@ pub fn generate_derive_struct_impl(
                         #fields_impl
                     }
                     // this is the case where the value is not a map
-                    v @ _ => {
+                    v => {
                         ::std::result::Result::Err(
                             deserr::take_result_content(<#err_ty as deserr::DeserializeError>::incorrect_value_kind(
                                 None,
