@@ -1,10 +1,10 @@
 [package]
-name = "jayson-internal"
+name = "deserr-internal"
 version = "0.1.0"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
 license = "MIT OR Apache-2.0"
-description = "Derive macros for Jayson. Use the re-exports from the jayson crate instead."
-repository = "https://github.com/meilisearch/jayson"
+description = "Derive macros for Deserr. Use the re-exports from the deserr crate instead."
+repository = "https://github.com/meilisearch/deserr"
 edition = "2021"
 
 [lib]

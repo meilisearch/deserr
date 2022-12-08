@@ -1,11 +1,11 @@
-# Jayson
+# Deserr
 
 ## Introduction
 
-Jayson is a crate for deserializing data, with the ability to return
+Deserr is a crate for deserializing data, with the ability to return
 custom, type-specific errors upon failure.
 
-Unlike serde, Jayson does not parse the data in its serialization format itself,
+Unlike serde, Deserr does not parse the data in its serialization format itself,
 but offload the work to other crates. Instead, it deserializes
 the already-parsed serialized data into the final type. For example:
 
@@ -14,7 +14,7 @@ the already-parsed serialized data into the final type. For example:
 let s: &str = .. ;
 // parse serialized data using another crate, such as serde_json
 let json: serde_json::Value = serde_json::from_str(s)?;
-// finally deserialize with Jayson
+// finally deserialize with Deserr
 let data = T::deserialize_from_value(json.into_value())?;
 ```
 
@@ -22,7 +22,7 @@ let data = T::deserialize_from_value(json.into_value())?;
 
 ### Implementing deserialize for a custom type
 ```rust
-use jayson::{DeserializeError, DeserializeFromValue, Error};
+use deserr::{DeserializeError, DeserializeFromValue, Error};
 enum MyError {
     ForbiddenName,
     Other(Error)
@@ -63,7 +63,7 @@ impl DeserializeFromValue<MyError> for Name {
 
 ```rust
 #[derive(DeserializeFromValue)]
-#[jayson(error = MyError)]
+#[deserr(error = MyError)]
 struct User {
 	name: Name,
 }

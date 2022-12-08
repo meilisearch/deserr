@@ -1,4 +1,4 @@
-error: Externally tagged enums are not supported yet by jayson. Add #[jayson(tag = "some_tag_key")]
+error: Externally tagged enums are not supported yet by deserr. Add #[deserr(tag = "some_tag_key")]
  --> tests/ui/de-enum-no-tag.rs:3:10
   |
 3 | #[derive(DeserializeFromValue)]

@@ -1,17 +1,17 @@
-use jayson::{DeserializeError, DeserializeFromValue, MergeWithError};
+use deserr::{DeserializeError, DeserializeFromValue, MergeWithError};
 
 #[derive(Debug)]
 pub struct MyError;
 impl DeserializeError for MyError {
-    fn location(&self) -> Option<jayson::ValuePointer> {
+    fn location(&self) -> Option<deserr::ValuePointer> {
         todo!()
     }
 
     fn incorrect_value_kind(
         _self_: Option<Self>,
-        _actual: jayson::ValueKind,
-        _accepted: &[jayson::ValueKind],
-        _location: jayson::ValuePointerRef,
+        _actual: deserr::ValueKind,
+        _accepted: &[deserr::ValueKind],
+        _location: deserr::ValuePointerRef,
     ) -> Result<Self, Self> {
         todo!()
     }
@@ -19,7 +19,7 @@ impl DeserializeError for MyError {
     fn missing_field(
         _self_: Option<Self>,
         _field: &str,
-        _location: jayson::ValuePointerRef,
+        _location: deserr::ValuePointerRef,
     ) -> Result<Self, Self> {
         todo!()
     }
@@ -28,7 +28,7 @@ impl DeserializeError for MyError {
         _self_: Option<Self>,
         _key: &str,
         _accepted: &[&str],
-        _location: jayson::ValuePointerRef,
+        _location: deserr::ValuePointerRef,
     ) -> Result<Self, Self> {
         todo!()
     }
@@ -36,7 +36,7 @@ impl DeserializeError for MyError {
     fn unexpected(
         _self_: Option<Self>,
         _msg: &str,
-        _location: jayson::ValuePointerRef,
+        _location: deserr::ValuePointerRef,
     ) -> Result<Self, Self> {
         todo!()
     }
@@ -45,14 +45,14 @@ impl MergeWithError<MyError> for MyError {
     fn merge(
         _self_: Option<Self>,
         _other: MyError,
-        _merge_location: jayson::ValuePointerRef,
+        _merge_location: deserr::ValuePointerRef,
     ) -> Result<Self, Self> {
         todo!()
     }
 }
 
 #[derive(DeserializeFromValue)]
-#[jayson(error = MyError)]
+#[deserr(error = MyError)]
 pub struct Point {
     pub x: u32,
     pub y: u32,
@@ -61,5 +61,5 @@ pub struct Point {
 #[test]
 fn main() {
     let result = serde_json::from_str::<serde_json::Value>(r#"{"x": 1, "y": 2, "z": 3}"#).unwrap();
-    let _: Point = jayson::deserialize(result).unwrap();
+    let _: Point = deserr::deserialize(result).unwrap();
 }

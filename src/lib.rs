@@ -1,8 +1,8 @@
 /*!
-Jayson is a crate for deserializing data, with the ability to return
+Deserr is a crate for deserializing data, with the ability to return
 custom, type-specific errors upon failure.
 
-Unlike serde, Jayson does not parse the data in its serialization format itself,
+Unlike serde, Deserr does not parse the data in its serialization format itself,
 but offload that work to other crates. Instead, it deserializes
 the already-parsed serialized data into the final type. For example:
 
@@ -11,18 +11,18 @@ the already-parsed serialized data into the final type. For example:
 let s: &str = "{ "x": 7 }" ;
 // parsed serialized data
 let json: serde_json::Value = serde_json::from_str(s)?;
-// finally deserialize with Jayson
-let data = jayson::deserialize::<T, serde_json::Value, MyError>(json)?;
+// finally deserialize with Deserr
+let data = deserr::deserialize::<T, serde_json::Value, MyError>(json)?;
 ```
 
-Thus, Jayson is a bit slower than crates that immediately deserialize a value while
+Thus, Deserr is a bit slower than crates that immediately deserialize a value while
 parsing at the same time.
 
-The main parts of Jayson are:
+The main parts of Deserr are:
 1. [`DeserializeFromValue<E>`] is the main trait for deserialization
 2. [`IntoValue`] and [`Value`] describe the shape that the parsed serialized data must have
 3. [`DeserializeError`] is the trait that all deserialization errors must conform to
-4. [`MergeWithError<E>`] describes how to combine multiple errors together. It allows Jayson
+4. [`MergeWithError<E>`] describes how to combine multiple errors together. It allows Deserr
 to return multiple deserialization errors at once.
 5. [`ValuePointerRef`] and [`ValuePointer`] point to locations within the value. They are
 used to locate the origin of an error.
@@ -30,7 +30,7 @@ used to locate the origin of an error.
 7. The [`DeserializeFromValue`](derive@DeserializeFromValue) derive proc macro
 
 If the feature `serde` is activated, then an implementation of [`IntoValue`] is provided
-for the type `serde_json::Value`. This allows using Jayson to deserialize from JSON.
+for the type `serde_json::Value`. This allows using Deserr to deserialize from JSON.
 */
 
 #![allow(clippy::len_without_is_empty)]
@@ -44,7 +44,7 @@ The derive proc macro accept many arguments, explained below:
 
 The basic usage is as follows:
 ```
-use jayson::DeserializeFromValue;
+use deserr::DeserializeFromValue;
 
 #[derive(DeserializeFromValue)]
 struct MyStruct {
@@ -56,10 +56,10 @@ This will implement `impl<E> DeserializeFromValue<E> MyStruct` for all `E: Deser
 
 To use it on enums, the attribute `tag` must be added:
 ```
-use jayson::DeserializeFromValue;
+use deserr::DeserializeFromValue;
 
 #[derive(DeserializeFromValue)]
-#[jayson(tag = "my_enum_tag")]
+#[deserr(tag = "my_enum_tag")]
 enum MyEnum {
     A,
     B { x: bool, y: u8 }
@@ -82,12 +82,12 @@ It is possible to change the name of the keys corresponding to each field using 
 attributes:
 
 ```rust
-use jayson::DeserializeFromValue;
+use deserr::DeserializeFromValue;
 #[derive(DeserializeFromValue)]
-#[jayson(rename_all = camelCase)]
+#[deserr(rename_all = camelCase)]
 struct MyStruct {
     my_field: bool,
-    #[jayson(rename = "goodbye_world")]
+    #[deserr(rename = "goodbye_world")]
     hello_world: u8,
 }
 ```
@@ -101,7 +101,7 @@ will parse the following:
 
 
 */
-pub use jayson_internal::DeserializeFromValue;
+pub use deserr_internal::DeserializeFromValue;
 
 use std::fmt::{Debug, Display};
 
@@ -112,7 +112,7 @@ use std::fmt::{Debug, Display};
 ///
 /// ## Example
 /// ```
-/// use jayson::ValuePointerRef;
+/// use deserr::ValuePointerRef;
 ///
 /// let pointer = ValuePointerRef::Origin;
 /// let pointer = pointer.push_key("a");
@@ -234,7 +234,7 @@ impl Debug for ValueKind {
 }
 
 /// `Value<V>` is a view into the parsed serialization data (of type `V`) that
-/// is readable by Jayson.
+/// is readable by Deserr.
 ///
 /// It is an enum with a variant for each possible value kind. The content of the variants
 /// is either a simple value, such as `bool` or `String`, or an abstract [`Sequence`] or

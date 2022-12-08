@@ -1,7 +1,7 @@
-use jayson::DeserializeFromValue;
+use deserr::DeserializeFromValue;
 
 #[derive(DeserializeFromValue)]
-#[jayson(error = jayson::Error, tag = "t")]
+#[deserr(error = deserr::Error, tag = "t")]
 enum Enum {
     Variant(i32),
 }

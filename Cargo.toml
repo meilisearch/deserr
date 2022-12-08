@@ -1,17 +1,17 @@
 [package]
-name = "jayson"
+name = "deserr"
 version = "0.1.0"
-authors = ["David Tolnay <dtolnay@gmail.com>", "adhoc <postma.marin@protonmail.com>"]
+authors = ["Lo <loic@meilisearch.com>"]
 license = "MIT OR Apache-2.0"
-description = "JSON deserarialization library with focus on custom error handling"
-repository = "https://github.com/meilisearch/jayson"
+description = "Deserarialization library with focus on error handling"
+repository = "https://github.com/meilisearch/deserr"
 readme = "README.md"
 exclude = ["benches"]
 edition = "2021"
 
 [dependencies]
 serde_json = { version = "1.0", optional = true }
-jayson-internal = { version = "=0.1.0", path = "derive" }
+deserr-internal = { version = "=0.1.0", path = "derive" }
 
 [features]
 default = ["serde-json"]

@@ -28,26 +28,26 @@ pub fn generate_derive_tagged_enum_impl(
 
     quote! {
          #impl_trait_tokens {
-            fn deserialize_from_value<V: jayson::IntoValue>(jayson_value__: jayson::Value<V>, jayson_location__: jayson::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
+            fn deserialize_from_value<V: deserr::IntoValue>(deserr_value__: deserr::Value<V>, deserr_location__: deserr::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
                 // The value must always be a map
-                let jayson_final__ = match jayson_value__ {
-                    jayson::Value::Map(mut jayson_map__) => {
-                        let tag_value = jayson::Map::remove(&mut jayson_map__, #tag).ok_or_else(|| {
-                            jayson::take_result_content(<#err_ty as jayson::DeserializeError>::missing_field(
+                let deserr_final__ = match deserr_value__ {
+                    deserr::Value::Map(mut deserr_map__) => {
+                        let tag_value = deserr::Map::remove(&mut deserr_map__, #tag).ok_or_else(|| {
+                            deserr::take_result_content(<#err_ty as deserr::DeserializeError>::missing_field(
                                 None,
                                 #tag,
-                                jayson_location__
+                                deserr_location__
                             ))
                         })?;
                         let tag_value_string = match tag_value.into_value() {
-                            jayson::Value::String(x) => x,
+                            deserr::Value::String(x) => x,
                             v @ _ => {
                                 return ::std::result::Result::Err(
-                                    <#err_ty as jayson::DeserializeError>::incorrect_value_kind(
+                                    <#err_ty as deserr::DeserializeError>::incorrect_value_kind(
                                         None,
                                         v.kind(),
-                                        &[jayson::ValueKind::String],
-                                        jayson_location__.push_key(#tag)
+                                        &[deserr::ValueKind::String],
+                                        deserr_location__.push_key(#tag)
                                     )?
                                 );
                             }
@@ -59,11 +59,11 @@ pub fn generate_derive_tagged_enum_impl(
                             // correspond to any valid enum variant name
                             _ => {
                                 ::std::result::Result::Err(
-                                    <#err_ty as jayson::DeserializeError>::unexpected(
+                                    <#err_ty as deserr::DeserializeError>::unexpected(
                                         None,
                                         // TODO: expected one of {expected_tags_list}, found {actual_tag} error message
                                         "Incorrect tag value",
-                                        jayson_location__
+                                        deserr_location__
                                     )?
                                 )
                             }
@@ -72,11 +72,11 @@ pub fn generate_derive_tagged_enum_impl(
                     // this is the case where the value is not a map
                     v @ _ => {
                         ::std::result::Result::Err(
-                            <#err_ty as jayson::DeserializeError>::incorrect_value_kind(
+                            <#err_ty as deserr::DeserializeError>::incorrect_value_kind(
                                 None,
                                 v.kind(),
-                                &[jayson::ValueKind::Map],
-                                jayson_location__
+                                &[deserr::ValueKind::Map],
+                                deserr_location__
                             )?
                         )
                     }
@@ -130,7 +130,7 @@ fn generate_derive_tagged_enum_variant_impl(
             // The code here is virtually identical to the code of `generate_derive_struct_impl`
             quote! {
                 #variant_key_name => {
-                    let mut jayson_error__ = None;
+                    let mut deserr_error__ = None;
                     #fields_impl
                 }
             }

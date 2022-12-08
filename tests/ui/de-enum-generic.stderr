@@ -4,4 +4,4 @@ error: Enums with generics are not supported
 3 | #[derive(DeserializeFromValue)]
   |          ^^^^^^
   |
-  = note: this error originates in the derive macro `Jayson` (in Nightly builds, run with -Z macro-backtrace for more info)
+  = note: this error originates in the derive macro `Deserr` (in Nightly builds, run with -Z macro-backtrace for more info)

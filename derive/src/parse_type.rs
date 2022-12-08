@@ -1,5 +1,5 @@
 use crate::attribute_parser::{
-    read_jayson_container_attributes, read_jayson_field_attributes, read_jayson_variant_attributes,
+    read_deserr_container_attributes, read_deserr_field_attributes, read_deserr_variant_attributes,
     validate_container_attributes, AttributeFrom, ContainerAttributesInfo, DefaultFieldAttribute,
     DenyUnknownFields, FunctionReturningError, RenameAll, TagType,
 };
@@ -78,16 +78,16 @@ pub enum VariantData {
 impl DerivedTypeInfo {
     pub fn parse(input: DeriveInput) -> syn::Result<Self> {
         // First, read the attributes on the derived input
-        // e.g. `#[jayson(error = MyError, tag = "mytag", rename_all = camelCase)]`
-        let attrs = read_jayson_container_attributes(&input.attrs)?;
+        // e.g. `#[deserr(error = MyError, tag = "mytag", rename_all = camelCase)]`
+        let attrs = read_deserr_container_attributes(&input.attrs)?;
 
         validate_container_attributes(&attrs, &input)?;
 
-        // The error type as given by the attribute #[jayson(error = err_ty)]
+        // The error type as given by the attribute #[deserr(error = err_ty)]
         let user_provided_err_ty: Option<&syn::Type> = attrs.err_ty.as_ref();
         let err_ty = user_provided_err_ty
             .cloned()
-            .unwrap_or_else(|| parse_quote!(__Jayson_E));
+            .unwrap_or_else(|| parse_quote!(__Deserr_E));
 
         // Now we build the TraitImplementationInfo structure
 
@@ -117,7 +117,7 @@ impl DerivedTypeInfo {
                     // parse a VariantInfo for each variant in the enum
                     let mut parsed_variants = vec![];
                     for variant in e.variants {
-                        let variant_attrs = read_jayson_variant_attributes(&variant.attrs)?;
+                        let variant_attrs = read_deserr_variant_attributes(&variant.attrs)?;
 
                         let renamed = variant_attrs.rename.as_ref().map(|i| i.value());
 
@@ -180,7 +180,7 @@ impl DerivedTypeInfo {
                 .type_params()
                 .map::<WherePredicate, _>(|param| {
                     let param = &param.ident;
-                    parse_quote!(#param : jayson::DeserializeFromValue<#err_ty>)
+                    parse_quote!(#param : deserr::DeserializeFromValue<#err_ty>)
                 })
                 .collect::<Vec<_>>();
 
@@ -189,7 +189,7 @@ impl DerivedTypeInfo {
             if user_provided_err_ty.is_none() {
                 generics_for_trait_impl.params.push(parse_quote!(#err_ty));
                 new_predicates.push(parse_quote!(
-                    #err_ty : jayson::DeserializeError
+                    #err_ty : deserr::DeserializeError
                 ));
             }
 
@@ -197,14 +197,14 @@ impl DerivedTypeInfo {
             if let Some(from) = &attrs.from {
                 let from_error = &from.function.error_ty;
                 new_predicates.push(parse_quote!(
-                    #err_ty : jayson::MergeWithError<#from_error>
+                    #err_ty : deserr::MergeWithError<#from_error>
                 ));
             }
             // Add MergeWithError<ValidateFunctionError> requirement
             if let Some(validate) = &attrs.validate {
                 let validate_error = &validate.error_ty;
                 new_predicates.push(parse_quote!(
-                    #err_ty : jayson::MergeWithError<#validate_error>
+                    #err_ty : deserr::MergeWithError<#validate_error>
                 ));
             }
 
@@ -233,7 +233,7 @@ impl DerivedTypeInfo {
                 };
                 for field_ty in all_fields_needing_pred {
                     new_predicates.push(parse_quote! {
-                        #field_ty : jayson::DeserializeFromValue<#err_ty>
+                        #field_ty : deserr::DeserializeFromValue<#err_ty>
                     });
                 }
             }
@@ -259,7 +259,7 @@ impl DerivedTypeInfo {
                 .extend(attrs.where_predicates.clone());
 
             quote! {
-                impl #impl_generics jayson::DeserializeFromValue<#err_ty> for #ident #ty_generics #bounded_where_clause
+                impl #impl_generics deserr::DeserializeFromValue<#err_ty> for #ident #ty_generics #bounded_where_clause
             }
         };
         {}; // the `impl` above breaks my text editor's syntax highlighting, inserting a pair
@@ -271,18 +271,18 @@ impl DerivedTypeInfo {
                 error_ty: func_error_type,
             } = validate_func;
             quote! {
-                #validate_func (jayson_final__) .map_err(|validate_error__|{
-                    jayson::take_result_content(
-                        <#err_ty as jayson::MergeWithError<#func_error_type>>::merge(
+                #validate_func (deserr_final__) .map_err(|validate_error__|{
+                    deserr::take_result_content(
+                        <#err_ty as deserr::MergeWithError<#func_error_type>>::merge(
                             None,
                             validate_error__,
-                            jayson_location__
+                            deserr_location__
                         )
                     )
                 })
             }
         } else {
-            quote! { Ok(jayson_final__) }
+            quote! { Ok(deserr_final__) }
         };
 
         Ok(Self {
@@ -357,7 +357,7 @@ impl NamedFieldsInfo {
             let field_name = field.ident.clone().unwrap();
             let field_ty = &field.ty;
 
-            let attrs = read_jayson_field_attributes(&field.attrs)?;
+            let attrs = read_deserr_field_attributes(&field.attrs)?;
             let renamed = attrs.rename.as_ref().map(|i| i.value());
             let key_name = key_name_for_ident(
                 field_name.to_string(),
@@ -367,37 +367,37 @@ impl NamedFieldsInfo {
 
             let field_default = if let Some(default) = &attrs.default {
                 match default {
-                    // #[jayson(default)] => use the Default trait
+                    // #[deserr(default)] => use the Default trait
                     DefaultFieldAttribute::DefaultTrait => {
                         quote! { ::std::option::Option::Some(::std::default::Default::default()) }
                     }
-                    // #[jayson(default = expr)] => use the given expression
+                    // #[deserr(default = expr)] => use the given expression
                     DefaultFieldAttribute::Function(expr) => {
                         quote! { ::std::option::Option::Some(#expr) }
                     }
                 }
             } else {
                 // no `default` attribute => use the DeserializeFromValue::default() method
-                quote! { jayson::DeserializeFromValue::<#err_ty>::default() }
+                quote! { deserr::DeserializeFromValue::<#err_ty>::default() }
             };
 
             let missing_field_error = match attrs.missing_field_error {
                 Some(error_expr) => {
                     quote! {
-                        let jayson_e__ = #error_expr ;
-                        jayson_error__ = ::std::option::Option::Some(<#err_ty as jayson::MergeWithError<_>>::merge(
-                            jayson_error__,
-                            jayson_e__,
-                            jayson_location__
+                        let deserr_e__ = #error_expr ;
+                        deserr_error__ = ::std::option::Option::Some(<#err_ty as deserr::MergeWithError<_>>::merge(
+                            deserr_error__,
+                            deserr_e__,
+                            deserr_location__
                         )?);
                     }
                 }
                 None => {
                     quote! {
-                        jayson_error__ = ::std::option::Option::Some(<#err_ty as jayson::DeserializeError>::missing_field(
-                            jayson_error__,
+                        deserr_error__ = ::std::option::Option::Some(<#err_ty as deserr::DeserializeError>::missing_field(
+                            deserr_error__,
                             #key_name,
-                            jayson_location__
+                            deserr_location__
                         )?);
                     }
                 }
@@ -407,7 +407,7 @@ impl NamedFieldsInfo {
                 None => data_attrs
                     .err_ty
                     .clone()
-                    .unwrap_or_else(|| parse_quote!(__Jayson_E)),
+                    .unwrap_or_else(|| parse_quote!(__Deserr_E)),
             };
 
             let field_map = match attrs.map {
@@ -434,27 +434,27 @@ impl NamedFieldsInfo {
         // Create the token stream representing the code to handle an unknown field key.
         // By default, we ignore unknown keys, so the token stream is empty.
         //
-        // If the #[jayson(deny_unknown_fields)] or #[jayson(deny_unknown_fields = func)] attribute exists,
+        // If the #[deserr(deny_unknown_fields)] or #[deserr(deny_unknown_fields = func)] attribute exists,
         // we return an error: either the default error, or an error created by the custom function given by
         // the user.
         let unknown_key = match &data_attrs.deny_unknown_fields {
             Some(DenyUnknownFields::DefaultError) => {
                 // Here we must give as argument the accepted keys
                 quote! {
-                    jayson_error__ = ::std::option::Option::Some(<#err_ty as jayson::DeserializeError>::unknown_key(
-                        jayson_error__,
-                        jayson_key__,
+                    deserr_error__ = ::std::option::Option::Some(<#err_ty as deserr::DeserializeError>::unknown_key(
+                        deserr_error__,
+                        deserr_key__,
                         &[#(#key_names),*],
-                        jayson_location__
+                        deserr_location__
                     )?);
                 }
             }
             Some(DenyUnknownFields::Function(func)) => quote! {
-                let jayson_e__ = #func (jayson_key__, &[#(#key_names),*], jayson_location__) ;
-                jayson_error__ = ::std::option::Option::Some(<#err_ty as jayson::MergeWithError<_>>::merge(
-                    jayson_error__,
-                    jayson_e__,
-                    jayson_location__,
+                let deserr_e__ = #func (deserr_key__, &[#(#key_names),*], deserr_location__) ;
+                deserr_error__ = ::std::option::Option::Some(<#err_ty as deserr::MergeWithError<_>>::merge(
+                    deserr_error__,
+                    deserr_e__,
+                    deserr_location__,
                 )?);
             },
             None => quote! {},

@@ -1,4 +1,4 @@
-use jayson::{DeserializeError, DeserializeFromValue, MergeWithError, ValuePointerRef};
+use deserr::{DeserializeError, DeserializeFromValue, MergeWithError, ValuePointerRef};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 
@@ -6,7 +6,7 @@ use serde_json::Value;
 pub enum MyError {
     Unexpected(String),
     MissingField(String),
-    IncorrectValueKind { accepted: Vec<jayson::ValueKind> },
+    IncorrectValueKind { accepted: Vec<deserr::ValueKind> },
     UnknownKey { key: String, accepted: Vec<String> },
     CustomMissingField(u8),
     Validation,
@@ -21,13 +21,13 @@ impl MergeWithError<MyError> for MyError {
     }
 }
 impl DeserializeError for MyError {
-    fn location(&self) -> Option<jayson::ValuePointer> {
+    fn location(&self) -> Option<deserr::ValuePointer> {
         None
     }
     fn incorrect_value_kind(
         _self_: Option<Self>,
-        _actual: jayson::ValueKind,
-        accepted: &[jayson::ValueKind],
+        _actual: deserr::ValueKind,
+        accepted: &[deserr::ValueKind],
         _location: ValuePointerRef,
     ) -> Result<Self, Self> {
         Err(Self::IncorrectValueKind {
@@ -66,13 +66,13 @@ impl DeserializeError for MyError {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[serde(tag = "sometag")]
-#[jayson(tag = "sometag")]
+#[deserr(tag = "sometag")]
 enum Tag {
     A,
     B,
 }
 
-fn unknown_field_error_gen<E>(k: &str, _accepted: &[&str], location: jayson::ValuePointerRef) -> E
+fn unknown_field_error_gen<E>(k: &str, _accepted: &[&str], location: deserr::ValuePointerRef) -> E
 where
     E: DeserializeError,
 {
@@ -83,7 +83,7 @@ where
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(deny_unknown_fields = unknown_field_error_gen)]
+#[deserr(deny_unknown_fields = unknown_field_error_gen)]
 struct Example {
     x: String,
     t1: Tag,
@@ -98,21 +98,21 @@ struct Nested {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError)]
+#[deserr(error = MyError)]
 struct StructWithDefaultAttr {
     x: bool,
     #[serde(default = "create_default_u8")]
-    #[jayson(default = create_default_u8())]
+    #[deserr(default = create_default_u8())]
     y: u8,
     #[serde(default = "create_default_option_string")]
-    #[jayson(default = create_default_option_string())]
+    #[deserr(default = create_default_option_string())]
     z: Option<String>,
 }
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError)]
+#[deserr(error = MyError)]
 struct StructWithTraitDefaultAttr {
     #[serde(default)]
-    #[jayson(default)]
+    #[deserr(default)]
     y: u8,
 }
 
@@ -125,36 +125,36 @@ fn create_default_option_string() -> Option<String> {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[serde(tag = "t")]
-#[jayson(error = MyError, tag = "t")]
+#[deserr(error = MyError, tag = "t")]
 enum EnumWithOptionData {
     A {
         x: Option<u8>,
     },
     B {
         #[serde(default = "create_default_option_string")]
-        #[jayson(default = create_default_option_string())]
+        #[deserr(default = create_default_option_string())]
         x: Option<String>,
         #[serde(default = "create_default_u8")]
-        #[jayson(default = create_default_u8())]
+        #[deserr(default = create_default_u8())]
         y: u8,
     },
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError, rename_all = camelCase)]
+#[deserr(error = MyError, rename_all = camelCase)]
 #[serde(rename_all = "camelCase")]
 struct RenamedAllCamelCaseStruct {
     renamed_field: bool,
 }
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError, rename_all = lowercase)]
+#[deserr(error = MyError, rename_all = lowercase)]
 #[serde(rename_all = "lowercase")]
 struct RenamedAllLowerCaseStruct {
     renamed_field: bool,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError, tag = "t", rename_all = camelCase)]
+#[deserr(error = MyError, tag = "t", rename_all = camelCase)]
 #[serde(tag = "t")]
 #[serde(rename_all = "camelCase")]
 enum RenamedAllCamelCaseEnum {
@@ -162,32 +162,32 @@ enum RenamedAllCamelCaseEnum {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError, tag = "t")]
+#[deserr(error = MyError, tag = "t")]
 #[serde(tag = "t")]
 enum RenamedAllFieldsCamelCaseEnum {
-    #[jayson(rename_all = camelCase)]
+    #[deserr(rename_all = camelCase)]
     #[serde(rename_all = "camelCase")]
     SomeField { my_field: bool },
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError)]
+#[deserr(error = MyError)]
 struct StructWithRenamedField {
-    #[jayson(rename = "renamed_field")]
+    #[deserr(rename = "renamed_field")]
     #[serde(rename = "renamed_field")]
     x: bool,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError, rename_all = camelCase)]
+#[deserr(error = MyError, rename_all = camelCase)]
 struct StructWithRenamedFieldAndRenameAll {
-    #[jayson(rename = "renamed_field")]
+    #[deserr(rename = "renamed_field")]
     #[serde(rename = "renamed_field")]
     x: bool,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError, deny_unknown_fields)]
+#[deserr(error = MyError, deny_unknown_fields)]
 #[serde(deny_unknown_fields)]
 struct StructDenyUnknownFields {
     x: bool,
@@ -201,14 +201,14 @@ fn unknown_field_error(k: &str, _accepted: &[&str], _location: ValuePointerRef) 
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError, deny_unknown_fields = unknown_field_error)]
+#[deserr(error = MyError, deny_unknown_fields = unknown_field_error)]
 #[serde(deny_unknown_fields)]
 struct StructDenyUnknownFieldsCustom {
     x: bool,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError, tag = "t", deny_unknown_fields)]
+#[deserr(error = MyError, tag = "t", deny_unknown_fields)]
 #[serde(tag = "t", deny_unknown_fields)]
 enum EnumDenyUnknownFields {
     SomeField { my_field: bool },
@@ -216,7 +216,7 @@ enum EnumDenyUnknownFields {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError, tag = "t", deny_unknown_fields = unknown_field_error)]
+#[deserr(error = MyError, tag = "t", deny_unknown_fields = unknown_field_error)]
 #[serde(tag = "t", deny_unknown_fields)]
 enum EnumDenyUnknownFieldsCustom {
     SomeField { my_field: bool },
@@ -224,19 +224,19 @@ enum EnumDenyUnknownFieldsCustom {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError)]
+#[deserr(error = MyError)]
 struct StructMissingFieldError {
-    #[jayson(missing_field_error = MyError::MissingField("lol".to_string()))]
+    #[deserr(missing_field_error = MyError::MissingField("lol".to_string()))]
     x: bool,
-    #[jayson(missing_field_error = MyError::CustomMissingField(1))]
+    #[deserr(missing_field_error = MyError::CustomMissingField(1))]
     y: bool,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError, tag = "t")]
+#[deserr(error = MyError, tag = "t")]
 enum EnumMissingFieldError {
     A {
-        #[jayson(missing_field_error = MyError::CustomMissingField(0))]
+        #[deserr(missing_field_error = MyError::CustomMissingField(0))]
         x: bool,
     },
     B {
@@ -245,47 +245,47 @@ enum EnumMissingFieldError {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError, tag = "t")]
+#[deserr(error = MyError, tag = "t")]
 #[serde(tag = "t")]
 enum EnumRenamedVariant {
     #[serde(rename = "Apple")]
-    #[jayson(rename = "Apple")]
+    #[deserr(rename = "Apple")]
     A { x: bool },
     #[serde(rename = "Beta")]
-    #[jayson(rename = "Beta")]
+    #[deserr(rename = "Beta")]
     B,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError, tag = "t")]
+#[deserr(error = MyError, tag = "t")]
 #[serde(tag = "t")]
 enum EnumRenamedField {
     A {
-        #[jayson(rename = "Xylem")]
+        #[deserr(rename = "Xylem")]
         #[serde(rename = "Xylem")]
         x: bool,
     },
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError, tag = "t")]
+#[deserr(error = MyError, tag = "t")]
 #[serde(tag = "t")]
 enum EnumRenamedAllVariant {
-    #[jayson(rename_all = camelCase)]
+    #[deserr(rename_all = camelCase)]
     #[serde(rename_all = "camelCase")]
     P { water_potential: bool },
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(error = MyError)]
+#[deserr(error = MyError)]
 struct Generic<A> {
     some_field: A,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(where_predicate = __Jayson_E: MergeWithError<MyError>, where_predicate = A: DeserializeFromValue<MyError>)]
+#[deserr(where_predicate = __Deserr_E: MergeWithError<MyError>, where_predicate = A: DeserializeFromValue<MyError>)]
 struct Generic2<A> {
-    #[jayson(error = MyError)]
+    #[deserr(error = MyError)]
     some_field: Option<A>,
 }
 
@@ -298,19 +298,19 @@ fn map_option(x: Option<u8>) -> Option<u8> {
 }
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 struct FieldMap {
-    #[jayson(map = map_option)]
+    #[deserr(map = map_option)]
     some_field: Option<u8>,
 }
 
-// For AscDesc, we have __Jayson_E where __Jayson_E: MergeWithError<AscDescError>
+// For AscDesc, we have __Deserr_E where __Deserr_E: MergeWithError<AscDescError>
 // Then for the struct that contains AscDesc, we don't want to repeat this whole requirement
-// so instead we do: AscDesc: DeserializeFromValue<__Jayson_E>
+// so instead we do: AscDesc: DeserializeFromValue<__Deserr_E>
 // but that's only if it's generic! If it's not, we don't even need to have any requirements
 
-// #[jayson(where_predicates_from_fields)]
+// #[deserr(where_predicates_from_fields)]
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[jayson(where_predicate = Option<u8> : DeserializeFromValue<__Jayson_E>)]
+#[deserr(where_predicate = Option<u8> : DeserializeFromValue<__Deserr_E>)]
 struct FieldConditions {
     some_field: Option<u8>,
 }
@@ -338,39 +338,39 @@ fn parse_hello3(b: &str) -> Result<Hello3, MyError> {
 }
 
 #[derive(Debug, PartialEq, DeserializeFromValue)]
-#[jayson(from(bool) = parse_hello -> NeverError)]
+#[deserr(from(bool) = parse_hello -> NeverError)]
 enum Hello {
     A,
     B,
 }
 #[derive(Debug, PartialEq, DeserializeFromValue)]
-#[jayson(error = MyError, from(bool) = parse_hello2 -> NeverError)]
+#[deserr(error = MyError, from(bool) = parse_hello2 -> NeverError)]
 enum Hello2 {
     A,
     B,
 }
 #[derive(Debug, PartialEq, DeserializeFromValue)]
-#[jayson(from(& String) = parse_hello3 -> MyError)]
+#[deserr(from(& String) = parse_hello3 -> MyError)]
 enum Hello3 {
     A,
     B,
 }
 
 #[derive(Debug, PartialEq, DeserializeFromValue)]
-#[jayson(where_predicate = Hello: DeserializeFromValue<__Jayson_E>)]
+#[deserr(where_predicate = Hello: DeserializeFromValue<__Deserr_E>)]
 struct ContainsHello {
     _x: Hello,
 }
 
 #[derive(Debug, PartialEq, DeserializeFromValue)]
-#[jayson(error = MyError)]
+#[deserr(error = MyError)]
 struct ContainsHello2 {
     _x: Hello,
 }
 
 #[derive(Debug, PartialEq, DeserializeFromValue)]
 struct ContainsHello3 {
-    #[jayson(needs_predicate)]
+    #[deserr(needs_predicate)]
     _x: Hello,
 }
 
@@ -401,14 +401,14 @@ fn validate_it2(x: Validated2) -> Result<Validated2, MyValidationError> {
 }
 
 #[derive(Debug, DeserializeFromValue)]
-#[jayson(validate = validate_it -> MyValidationError)]
+#[deserr(validate = validate_it -> MyValidationError)]
 struct Validated {
     x: u8,
     y: u16,
 }
 
 #[derive(Debug, DeserializeFromValue)]
-#[jayson(error = MyError, validate = validate_it2 -> MyValidationError)]
+#[deserr(error = MyError, validate = validate_it2 -> MyValidationError)]
 struct Validated2 {
     x: u8,
     y: u16,
@@ -430,7 +430,7 @@ where
     T: Serialize + DeserializeFromValue<MyError> + PartialEq + std::fmt::Debug,
 {
     let json = serde_json::to_value(&x).unwrap();
-    let result: T = jayson::deserialize(json).unwrap();
+    let result: T = deserr::deserialize(json).unwrap();
 
     assert_eq!(result, x);
 }
@@ -443,15 +443,15 @@ where
     let json: Value = serde_json::from_str(j).unwrap();
 
     let actual_serde: Result<T, _> = serde_json::from_str(j);
-    let actual_jayson: Result<T, _> = jayson::deserialize(json);
+    let actual_deserr: Result<T, _> = deserr::deserialize(json);
 
-    match (actual_serde, actual_jayson) {
-        (Ok(actual_serde), Ok(actual_jayson)) => {
-            assert_eq!(actual_jayson, actual_serde);
+    match (actual_serde, actual_deserr) {
+        (Ok(actual_serde), Ok(actual_deserr)) => {
+            assert_eq!(actual_deserr, actual_serde);
         }
         (Err(_), Err(_)) => {}
-        (Ok(_), Err(_)) => panic!("jayson fails to deserialize but serde does not"),
-        (Err(_), Ok(_)) => panic!("serde fails to deserialize but jayson does not"),
+        (Ok(_), Err(_)) => panic!("deserr fails to deserialize but serde does not"),
+        (Err(_), Ok(_)) => panic!("serde fails to deserialize but deserr does not"),
     }
 }
 
@@ -462,7 +462,7 @@ where
     T: DeserializeFromValue<E> + std::fmt::Debug,
 {
     let json: Value = serde_json::from_str(j).unwrap();
-    let actual: E = jayson::deserialize::<T, _, _>(json).unwrap_err();
+    let actual: E = deserr::deserialize::<T, _, _>(json).unwrap_err();
 
     assert_eq!(actual, expected);
 }
@@ -473,7 +473,7 @@ where
     T: DeserializeFromValue<E> + std::fmt::Debug + PartialEq,
 {
     let json: Value = serde_json::from_str(j).unwrap();
-    let actual: T = jayson::deserialize::<T, _, E>(json).unwrap();
+    let actual: T = deserr::deserialize::<T, _, E>(json).unwrap();
 
     assert_eq!(actual, expected);
 }

@@ -4,7 +4,7 @@
 
 extern crate test;
 
-use jayson::DeserializeFromValue;
+use deserr::DeserializeFromValue;
 use serde_derive::{Deserialize, Serialize};
 use test::Bencher;
 
@@ -13,11 +13,11 @@ fn input_json() -> String {
 }
 
 #[bench]
-fn bench_deserialize_jayson(b: &mut Bencher) {
+fn bench_deserialize_deserr(b: &mut Bencher) {
     let j = input_json();
     b.iter(|| {
         let json = serde_json::from_str::<serde_json::Value>(&j).unwrap();
-        let _t: Twitter = jayson::deserialize::<_, _, jayson::StandardError>(json).unwrap();
+        let _t: Twitter = deserr::deserialize::<_, _, deserr::StandardError>(json).unwrap();
     });
 }
 
@@ -179,7 +179,7 @@ struct Media {
     url: String,
     display_url: String,
     expanded_url: String,
-    #[jayson(rename = "type")]
+    #[deserr(rename = "type")]
     #[serde(rename = "type")]
     media_type: String,
     sizes: Sizes,

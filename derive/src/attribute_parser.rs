@@ -34,11 +34,11 @@ pub struct FieldAttributesInfo {
 /// The value of the `default` field attribute
 #[derive(Debug, Clone)]
 pub enum DefaultFieldAttribute {
-    /// `#[jayson(default)]`
+    /// `#[deserr(default)]`
     ///
     /// The default value is given by the type's `std::default::Default` implementation
     DefaultTrait,
-    /// `#[jayson(default = expression)]`
+    /// `#[deserr(default = expression)]`
     ///
     /// The default value is given by the given expression
     Function(Expr),
@@ -49,12 +49,12 @@ impl FieldAttributesInfo {
     ///
     /// This is used to transform a list of attributes, such as the following:
     /// ```ignore
-    /// #[jayson(rename = "a")]
-    /// #[jayson(default)]
+    /// #[deserr(rename = "a")]
+    /// #[deserr(default)]
     /// ```
     /// into a single equivalent attribute:
     /// ```ignore
-    /// #[jayson(rename = "a", default)]
+    /// #[deserr(rename = "a", default)]
     /// ```
     ///
     /// An error is returned iff the same attribute is defined twice.
@@ -112,24 +112,24 @@ impl FieldAttributesInfo {
 fn parse_rename(input: &ParseBuffer) -> Result<LitStr, syn::Error> {
     let _eq = input.parse::<Token![=]>()?;
     let ident = input.parse::<LitStr>()?;
-    // #[jayson( ... rename = ident )]
+    // #[deserr( ... rename = ident )]
     Ok(ident)
 }
 
 impl syn::parse::Parse for FieldAttributesInfo {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut this = FieldAttributesInfo::default();
-        // parse starting right after #[jayson .... ]
+        // parse starting right after #[deserr .... ]
         // so first get the content inside the parentheses
 
         let content;
         let _ = parenthesized!(content in input);
         let input = content;
-        // consumed input: #[jayson( .... )]
+        // consumed input: #[deserr( .... )]
 
         loop {
             let attr_name = input.parse::<Ident>()?;
-            // consumed input: #[jayson( ... attr_name ... )]
+            // consumed input: #[deserr( ... attr_name ... )]
             match attr_name.to_string().as_str() {
                 "rename" => {
                     this.rename = Some(parse_rename(&input)?);
@@ -138,7 +138,7 @@ impl syn::parse::Parse for FieldAttributesInfo {
                     if input.peek(Token![=]) {
                         let _eq = input.parse::<Token![=]>()?;
                         let expr = input.parse::<Expr>()?;
-                        // #[jayson( ... default = expr )]
+                        // #[deserr( ... default = expr )]
                         this.default = Some(DefaultFieldAttribute::Function(expr));
                     } else {
                         this.default = Some(DefaultFieldAttribute::DefaultTrait);
@@ -148,24 +148,24 @@ impl syn::parse::Parse for FieldAttributesInfo {
                 "missing_field_error" => {
                     let _eq = input.parse::<Token![=]>()?;
                     let expr = input.parse::<Expr>()?;
-                    // #[jayson( ... missing_field_error = expr )]
+                    // #[deserr( ... missing_field_error = expr )]
                     this.missing_field_error = Some(expr);
                 }
                 "needs_predicate" => this.needs_predicate = true,
                 "error" => {
                     let _eq = input.parse::<Token![=]>()?;
                     let err_ty = input.parse::<syn::Type>()?;
-                    // #[jayson( ... error = err_ty )]
+                    // #[deserr( ... error = err_ty )]
                     this.error = Some(err_ty);
                 }
                 "map" => {
                     let _eq = input.parse::<Token![=]>()?;
                     let func = input.parse::<syn::ExprPath>()?;
-                    // #[jayson( ... map = func )]
+                    // #[deserr( ... map = func )]
                     this.map = Some(func);
                 }
                 _ => {
-                    let message = format!("Unknown jayson field attribute: {}", attr_name);
+                    let message = format!("Unknown deserr field attribute: {}", attr_name);
                     return Result::Err(syn::Error::new_spanned(attr_name, message));
                 }
             }
@@ -188,13 +188,13 @@ impl syn::parse::Parse for FieldAttributesInfo {
 
 /// Parses an array of `syn::Attribute` into a single `FieldAttributesInfo` containing the
 /// relevant information for the generation of the code deserialising each field.
-pub fn read_jayson_field_attributes(
+pub fn read_deserr_field_attributes(
     attributes: &[Attribute],
 ) -> Result<FieldAttributesInfo, syn::Error> {
     let mut this = FieldAttributesInfo::default();
     for attribute in attributes {
         if let Some(ident) = attribute.path.get_ident() {
-            if ident != "jayson" {
+            if ident != "deserr" {
                 continue;
             }
             let other = parse2::<FieldAttributesInfo>(attribute.tokens.clone())?;
@@ -209,15 +209,15 @@ pub fn read_jayson_field_attributes(
 /// The value of the `default` field attribute
 #[derive(Debug, Clone)]
 pub enum RenameAll {
-    /// `#[jayson(rename_all = camelCase)]`
+    /// `#[deserr(rename_all = camelCase)]`
     CamelCase,
-    /// `#[jayson(rename_all = lowercase)]`
+    /// `#[deserr(rename_all = lowercase)]`
     LowerCase,
 }
 /// The value of the `tag` field attribute
 #[derive(Debug, Clone)]
 pub enum TagType {
-    /// `#[jayson(tag = "somestring")]`
+    /// `#[deserr(tag = "somestring")]`
     Internal(String),
     /// An external tag is the default value, when there is no `tag` attribute.
     External,
@@ -230,11 +230,11 @@ impl Default for TagType {
 /// The value of the `deny_unknown_fields` field attribute
 #[derive(Debug, Clone)]
 pub enum DenyUnknownFields {
-    /// `#[jayson(deny_unknown_fields)]`
+    /// `#[deserr(deny_unknown_fields)]`
     ///
     /// Unknown fields should return a default error.
     DefaultError,
-    /// `#[jayson(deny_unknown_fields = func)]`
+    /// `#[deserr(deny_unknown_fields = func)]`
     ///
     /// Unknown fields return an error defined by the function of type `Fn(&str) -> CustomError`.
     /// The input to the function is the name of the unknown field.
@@ -284,12 +284,12 @@ impl ContainerAttributesInfo {
     ///
     /// This is used to transform a list of attributes, such as the following:
     /// ```ignore
-    /// #[jayson(rename_all = lowercase)]
-    /// #[jayson(error = MyError)]
+    /// #[deserr(rename_all = lowercase)]
+    /// #[deserr(error = MyError)]
     /// ```
     /// into a single equivalent attribute:
     /// ```ignore
-    /// #[jayson(rename_all = lowercase, error = MyError)]
+    /// #[deserr(rename_all = lowercase, error = MyError)]
     /// ```
     ///
     /// An error is returned iff the same attribute is defined twice.
@@ -366,7 +366,7 @@ impl ContainerAttributesInfo {
 fn parse_rename_all(input: &ParseBuffer) -> Result<RenameAll, syn::Error> {
     let _eq = input.parse::<Token![=]>()?;
     let ident = input.parse::<Ident>()?;
-    // #[jayson( ... rename_all = ident )]
+    // #[deserr( ... rename_all = ident )]
     let rename_all = match ident.to_string().as_str() {
         "camelCase" => RenameAll::CamelCase,
         "lowercase" => RenameAll::LowerCase,
@@ -384,7 +384,7 @@ fn parse_function_returning_error(
     input: &ParseBuffer,
 ) -> Result<FunctionReturningError, syn::Error> {
     let function = input.parse::<ExprPath>()?;
-    // #[jayson( .. from(from_ty) = function::path::<_> )]
+    // #[deserr( .. from(from_ty) = function::path::<_> )]
     let _arrow = input.parse::<Token![->]>()?;
     let error_ty = input.parse::<syn::Type>()?;
     Ok(FunctionReturningError { function, error_ty })
@@ -393,13 +393,13 @@ fn parse_function_returning_error(
 fn parse_attribute_from(span: Span, input: &ParseBuffer) -> Result<AttributeFrom, syn::Error> {
     let content;
     let _ = parenthesized!(content in input);
-    // #[jayson( .. from(..) ..)]
+    // #[deserr( .. from(..) ..)]
     let is_ref = content.parse::<Token![&]>().is_ok();
 
     let from_ty = content.parse::<syn::Type>()?;
-    // #[jayson( .. from(from_ty) ..)]
+    // #[deserr( .. from(from_ty) ..)]
     let _eq = input.parse::<Token![=]>()?;
-    // #[jayson( .. from(from_ty) = ..)]
+    // #[deserr( .. from(from_ty) = ..)]
     let function = parse_function_returning_error(input)?;
 
     Ok(AttributeFrom {
@@ -413,17 +413,17 @@ fn parse_attribute_from(span: Span, input: &ParseBuffer) -> Result<AttributeFrom
 impl syn::parse::Parse for ContainerAttributesInfo {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut this = ContainerAttributesInfo::default();
-        // parse starting right after #[jayson .... ]
+        // parse starting right after #[deserr .... ]
         // so first get the content inside the parentheses
 
         let content;
         let _ = parenthesized!(content in input);
         let input = content;
-        // consumed input: #[jayson( .... )]
+        // consumed input: #[deserr( .... )]
 
         loop {
             let attr_name = input.parse::<Ident>()?;
-            // consumed input: #[jayson( ... attr_name ... )]
+            // consumed input: #[deserr( ... attr_name ... )]
             match attr_name.to_string().as_str() {
                 "rename_all" => {
                     let rename_all = parse_rename_all(&input)?;
@@ -433,21 +433,21 @@ impl syn::parse::Parse for ContainerAttributesInfo {
                 "tag" => {
                     let _eq = input.parse::<Token![=]>()?;
                     let lit = input.parse::<LitStr>()?;
-                    // #[jayson( ... tag = "lit" )]
+                    // #[deserr( ... tag = "lit" )]
                     this.tag = TagType::Internal(lit.value());
                     this.tag_span = Some(attr_name.span());
                 }
                 "error" => {
                     let _eq = input.parse::<Token![=]>()?;
                     let err_ty = input.parse::<syn::Type>()?;
-                    // #[jayson( ... error = err_ty )]
+                    // #[deserr( ... error = err_ty )]
                     this.err_ty = Some(err_ty);
                 }
                 "deny_unknown_fields" => {
                     if input.peek(Token![=]) {
                         let _eq = input.parse::<Token![=]>()?;
                         let func = input.parse::<ExprPath>()?;
-                        // #[jayson( ... deny_unknown_fields = func )]
+                        // #[deserr( ... deny_unknown_fields = func )]
                         this.deny_unknown_fields = Some(DenyUnknownFields::Function(func));
                     } else {
                         this.deny_unknown_fields = Some(DenyUnknownFields::DefaultError);
@@ -459,27 +459,27 @@ impl syn::parse::Parse for ContainerAttributesInfo {
                     this.from = Some(from_attr);
                 }
                 "validate" => {
-                    // #[jayson( ... validate .. )]
+                    // #[deserr( ... validate .. )]
                     let _eq = input.parse::<Token![=]>()?;
-                    // #[jayson( ... validate = .. )]
+                    // #[deserr( ... validate = .. )]
                     let validate_func = parse_function_returning_error(&input)?;
-                    // #[jayson( ... validate = some::func<T> )]
+                    // #[deserr( ... validate = some::func<T> )]
                     this.validate = Some(validate_func);
                 }
                 "generic_param" => {
                     let _eq = input.parse::<Token![=]>()?;
                     let param = input.parse::<GenericParam>()?;
-                    // #[jayson( ... generic_params = P )]
+                    // #[deserr( ... generic_params = P )]
                     this.generic_params.push(param);
                 }
                 "where_predicate" => {
                     let _eq = input.parse::<Token![=]>()?;
                     let pred = input.parse::<WherePredicate>()?;
-                    // #[jayson( ... where_predicate = P: Display + Debug )]
+                    // #[deserr( ... where_predicate = P: Display + Debug )]
                     this.where_predicates.push(pred);
                 }
                 _ => {
-                    let message = format!("Unknown jayson container attribute: {}", attr_name);
+                    let message = format!("Unknown deserr container attribute: {}", attr_name);
                     return Result::Err(syn::Error::new_spanned(attr_name, message));
                 }
             }
@@ -538,13 +538,13 @@ pub fn validate_container_attributes(
 
 /// Parses an array of `syn::Attribute` into a single `FieldAttributesInfo` containing the
 /// relevant information for the generation of the code deserialising each field.
-pub fn read_jayson_container_attributes(
+pub fn read_deserr_container_attributes(
     attributes: &[Attribute],
 ) -> Result<ContainerAttributesInfo, syn::Error> {
     let mut this = ContainerAttributesInfo::default();
     for attribute in attributes {
         if let Some(ident) = attribute.path.get_ident() {
-            if ident != "jayson" {
+            if ident != "deserr" {
                 continue;
             }
             let other = parse2::<ContainerAttributesInfo>(attribute.tokens.clone())?;
@@ -562,9 +562,9 @@ pub fn read_jayson_container_attributes(
 /// For example:
 /// ```ignore
 /// enum X {
-///     #[jayson(rename = "Apple")]
+///     #[deserr(rename = "Apple")]
 ///     A
-///     #[jayson(rename = "Pear", rename_all = camelCase)]
+///     #[deserr(rename = "Pear", rename_all = camelCase)]
 ///     P { type_of_pear: PearType }
 /// }
 /// ```
@@ -579,12 +579,12 @@ impl VariantAttributesInfo {
     ///
     /// This is used to transform a list of attributes, such as the following:
     /// ```ignore
-    /// #[jayson(rename_all = lowercase)]
-    /// #[jayson(error = MyError)]
+    /// #[deserr(rename_all = lowercase)]
+    /// #[deserr(error = MyError)]
     /// ```
     /// into a single equivalent attribute:
     /// ```ignore
-    /// #[jayson(rename_all = lowercase, error = MyError)]
+    /// #[deserr(rename_all = lowercase, error = MyError)]
     /// ```
     ///
     /// An error is returned iff the same attribute is defined twice.
@@ -614,17 +614,17 @@ impl VariantAttributesInfo {
 impl syn::parse::Parse for VariantAttributesInfo {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut this = VariantAttributesInfo::default();
-        // parse starting right after #[jayson .... ]
+        // parse starting right after #[deserr .... ]
         // so first get the content inside the parentheses
 
         let content;
         let _ = parenthesized!(content in input);
         let input = content;
-        // consumed input: #[jayson( .... )]
+        // consumed input: #[deserr( .... )]
 
         loop {
             let attr_name = input.parse::<Ident>()?;
-            // consumed input: #[jayson( ... attr_name ... )]
+            // consumed input: #[deserr( ... attr_name ... )]
             match attr_name.to_string().as_str() {
                 "rename" => {
                     this.rename = Some(parse_rename(&input)?);
@@ -634,7 +634,7 @@ impl syn::parse::Parse for VariantAttributesInfo {
                     this.rename_all_span = Some(attr_name.span());
                 }
                 _ => {
-                    let message = format!("Unknown jayson variant attribute: {}", attr_name);
+                    let message = format!("Unknown deserr variant attribute: {}", attr_name);
                     return Result::Err(syn::Error::new_spanned(attr_name, message));
                 }
             }
@@ -657,13 +657,13 @@ impl syn::parse::Parse for VariantAttributesInfo {
 
 /// Parses an array of `syn::Attribute` into a single `FieldAttributesInfo` containing the
 /// relevant information for the generation of the code deserialising each field.
-pub fn read_jayson_variant_attributes(
+pub fn read_deserr_variant_attributes(
     attributes: &[Attribute],
 ) -> Result<VariantAttributesInfo, syn::Error> {
     let mut this = VariantAttributesInfo::default();
     for attribute in attributes {
         if let Some(ident) = attribute.path.get_ident() {
-            if ident != "jayson" {
+            if ident != "deserr" {
                 continue;
             }
             let other = parse2::<VariantAttributesInfo>(attribute.tokens.clone())?;

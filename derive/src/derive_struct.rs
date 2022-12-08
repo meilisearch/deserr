@@ -18,21 +18,21 @@ pub fn generate_derive_struct_impl(
 
     quote! {
          #impl_trait_tokens {
-            fn deserialize_from_value<V: jayson::IntoValue>(jayson_value__: jayson::Value<V>, jayson_location__: jayson::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
-                let jayson_final__ = match jayson_value__ {
+            fn deserialize_from_value<V: deserr::IntoValue>(deserr_value__: deserr::Value<V>, deserr_location__: deserr::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
+                let deserr_final__ = match deserr_value__ {
                     // The value must always be a map
-                    jayson::Value::Map(jayson_map__) => {
-                        let mut jayson_error__ = None;
+                    deserr::Value::Map(deserr_map__) => {
+                        let mut deserr_error__ = None;
                         #fields_impl
                     }
                     // this is the case where the value is not a map
                     v @ _ => {
                         ::std::result::Result::Err(
-                            jayson::take_result_content(<#err_ty as jayson::DeserializeError>::incorrect_value_kind(
+                            deserr::take_result_content(<#err_ty as deserr::DeserializeError>::incorrect_value_kind(
                                 None,
                                 v.kind(),
-                                &[jayson::ValueKind::Map],
-                                jayson_location__
+                                &[deserr::ValueKind::Map],
+                                deserr_location__
                             ))
                         )
                     }
