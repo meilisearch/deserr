@@ -7,6 +7,7 @@ description = "Deserarialization library with focus on error handling"
 repository = "https://github.com/meilisearch/deserr"
 readme = "README.md"
 exclude = ["benches"]
+keywords = ["deserialization", "error"]
 edition = "2021"
 
 [dependencies]
