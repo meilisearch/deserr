@@ -72,6 +72,12 @@ enum Tag {
     B,
 }
 
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+enum Untagged {
+    A,
+    B,
+}
+
 fn unknown_field_error_gen<E>(k: &str, _accepted: &[&str], location: deserr::ValuePointerRef) -> E
 where
     E: DeserializeError,
@@ -88,6 +94,8 @@ struct Example {
     x: String,
     t1: Tag,
     t2: Box<Tag>,
+    ut1: Untagged,
+    ut2: Box<Untagged>,
     n: Box<Nested>,
 }
 
@@ -485,6 +493,8 @@ fn test_de() {
         x: "X".to_owned(),
         t1: Tag::A,
         t2: Box::new(Tag::B),
+        ut1: Untagged::A,
+        ut2: Box::new(Untagged::B),
         n: Box::new(Nested {
             y: Some(vec!["Y".to_owned(), "Y".to_owned()]),
             z: None,

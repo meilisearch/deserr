@@ -3,7 +3,8 @@ use deserr::DeserializeFromValue;
 #[derive(DeserializeFromValue)]
 #[deserr(error = deserr::Error)]
 enum Enum {
-    Variant,
+    EmptyVariant,
+    VariantWithSomething { data: usize },
 }
 
 fn main() {}
