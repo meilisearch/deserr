@@ -9,7 +9,7 @@ Unlike serde, Deserr does not parse the data in its serialization format itself,
 but offload the work to other crates. Instead, it deserializes
 the already-parsed serialized data into the final type. For example:
 
-```ignore
+```rust,ignore
 // bytes of the serialized value
 let s: &str = ".." ;
 // parse serialized data using another crate, such as `serde_json`
@@ -119,7 +119,7 @@ impl DeserializeFromValue<MyError> for Name {
 
 ### Using macros
 
-```ignore
+```rust,ignore
 #[derive(DeserializeFromValue)]
 #[deserr(error = MyError)]
 struct User {
