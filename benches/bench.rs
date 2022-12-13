@@ -1,5 +1,4 @@
 #![feature(test)]
-#![feature(bench_black_box)]
 #![allow(clippy::struct_excessive_bools)]
 
 extern crate test;
@@ -17,7 +16,7 @@ fn bench_deserialize_deserr(b: &mut Bencher) {
     let j = input_json();
     b.iter(|| {
         let json = serde_json::from_str::<serde_json::Value>(&j).unwrap();
-        let _t: Twitter = deserr::deserialize::<_, _, deserr::StandardError>(json).unwrap();
+        let _t: Twitter = deserr::deserialize::<_, _, deserr::DefaultError>(json).unwrap();
     });
 }
 

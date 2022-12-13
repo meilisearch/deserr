@@ -1,42 +1,11 @@
-/*!
-Deserr is a crate for deserializing data, with the ability to return
-custom, type-specific errors upon failure.
-
-Unlike serde, Deserr does not parse the data in its serialization format itself,
-but offload that work to other crates. Instead, it deserializes
-the already-parsed serialized data into the final type. For example:
-
-```ignore
-// bytes of the serialized value
-let s: &str = "{ "x": 7 }" ;
-// parsed serialized data
-let json: serde_json::Value = serde_json::from_str(s)?;
-// finally deserialize with Deserr
-let data = deserr::deserialize::<T, serde_json::Value, MyError>(json)?;
-```
-
-Thus, Deserr is a bit slower than crates that immediately deserialize a value while
-parsing at the same time.
-
-The main parts of Deserr are:
-1. [`DeserializeFromValue<E>`] is the main trait for deserialization
-2. [`IntoValue`] and [`Value`] describe the shape that the parsed serialized data must have
-3. [`DeserializeError`] is the trait that all deserialization errors must conform to
-4. [`MergeWithError<E>`] describes how to combine multiple errors together. It allows Deserr
-to return multiple deserialization errors at once.
-5. [`ValuePointerRef`] and [`ValuePointer`] point to locations within the value. They are
-used to locate the origin of an error.
-6. [`deserialize`] is the main function to use to deserialize a value
-7. The [`DeserializeFromValue`](derive@DeserializeFromValue) derive proc macro
-
-If the feature `serde` is activated, then an implementation of [`IntoValue`] is provided
-for the type `serde_json::Value`. This allows using Deserr to deserialize from JSON.
-*/
-
+#![doc = include_str!("../README.md")]
 #![allow(clippy::len_without_is_empty)]
+mod default_error;
 mod impls;
 #[cfg(feature = "serde_json")]
 mod serde_json;
+
+pub use default_error::DefaultError;
 
 /**
 It is possible to derive the `DeserializeFromValue` trait for structs and enums with named fields.
@@ -185,6 +154,7 @@ pub enum ValuePointerComponent {
 pub struct ValuePointer {
     pub path: Vec<ValuePointerComponent>,
 }
+
 impl Display for ValuePointer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for component in self.path.iter().rev() {
@@ -213,6 +183,7 @@ pub enum ValueKind {
     Sequence,
     Map,
 }
+
 impl Display for ValueKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -227,6 +198,7 @@ impl Display for ValueKind {
         }
     }
 }
+
 impl Debug for ValueKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Display::fmt(self, f)
@@ -250,6 +222,7 @@ pub enum Value<V: IntoValue> {
     Sequence(V::Sequence),
     Map(V::Map),
 }
+
 impl<V: IntoValue> Value<V> {
     pub fn kind(&self) -> ValueKind {
         match self {
@@ -375,6 +348,7 @@ pub trait MergeWithError<T>: Sized {
 pub trait DeserializeError: Sized + MergeWithError<Self> {
     /// Return the origin of the error, if it can be found
     fn location(&self) -> Option<ValuePointer>;
+
     /// Create a new error due to an unexpected value kind.
     ///
     /// Return `Ok` to continue deserializing or `Err` to fail early.
@@ -384,6 +358,7 @@ pub trait DeserializeError: Sized + MergeWithError<Self> {
         accepted: &[ValueKind],
         location: ValuePointerRef,
     ) -> Result<Self, Self>;
+
     /// Create a new error due to a missing key.
     ///
     /// Return `Ok` to continue deserializing or `Err` to fail early.
@@ -392,6 +367,7 @@ pub trait DeserializeError: Sized + MergeWithError<Self> {
         field: &str,
         location: ValuePointerRef,
     ) -> Result<Self, Self>;
+
     /// Create a new error due to finding an unknown key.
     ///
     /// Return `Ok` to continue deserializing or `Err` to fail early.
@@ -401,6 +377,7 @@ pub trait DeserializeError: Sized + MergeWithError<Self> {
         accepted: &[&str],
         location: ValuePointerRef,
     ) -> Result<Self, Self>;
+
     /// Create a new error with the custom message.
     ///
     /// Return `Ok` to continue deserializing or `Err` to fail early.

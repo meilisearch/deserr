@@ -1,68 +1,8 @@
-use deserr::{DeserializeError, DeserializeFromValue, MergeWithError, ValuePointerRef};
+use deserr::{
+    DefaultError, DeserializeError, DeserializeFromValue, MergeWithError, ValuePointerRef,
+};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum MyError {
-    Unexpected(String),
-    MissingField(String),
-    IncorrectValueKind { accepted: Vec<deserr::ValueKind> },
-    UnknownKey { key: String, accepted: Vec<String> },
-    CustomMissingField(u8),
-    Validation,
-}
-impl MergeWithError<MyError> for MyError {
-    fn merge(
-        _self_: Option<Self>,
-        other: MyError,
-        _merge_location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(other)
-    }
-}
-impl DeserializeError for MyError {
-    fn location(&self) -> Option<deserr::ValuePointer> {
-        None
-    }
-    fn incorrect_value_kind(
-        _self_: Option<Self>,
-        _actual: deserr::ValueKind,
-        accepted: &[deserr::ValueKind],
-        _location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(Self::IncorrectValueKind {
-            accepted: accepted.into(),
-        })
-    }
-
-    fn missing_field(
-        _self_: Option<Self>,
-        field: &str,
-        _location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(Self::MissingField(field.to_string()))
-    }
-
-    fn unknown_key(
-        _self_: Option<Self>,
-        key: &str,
-        accepted: &[&str],
-        _location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(Self::UnknownKey {
-            key: key.to_string(),
-            accepted: accepted.iter().map(<_>::to_string).collect(),
-        })
-    }
-
-    fn unexpected(
-        _self_: Option<Self>,
-        msg: &str,
-        _location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(Self::Unexpected(msg.to_string()))
-    }
-}
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[serde(tag = "sometag")]
@@ -106,7 +46,7 @@ struct Nested {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError)]
+#[deserr(error = DefaultError)]
 struct StructWithDefaultAttr {
     x: bool,
     #[serde(default = "create_default_u8")]
@@ -117,7 +57,7 @@ struct StructWithDefaultAttr {
     z: Option<String>,
 }
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError)]
+#[deserr(error = DefaultError)]
 struct StructWithTraitDefaultAttr {
     #[serde(default)]
     #[deserr(default)]
@@ -133,7 +73,7 @@ fn create_default_option_string() -> Option<String> {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[serde(tag = "t")]
-#[deserr(error = MyError, tag = "t")]
+#[deserr(error = DefaultError, tag = "t")]
 enum EnumWithOptionData {
     A {
         x: Option<u8>,
@@ -149,20 +89,20 @@ enum EnumWithOptionData {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError, rename_all = camelCase)]
+#[deserr(error = DefaultError, rename_all = camelCase)]
 #[serde(rename_all = "camelCase")]
 struct RenamedAllCamelCaseStruct {
     renamed_field: bool,
 }
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError, rename_all = lowercase)]
+#[deserr(error = DefaultError, rename_all = lowercase)]
 #[serde(rename_all = "lowercase")]
 struct RenamedAllLowerCaseStruct {
     renamed_field: bool,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError, tag = "t", rename_all = camelCase)]
+#[deserr(error = DefaultError, tag = "t", rename_all = camelCase)]
 #[serde(tag = "t")]
 #[serde(rename_all = "camelCase")]
 enum RenamedAllCamelCaseEnum {
@@ -170,7 +110,7 @@ enum RenamedAllCamelCaseEnum {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError, tag = "t")]
+#[deserr(error = DefaultError, tag = "t")]
 #[serde(tag = "t")]
 enum RenamedAllFieldsCamelCaseEnum {
     #[deserr(rename_all = camelCase)]
@@ -179,7 +119,7 @@ enum RenamedAllFieldsCamelCaseEnum {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError)]
+#[deserr(error = DefaultError)]
 struct StructWithRenamedField {
     #[deserr(rename = "renamed_field")]
     #[serde(rename = "renamed_field")]
@@ -187,7 +127,7 @@ struct StructWithRenamedField {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError, rename_all = camelCase)]
+#[deserr(error = DefaultError, rename_all = camelCase)]
 struct StructWithRenamedFieldAndRenameAll {
     #[deserr(rename = "renamed_field")]
     #[serde(rename = "renamed_field")]
@@ -195,28 +135,28 @@ struct StructWithRenamedFieldAndRenameAll {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError, deny_unknown_fields)]
+#[deserr(error = DefaultError, deny_unknown_fields)]
 #[serde(deny_unknown_fields)]
 struct StructDenyUnknownFields {
     x: bool,
 }
 
-fn unknown_field_error(k: &str, _accepted: &[&str], _location: ValuePointerRef) -> MyError {
-    MyError::UnknownKey {
+fn unknown_field_error(k: &str, _accepted: &[&str], _location: ValuePointerRef) -> DefaultError {
+    DefaultError::UnknownKey {
         key: k.to_owned(),
         accepted: vec!["don't know".to_string()],
     }
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError, deny_unknown_fields = unknown_field_error)]
+#[deserr(error = DefaultError, deny_unknown_fields = unknown_field_error)]
 #[serde(deny_unknown_fields)]
 struct StructDenyUnknownFieldsCustom {
     x: bool,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError, tag = "t", deny_unknown_fields)]
+#[deserr(error = DefaultError, tag = "t", deny_unknown_fields)]
 #[serde(tag = "t", deny_unknown_fields)]
 enum EnumDenyUnknownFields {
     SomeField { my_field: bool },
@@ -224,7 +164,7 @@ enum EnumDenyUnknownFields {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError, tag = "t", deny_unknown_fields = unknown_field_error)]
+#[deserr(error = DefaultError, tag = "t", deny_unknown_fields = unknown_field_error)]
 #[serde(tag = "t", deny_unknown_fields)]
 enum EnumDenyUnknownFieldsCustom {
     SomeField { my_field: bool },
@@ -232,19 +172,19 @@ enum EnumDenyUnknownFieldsCustom {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError)]
+#[deserr(error = DefaultError)]
 struct StructMissingFieldError {
-    #[deserr(missing_field_error = MyError::MissingField("lol".to_string()))]
+    #[deserr(missing_field_error = DefaultError::MissingField("lol".to_string()))]
     x: bool,
-    #[deserr(missing_field_error = MyError::CustomMissingField(1))]
+    #[deserr(missing_field_error = DefaultError::CustomMissingField(1))]
     y: bool,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError, tag = "t")]
+#[deserr(error = DefaultError, tag = "t")]
 enum EnumMissingFieldError {
     A {
-        #[deserr(missing_field_error = MyError::CustomMissingField(0))]
+        #[deserr(missing_field_error = DefaultError::CustomMissingField(0))]
         x: bool,
     },
     B {
@@ -253,7 +193,7 @@ enum EnumMissingFieldError {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError, tag = "t")]
+#[deserr(error = DefaultError, tag = "t")]
 #[serde(tag = "t")]
 enum EnumRenamedVariant {
     #[serde(rename = "Apple")]
@@ -265,7 +205,7 @@ enum EnumRenamedVariant {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError, tag = "t")]
+#[deserr(error = DefaultError, tag = "t")]
 #[serde(tag = "t")]
 enum EnumRenamedField {
     A {
@@ -276,7 +216,7 @@ enum EnumRenamedField {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError, tag = "t")]
+#[deserr(error = DefaultError, tag = "t")]
 #[serde(tag = "t")]
 enum EnumRenamedAllVariant {
     #[deserr(rename_all = camelCase)]
@@ -285,15 +225,15 @@ enum EnumRenamedAllVariant {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(error = MyError)]
+#[deserr(error = DefaultError)]
 struct Generic<A> {
     some_field: A,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(where_predicate = __Deserr_E: MergeWithError<MyError>, where_predicate = A: DeserializeFromValue<MyError>)]
+#[deserr(where_predicate = __Deserr_E: MergeWithError<DefaultError>, where_predicate = A: DeserializeFromValue<DefaultError>)]
 struct Generic2<A> {
-    #[deserr(error = MyError)]
+    #[deserr(error = DefaultError)]
     some_field: Option<A>,
 }
 
@@ -337,11 +277,11 @@ fn parse_hello2(b: bool) -> Result<Hello2, NeverError> {
         false => Ok(Hello2::B),
     }
 }
-fn parse_hello3(b: &str) -> Result<Hello3, MyError> {
+fn parse_hello3(b: &str) -> Result<Hello3, DefaultError> {
     match b {
         "A" => Ok(Hello3::A),
         "B" => Ok(Hello3::B),
-        _ => Err(MyError::Unexpected("Hello3 from error".to_string())),
+        _ => Err(DefaultError::Unexpected("Hello3 from error".to_string())),
     }
 }
 
@@ -352,13 +292,13 @@ enum Hello {
     B,
 }
 #[derive(Debug, PartialEq, DeserializeFromValue)]
-#[deserr(error = MyError, from(bool) = parse_hello2 -> NeverError)]
+#[deserr(error = DefaultError, from(bool) = parse_hello2 -> NeverError)]
 enum Hello2 {
     A,
     B,
 }
 #[derive(Debug, PartialEq, DeserializeFromValue)]
-#[deserr(from(& String) = parse_hello3 -> MyError)]
+#[deserr(from(& String) = parse_hello3 -> DefaultError)]
 enum Hello3 {
     A,
     B,
@@ -371,7 +311,7 @@ struct ContainsHello {
 }
 
 #[derive(Debug, PartialEq, DeserializeFromValue)]
-#[deserr(error = MyError)]
+#[deserr(error = DefaultError)]
 struct ContainsHello2 {
     _x: Hello,
 }
@@ -383,13 +323,13 @@ struct ContainsHello3 {
 }
 
 struct MyValidationError;
-impl MergeWithError<MyValidationError> for MyError {
+impl MergeWithError<MyValidationError> for DefaultError {
     fn merge(
         _self_: Option<Self>,
         _other: MyValidationError,
         _merge_location: ValuePointerRef,
     ) -> Result<Self, Self> {
-        Err(MyError::Validation)
+        Err(DefaultError::Validation)
     }
 }
 
@@ -416,13 +356,13 @@ struct Validated {
 }
 
 #[derive(Debug, DeserializeFromValue)]
-#[deserr(error = MyError, validate = validate_it2 -> MyValidationError)]
+#[deserr(error = DefaultError, validate = validate_it2 -> MyValidationError)]
 struct Validated2 {
     x: u8,
     y: u16,
 }
 
-impl MergeWithError<NeverError> for MyError {
+impl MergeWithError<NeverError> for DefaultError {
     fn merge(
         _self_: Option<Self>,
         _other: NeverError,
@@ -435,7 +375,7 @@ impl MergeWithError<NeverError> for MyError {
 #[track_caller]
 fn compare_with_serde_roundtrip<T>(x: T)
 where
-    T: Serialize + DeserializeFromValue<MyError> + PartialEq + std::fmt::Debug,
+    T: Serialize + DeserializeFromValue<DefaultError> + PartialEq + std::fmt::Debug,
 {
     let json = serde_json::to_value(&x).unwrap();
     let result: T = deserr::deserialize(json).unwrap();
@@ -446,7 +386,7 @@ where
 #[track_caller]
 fn compare_with_serde<T>(j: &str)
 where
-    T: DeserializeOwned + DeserializeFromValue<MyError> + PartialEq + std::fmt::Debug,
+    T: DeserializeOwned + DeserializeFromValue<DefaultError> + PartialEq + std::fmt::Debug,
 {
     let json: Value = serde_json::from_str(j).unwrap();
 
@@ -616,7 +556,7 @@ fn test_de() {
     // struct with deny_unknown_fields with custom error function
     // assert error value is correct
 
-    assert_error_matches::<StructDenyUnknownFieldsCustom, MyError>(
+    assert_error_matches::<StructDenyUnknownFieldsCustom, DefaultError>(
         r#"{
             "x": true,
             "y": 8
@@ -636,7 +576,7 @@ fn test_de() {
     );
 
     // enum with deny_unknown_fields with custom error function, error check
-    assert_error_matches::<EnumDenyUnknownFieldsCustom, MyError>(
+    assert_error_matches::<EnumDenyUnknownFieldsCustom, DefaultError>(
         r#"{
             "t": "SomeField",
             "my_field": true,
@@ -647,38 +587,38 @@ fn test_de() {
     );
 
     // struct with custom missing field error, error check 1
-    assert_error_matches::<StructMissingFieldError, MyError>(
+    assert_error_matches::<StructMissingFieldError, DefaultError>(
         r#"{
             "y": true
         }
         "#,
-        MyError::MissingField("lol".to_string()),
+        DefaultError::MissingField("lol".to_string()),
     );
     // struct with custom missing field error, error check 2
-    assert_error_matches::<StructMissingFieldError, MyError>(
+    assert_error_matches::<StructMissingFieldError, DefaultError>(
         r#"{
             "x": true
         }
         "#,
-        MyError::CustomMissingField(1),
+        DefaultError::CustomMissingField(1),
     );
 
     // enum with custom missing field error, error check 1
-    assert_error_matches::<EnumMissingFieldError, MyError>(
+    assert_error_matches::<EnumMissingFieldError, DefaultError>(
         r#"{
             "t": "A"
         }
         "#,
-        MyError::CustomMissingField(0),
+        DefaultError::CustomMissingField(0),
     );
 
     // enum with custom missing field error, error check 2
-    assert_error_matches::<EnumMissingFieldError, MyError>(
+    assert_error_matches::<EnumMissingFieldError, DefaultError>(
         r#"{
             "t": "B"
         }
         "#,
-        MyError::MissingField("x".to_owned()),
+        DefaultError::MissingField("x".to_owned()),
     );
 
     // enum with renamed variants, roundtrip 1
@@ -702,7 +642,7 @@ fn test_de() {
     });
 
     // enum with deny_unknown_fields with custom error function, error check
-    assert_error_matches::<EnumDenyUnknownFieldsCustom, MyError>(
+    assert_error_matches::<EnumDenyUnknownFieldsCustom, DefaultError>(
         r#"{
             "t": "SomeField",
             "my_field": true,
@@ -712,31 +652,34 @@ fn test_de() {
         unknown_field_error("other", &[], ValuePointerRef::Origin),
     );
 
-    assert_ok_matches::<Hello, MyError>("true", Hello::A);
+    assert_ok_matches::<Hello, DefaultError>("true", Hello::A);
 
-    assert_error_matches::<Validated, MyError>(
+    assert_error_matches::<Validated, DefaultError>(
         r#"{
             "x": 2,
             "y": 1
         }
         "#,
-        MyError::Validation,
+        DefaultError::Validation,
     );
 
-    assert_ok_matches::<FieldMap, MyError>(
+    assert_ok_matches::<FieldMap, DefaultError>(
         r#"{ "some_field": null }"#,
         FieldMap {
             some_field: Some(1),
         },
     );
-    assert_ok_matches::<FieldMap, MyError>(
+    assert_ok_matches::<FieldMap, DefaultError>(
         r#"{  }"#,
         FieldMap {
             some_field: Some(1),
         },
     );
-    assert_ok_matches::<FieldMap, MyError>(r#"{ "some_field": 0 }"#, FieldMap { some_field: None });
-    assert_ok_matches::<FieldMap, MyError>(
+    assert_ok_matches::<FieldMap, DefaultError>(
+        r#"{ "some_field": 0 }"#,
+        FieldMap { some_field: None },
+    );
+    assert_ok_matches::<FieldMap, DefaultError>(
         r#"{ "some_field": 2 }"#,
         FieldMap {
             some_field: Some(2),
