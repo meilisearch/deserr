@@ -1,0 +1,5 @@
+error: Enum variants with unnamed associated data aren't supported by the DeserializeFromValue derive macro.
+ --> tests/ui/de-enum-untagged-with-unnamed-data.rs:7:25
+  |
+7 |     VariantWithSomething(u16),
+  |                         ^^^^^

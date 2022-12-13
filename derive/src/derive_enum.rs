@@ -137,3 +137,76 @@ fn generate_derive_tagged_enum_variant_impl(
         }
     }
 }
+
+/// Create a token stream that deserialises all the fields of the enum variant and return
+/// the fully deserialised enum.
+/// /!\ Currently, we only support untagged enum that only contains unit variants.
+///
+/// The context of the token stream is:
+///
+/// ```ignore
+/// let map: Map
+/// match tag_value_string.as_str() {
+///     === here ===
+///     key => { .. }
+/// }
+/// ```
+///
+pub fn generate_derive_untagged_enum_impl(
+    info: CommonDerivedTypeInfo,
+    variants: Vec<VariantInfo>,
+) -> TokenStream {
+    // `variant_impls` is the token stream of the code responsible for deserialising
+    // the enum variants and returning the correct variant. Since we've already ensured
+    // the enum was untagged, we can re-use the `generate_derive_tagged_enum_variant_impl`
+    // function and only use the `Unit` part of the match.
+    let variants_impls = variants
+        .into_iter()
+        .map(|v| generate_derive_tagged_enum_variant_impl(&info, &v))
+        .collect::<Vec<_>>();
+
+    let CommonDerivedTypeInfo {
+        impl_trait_tokens,
+        err_ty,
+        validate,
+    } = info;
+
+    quote! {
+         #impl_trait_tokens {
+            fn deserialize_from_value<V: deserr::IntoValue>(deserr_value__: deserr::Value<V>, deserr_location__: deserr::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
+                // The value must always be a string
+                let deserr_final__ = match deserr_value__ {
+                    deserr::Value::String(s) => {
+                        match s.as_str() {
+                            #(#variants_impls)*
+                            // this is the case where the tag exists and is a string, but its value does not
+                            // correspond to any valid enum variant name
+                            _ => {
+                                ::std::result::Result::Err(
+                                    <#err_ty as deserr::DeserializeError>::unexpected(
+                                        None,
+                                        // TODO: expected one of {expected_tags_list}, found {actual_tag} error message
+                                        "Incorrect tag value",
+                                        deserr_location__
+                                    )?
+                                )
+                            }
+                        }
+                    },
+                    // this is the case where the value is not a String
+                    v => {
+                        ::std::result::Result::Err(
+                            <#err_ty as deserr::DeserializeError>::incorrect_value_kind(
+                                None,
+                                v.kind(),
+                                &[deserr::ValueKind::Map],
+                                deserr_location__
+                            )?
+                        )
+                    }
+                }?;
+                #validate
+            }
+        }
+    }
+}
