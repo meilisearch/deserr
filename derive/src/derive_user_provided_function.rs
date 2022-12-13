@@ -35,14 +35,14 @@ pub fn generate_derive_user_function(
 
     quote! {
          #impl_trait_tokens {
-            fn deserialize_from_value<V: deserr::IntoValue>(deserr_value__: deserr::Value<V>, deserr_location__: deserr::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
+            fn deserialize_from_value<V: ::deserr::IntoValue>(deserr_value__: ::deserr::Value<V>, deserr_location__: ::deserr::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
                 // first create the intermediate from_ty
-                let deserr_from__ = <#from_ty as deserr::DeserializeFromValue<#err_ty>>::deserialize_from_value(deserr_value__, deserr_location__)?;
+                let deserr_from__ = <#from_ty as ::deserr::DeserializeFromValue<#err_ty>>::deserialize_from_value(deserr_value__, deserr_location__)?;
                 // then apply the function to it
                 let deserr_final__ = #function_call.map_err(|e| {
                     // then map the error to the final error type
-                    deserr::take_result_content(
-                        <#err_ty as deserr::MergeWithError<#function_error_ty>>::merge(None, e, deserr_location__)
+                    ::deserr::take_result_content(
+                        <#err_ty as ::deserr::MergeWithError<#function_error_ty>>::merge(None, e, deserr_location__)
                     )
                 })?;
                 #validate

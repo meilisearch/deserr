@@ -180,7 +180,7 @@ impl DerivedTypeInfo {
                 .type_params()
                 .map::<WherePredicate, _>(|param| {
                     let param = &param.ident;
-                    parse_quote!(#param : deserr::DeserializeFromValue<#err_ty>)
+                    parse_quote!(#param : ::deserr::DeserializeFromValue<#err_ty>)
                 })
                 .collect::<Vec<_>>();
 
@@ -189,7 +189,7 @@ impl DerivedTypeInfo {
             if user_provided_err_ty.is_none() {
                 generics_for_trait_impl.params.push(parse_quote!(#err_ty));
                 new_predicates.push(parse_quote!(
-                    #err_ty : deserr::DeserializeError
+                    #err_ty : ::deserr::DeserializeError
                 ));
             }
 
@@ -197,14 +197,14 @@ impl DerivedTypeInfo {
             if let Some(from) = &attrs.from {
                 let from_error = &from.function.error_ty;
                 new_predicates.push(parse_quote!(
-                    #err_ty : deserr::MergeWithError<#from_error>
+                    #err_ty : ::deserr::MergeWithError<#from_error>
                 ));
             }
             // Add MergeWithError<ValidateFunctionError> requirement
             if let Some(validate) = &attrs.validate {
                 let validate_error = &validate.error_ty;
                 new_predicates.push(parse_quote!(
-                    #err_ty : deserr::MergeWithError<#validate_error>
+                    #err_ty : ::deserr::MergeWithError<#validate_error>
                 ));
             }
 
@@ -233,7 +233,7 @@ impl DerivedTypeInfo {
                 };
                 for field_ty in all_fields_needing_pred {
                     new_predicates.push(parse_quote! {
-                        #field_ty : deserr::DeserializeFromValue<#err_ty>
+                        #field_ty : ::deserr::DeserializeFromValue<#err_ty>
                     });
                 }
             }
@@ -259,7 +259,7 @@ impl DerivedTypeInfo {
                 .extend(attrs.where_predicates.clone());
 
             quote! {
-                impl #impl_generics deserr::DeserializeFromValue<#err_ty> for #ident #ty_generics #bounded_where_clause
+                impl #impl_generics ::deserr::DeserializeFromValue<#err_ty> for #ident #ty_generics #bounded_where_clause
             }
         };
         {}; // the `impl` above breaks my text editor's syntax highlighting, inserting a pair
@@ -272,8 +272,8 @@ impl DerivedTypeInfo {
             } = validate_func;
             quote! {
                 #validate_func (deserr_final__) .map_err(|validate_error__|{
-                    deserr::take_result_content(
-                        <#err_ty as deserr::MergeWithError<#func_error_type>>::merge(
+                    ::deserr::take_result_content(
+                        <#err_ty as ::deserr::MergeWithError<#func_error_type>>::merge(
                             None,
                             validate_error__,
                             deserr_location__
@@ -378,14 +378,14 @@ impl NamedFieldsInfo {
                 }
             } else {
                 // no `default` attribute => use the DeserializeFromValue::default() method
-                quote! { deserr::DeserializeFromValue::<#err_ty>::default() }
+                quote! { ::deserr::DeserializeFromValue::<#err_ty>::default() }
             };
 
             let missing_field_error = match attrs.missing_field_error {
                 Some(error_expr) => {
                     quote! {
                         let deserr_e__ = #error_expr ;
-                        deserr_error__ = ::std::option::Option::Some(<#err_ty as deserr::MergeWithError<_>>::merge(
+                        deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
                             deserr_error__,
                             deserr_e__,
                             deserr_location__
@@ -394,7 +394,7 @@ impl NamedFieldsInfo {
                 }
                 None => {
                     quote! {
-                        deserr_error__ = ::std::option::Option::Some(<#err_ty as deserr::DeserializeError>::missing_field(
+                        deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::DeserializeError>::missing_field(
                             deserr_error__,
                             #key_name,
                             deserr_location__
@@ -441,7 +441,7 @@ impl NamedFieldsInfo {
             Some(DenyUnknownFields::DefaultError) => {
                 // Here we must give as argument the accepted keys
                 quote! {
-                    deserr_error__ = ::std::option::Option::Some(<#err_ty as deserr::DeserializeError>::unknown_key(
+                    deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::DeserializeError>::unknown_key(
                         deserr_error__,
                         deserr_key__,
                         &[#(#key_names),*],
@@ -451,7 +451,7 @@ impl NamedFieldsInfo {
             }
             Some(DenyUnknownFields::Function(func)) => quote! {
                 let deserr_e__ = #func (deserr_key__, &[#(#key_names),*], deserr_location__) ;
-                deserr_error__ = ::std::option::Option::Some(<#err_ty as deserr::MergeWithError<_>>::merge(
+                deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
                     deserr_error__,
                     deserr_e__,
                     deserr_location__,

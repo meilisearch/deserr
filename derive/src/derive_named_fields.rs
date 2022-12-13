@@ -26,28 +26,28 @@ pub fn generate_named_fields_impl(
         // The initial value of #field_names is `None` if the field has no initial value and
         // thus must be given by the map, and `Some` otherwise.
         #(
-            let mut #field_names : deserr::FieldState<_> = #field_defaults .into();
+            let mut #field_names : ::deserr::FieldState<_> = #field_defaults .into();
         )*
         // We traverse the entire map instead of looking for specific keys, because we want
         // to handle the case where a key is unknown and the attribute `deny_unknown_fields` was used.
-        for (deserr_key__, deserr_value__) in deserr::Map::into_iter(deserr_map__) {
+        for (deserr_key__, deserr_value__) in ::deserr::Map::into_iter(deserr_map__) {
             match deserr_key__.as_str() {
                 // For each known key, look at the corresponding value and try to deserialize it
                 #(
                     #key_names => {
                         #field_names = match
-                            <#field_tys as deserr::DeserializeFromValue<#field_errs>>::deserialize_from_value(
-                                deserr::IntoValue::into_value(deserr_value__),
+                            <#field_tys as ::deserr::DeserializeFromValue<#field_errs>>::deserialize_from_value(
+                                ::deserr::IntoValue::into_value(deserr_value__),
                                 deserr_location__.push_key(deserr_key__.as_str())
                             ) {
-                                Ok(x) => deserr::FieldState::Some(x),
+                                Ok(x) => ::deserr::FieldState::Some(x),
                                 Err(e) => {
-                                    deserr_error__ = Some(<#err_ty as deserr::MergeWithError<_>>::merge(
+                                    deserr_error__ = Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
                                         deserr_error__,
                                         e,
                                         deserr_location__.push_key(deserr_key__.as_str())
                                     )?);
-                                    deserr::FieldState::Err
+                                    ::deserr::FieldState::Err
                                 }
                             };
                     }

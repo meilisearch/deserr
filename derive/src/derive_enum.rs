@@ -28,25 +28,25 @@ pub fn generate_derive_tagged_enum_impl(
 
     quote! {
          #impl_trait_tokens {
-            fn deserialize_from_value<V: deserr::IntoValue>(deserr_value__: deserr::Value<V>, deserr_location__: deserr::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
+            fn deserialize_from_value<V: ::deserr::IntoValue>(deserr_value__: ::deserr::Value<V>, deserr_location__: ::deserr::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
                 // The value must always be a map
                 let deserr_final__ = match deserr_value__ {
-                    deserr::Value::Map(mut deserr_map__) => {
-                        let tag_value = deserr::Map::remove(&mut deserr_map__, #tag).ok_or_else(|| {
-                            deserr::take_result_content(<#err_ty as deserr::DeserializeError>::missing_field(
+                    ::deserr::Value::Map(mut deserr_map__) => {
+                        let tag_value = ::deserr::Map::remove(&mut deserr_map__, #tag).ok_or_else(|| {
+                            ::deserr::take_result_content(<#err_ty as ::deserr::DeserializeError>::missing_field(
                                 None,
                                 #tag,
                                 deserr_location__
                             ))
                         })?;
                         let tag_value_string = match tag_value.into_value() {
-                            deserr::Value::String(x) => x,
+                            ::deserr::Value::String(x) => x,
                             v => {
                                 return ::std::result::Result::Err(
-                                    <#err_ty as deserr::DeserializeError>::incorrect_value_kind(
+                                    <#err_ty as ::deserr::DeserializeError>::incorrect_value_kind(
                                         None,
                                         v.kind(),
-                                        &[deserr::ValueKind::String],
+                                        &[::deserr::ValueKind::String],
                                         deserr_location__.push_key(#tag)
                                     )?
                                 );
@@ -59,7 +59,7 @@ pub fn generate_derive_tagged_enum_impl(
                             // correspond to any valid enum variant name
                             _ => {
                                 ::std::result::Result::Err(
-                                    <#err_ty as deserr::DeserializeError>::unexpected(
+                                    <#err_ty as ::deserr::DeserializeError>::unexpected(
                                         None,
                                         // TODO: expected one of {expected_tags_list}, found {actual_tag} error message
                                         "Incorrect tag value",
@@ -72,10 +72,10 @@ pub fn generate_derive_tagged_enum_impl(
                     // this is the case where the value is not a map
                     v => {
                         ::std::result::Result::Err(
-                            <#err_ty as deserr::DeserializeError>::incorrect_value_kind(
+                            <#err_ty as ::deserr::DeserializeError>::incorrect_value_kind(
                                 None,
                                 v.kind(),
-                                &[deserr::ValueKind::Map],
+                                &[::deserr::ValueKind::Map],
                                 deserr_location__
                             )?
                         )
@@ -173,17 +173,17 @@ pub fn generate_derive_untagged_enum_impl(
 
     quote! {
          #impl_trait_tokens {
-            fn deserialize_from_value<V: deserr::IntoValue>(deserr_value__: deserr::Value<V>, deserr_location__: deserr::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
+            fn deserialize_from_value<V: ::deserr::IntoValue>(deserr_value__: ::deserr::Value<V>, deserr_location__: ::deserr::ValuePointerRef) -> ::std::result::Result<Self, #err_ty> {
                 // The value must always be a string
                 let deserr_final__ = match deserr_value__ {
-                    deserr::Value::String(s) => {
+                    ::deserr::Value::String(s) => {
                         match s.as_str() {
                             #(#variants_impls)*
                             // this is the case where the tag exists and is a string, but its value does not
                             // correspond to any valid enum variant name
                             _ => {
                                 ::std::result::Result::Err(
-                                    <#err_ty as deserr::DeserializeError>::unexpected(
+                                    <#err_ty as ::deserr::DeserializeError>::unexpected(
                                         None,
                                         // TODO: expected one of {expected_tags_list}, found {actual_tag} error message
                                         "Incorrect tag value",
@@ -196,10 +196,10 @@ pub fn generate_derive_untagged_enum_impl(
                     // this is the case where the value is not a String
                     v => {
                         ::std::result::Result::Err(
-                            <#err_ty as deserr::DeserializeError>::incorrect_value_kind(
+                            <#err_ty as ::deserr::DeserializeError>::incorrect_value_kind(
                                 None,
                                 v.kind(),
-                                &[deserr::ValueKind::Map],
+                                &[::deserr::ValueKind::Map],
                                 deserr_location__
                             )?
                         )
