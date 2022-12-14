@@ -364,9 +364,9 @@ pub trait DeserializeError: Sized + MergeWithError<Self> {
     /// Create a new error due to an unexpected value kind.
     ///
     /// Return `Ok` to continue deserializing or `Err` to fail early.
-    fn incorrect_value_kind(
+    fn incorrect_value_kind<V: IntoValue>(
         self_: Option<Self>,
-        actual: ValueKind,
+        actual: Value<V>,
         accepted: &[ValueKind],
         location: ValuePointerRef,
     ) -> Result<Self, Self>;

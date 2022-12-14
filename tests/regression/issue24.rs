@@ -1,4 +1,4 @@
-use deserr::{DeserializeError, DeserializeFromValue, MergeWithError};
+use deserr::{DeserializeError, DeserializeFromValue, IntoValue, MergeWithError};
 
 #[derive(Debug)]
 pub struct MyError;
@@ -7,9 +7,9 @@ impl DeserializeError for MyError {
         todo!()
     }
 
-    fn incorrect_value_kind(
+    fn incorrect_value_kind<V: IntoValue>(
         _self_: Option<Self>,
-        _actual: deserr::ValueKind,
+        _actual: deserr::Value<V>,
         _accepted: &[deserr::ValueKind],
         _location: deserr::ValuePointerRef,
     ) -> Result<Self, Self> {

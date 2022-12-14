@@ -56,7 +56,7 @@ impl DeserializeError for MyError {
     /// Create a new error due to an unexpected value kind.
     ///
     /// Return `Ok` to continue deserializing or `Err` to fail early.
-    fn incorrect_value_kind(_self_: Option<Self>, actual: ValueKind, accepted: &[ValueKind], location: ValuePointerRef) -> Result<Self, Self> {
+    fn incorrect_value_kind<V: IntoValue>(_self_: Option<Self>, actual: Value<V>, accepted: &[ValueKind], location: ValuePointerRef) -> Result<Self, Self> {
         Err(Self::Other(DefaultError::incorrect_value_kind(None, actual, accepted, location)?))
     }
 
@@ -107,7 +107,7 @@ impl DeserializeFromValue<MyError> for Name {
                 }
             }
             value => {
-                match MyError::incorrect_value_kind(None, value.kind(), &[ValueKind::String], location) {
+                match MyError::incorrect_value_kind(None, value, &[ValueKind::String], location) {
                     Ok(_) => unreachable!(),
                     Err(e) => Err(e),
                 }

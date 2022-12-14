@@ -54,7 +54,7 @@ where
             Value::Null => Ok(()),
             v => Err(E::incorrect_value_kind(
                 None,
-                v.kind(),
+                v,
                 &[ValueKind::Null],
                 location,
             )?),
@@ -74,7 +74,7 @@ where
             Value::Boolean(b) => Ok(b),
             v => Err(E::incorrect_value_kind(
                 None,
-                v.kind(),
+                v,
                 &[ValueKind::Boolean],
                 location,
             )?),
@@ -92,8 +92,8 @@ macro_rules! deserialize_impl_integer {
                 value: Value<V>,
                 location: ValuePointerRef,
             ) -> Result<Self, E> {
-                let err = |kind: ValueKind| -> Result<E, E> {
-                    E::incorrect_value_kind(None, kind, &[ValueKind::Integer], location)
+                let err = |value: Value<V>| -> Result<E, E> {
+                    E::incorrect_value_kind(None, value, &[ValueKind::Integer], location)
                 };
 
                 match value {
@@ -117,7 +117,7 @@ macro_rules! deserialize_impl_integer {
                             location,
                         )?)
                     }),
-                    v => Err(err(v.kind())?),
+                    v => Err(err(v)?),
                 }
             }
         }
@@ -139,10 +139,10 @@ macro_rules! deserialize_impl_negative_integer {
                 value: Value<V>,
                 location: ValuePointerRef,
             ) -> Result<Self, E> {
-                let err = |kind: ValueKind| {
+                let err = |value: Value<V>| {
                     E::incorrect_value_kind(
                         None,
-                        kind,
+                        value,
                         &[ValueKind::Integer, ValueKind::NegativeInteger],
                         location,
                     )
@@ -169,7 +169,7 @@ macro_rules! deserialize_impl_negative_integer {
                             location,
                         )?)
                     }),
-                    v => Err(err(v.kind())?),
+                    v => Err(err(v)?),
                 }
             }
         }
@@ -205,7 +205,7 @@ macro_rules! deserialize_impl_float {
                     v => {
                         return Err(E::incorrect_value_kind(
                             None,
-                            v.kind(),
+                            v,
                             &[
                                 ValueKind::Float,
                                 ValueKind::Integer,
@@ -234,7 +234,7 @@ where
             Value::String(x) => Ok(x),
             v => Err(E::incorrect_value_kind(
                 None,
-                v.kind(),
+                v,
                 &[ValueKind::String],
                 location,
             )?),
@@ -275,7 +275,7 @@ where
             }
             v => Err(E::incorrect_value_kind(
                 None,
-                v.kind(),
+                v,
                 &[ValueKind::Sequence],
                 location,
             )?),
@@ -357,7 +357,7 @@ where
             }
             v => Err(E::incorrect_value_kind(
                 None,
-                v.kind(),
+                v,
                 &[ValueKind::Map],
                 location,
             )?),
@@ -407,7 +407,7 @@ where
             }
             v => Err(E::incorrect_value_kind(
                 None,
-                v.kind(),
+                v,
                 &[ValueKind::Map],
                 location,
             )?),
@@ -448,7 +448,7 @@ where
             }
             v => Err(E::incorrect_value_kind(
                 None,
-                v.kind(),
+                v,
                 &[ValueKind::Sequence],
                 location,
             )?),
@@ -489,7 +489,7 @@ where
             }
             v => Err(E::incorrect_value_kind(
                 None,
-                v.kind(),
+                v,
                 &[ValueKind::Sequence],
                 location,
             )?),
@@ -551,7 +551,7 @@ where
             }
             v => Err(E::incorrect_value_kind(
                 None,
-                v.kind(),
+                v,
                 &[ValueKind::Sequence],
                 location,
             )?),
@@ -625,7 +625,7 @@ where
             }
             v => Err(E::incorrect_value_kind(
                 None,
-                v.kind(),
+                v,
                 &[ValueKind::Sequence],
                 location,
             )?),

@@ -30,7 +30,7 @@ pub fn generate_derive_struct_impl(
                         ::std::result::Result::Err(
                             ::deserr::take_result_content(<#err_ty as ::deserr::DeserializeError>::incorrect_value_kind(
                                 None,
-                                v.kind(),
+                                v,
                                 &[::deserr::ValueKind::Map],
                                 deserr_location__
                             ))

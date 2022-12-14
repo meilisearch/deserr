@@ -25,9 +25,9 @@ impl DeserializeError for DefaultError {
         None
     }
 
-    fn incorrect_value_kind(
+    fn incorrect_value_kind<V: IntoValue>(
         _self_: Option<Self>,
-        _actual: ValueKind,
+        _actual: Value<V>,
         accepted: &[ValueKind],
         _location: ValuePointerRef,
     ) -> Result<Self, Self> {

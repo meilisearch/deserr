@@ -45,7 +45,7 @@ pub fn generate_derive_tagged_enum_impl(
                                 return ::std::result::Result::Err(
                                     <#err_ty as ::deserr::DeserializeError>::incorrect_value_kind(
                                         None,
-                                        v.kind(),
+                                        v,
                                         &[::deserr::ValueKind::String],
                                         deserr_location__.push_key(#tag)
                                     )?
@@ -74,7 +74,7 @@ pub fn generate_derive_tagged_enum_impl(
                         ::std::result::Result::Err(
                             <#err_ty as ::deserr::DeserializeError>::incorrect_value_kind(
                                 None,
-                                v.kind(),
+                                v,
                                 &[::deserr::ValueKind::Map],
                                 deserr_location__
                             )?
@@ -198,7 +198,7 @@ pub fn generate_derive_untagged_enum_impl(
                         ::std::result::Result::Err(
                             <#err_ty as ::deserr::DeserializeError>::incorrect_value_kind(
                                 None,
-                                v.kind(),
+                                v,
                                 &[::deserr::ValueKind::Map],
                                 deserr_location__
                             )?
