@@ -104,22 +104,34 @@ pub enum ValuePointerRef<'a> {
         prev: &'a ValuePointerRef<'a>,
     },
 }
+
 impl<'a> Default for ValuePointerRef<'a> {
     fn default() -> Self {
         Self::Origin
     }
 }
+
 impl<'a> ValuePointerRef<'a> {
     /// Extend `self` such that it points to the next subvalue at the given `key`.
     #[must_use]
     pub fn push_key(&'a self, key: &'a str) -> Self {
         Self::Key { key, prev: self }
     }
+
     #[must_use]
     /// Extend `self` such that it points to the next subvalue at the given index.
     pub fn push_index(&'a self, index: usize) -> Self {
         Self::Index { index, prev: self }
     }
+
+    /// Return true if the pointer is at the origin.
+    pub fn is_origin(&self) -> bool {
+        match self {
+            ValuePointerRef::Origin => true,
+            _ => false,
+        }
+    }
+
     /// Convert `self` to its owned version
     pub fn to_owned(&self) -> ValuePointer {
         let mut cur = self;
