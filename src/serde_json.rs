@@ -133,3 +133,70 @@ impl<E: DeserializeError> DeserializeFromValue<E> for JValue {
         })
     }
 }
+
+impl<V: IntoValue> From<Value<V>> for JValue {
+    fn from(value: Value<V>) -> Self {
+        match value {
+            Value::Null => JValue::Null,
+            Value::Boolean(b) => JValue::Bool(b),
+            Value::Integer(n) => JValue::Number(Number::from(n)),
+            Value::NegativeInteger(i) => JValue::Number(Number::from(i)),
+            // if we can't parse the float then its set to `null`
+            Value::Float(f) => Number::from_f64(f)
+                .map(JValue::Number)
+                .unwrap_or(JValue::Null),
+            Value::String(s) => JValue::String(s),
+            Value::Sequence(s) => JValue::Array(
+                s.into_iter()
+                    .map(IntoValue::into_value)
+                    .map(JValue::from)
+                    .collect(),
+            ),
+            Value::Map(m) => m
+                .into_iter()
+                .map(|(k, v)| (k, JValue::from(v.into_value())))
+                .collect(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn from_value_to_deserr_and_back() {
+        let value = json!({ "The": "best", "doggos": ["are"], "the": { "bernese": "mountain" }});
+        let deserr = value.clone().into_value();
+
+        insta::assert_debug_snapshot!(deserr, @r###"
+        Map(
+            {
+                "The": String("best"),
+                "doggos": Array [
+                    String("are"),
+                ],
+                "the": Object {
+                    "bernese": String("mountain"),
+                },
+            },
+        )
+        "###);
+
+        let deserr: JValue = deserr.into();
+        insta::assert_debug_snapshot!(deserr, @r###"
+        Object {
+            "The": String("best"),
+            "doggos": Array [
+                String("are"),
+            ],
+            "the": Object {
+                "bernese": String("mountain"),
+            },
+        }
+        "###);
+
+        assert_eq!(value, deserr);
+    }
+}
