@@ -82,7 +82,7 @@ impl<E: DeserializeError> DeserializeFromValue<E> for JValue {
                 None => {
                     return Err(E::unexpected(
                         error,
-                        &format!("The float {f} is not representable in JSON"),
+                        &format!("the float {f} is not representable in JSON"),
                         location,
                     )?);
                 }

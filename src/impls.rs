@@ -101,7 +101,7 @@ macro_rules! deserialize_impl_integer {
                         Err(E::unexpected(
                             None,
                             &format!(
-                                "Cannot deserialize {x} into a {}",
+                                "cannot deserialize {x} into a {}",
                                 std::any::type_name::<$t>()
                             ),
                             location,
@@ -111,7 +111,7 @@ macro_rules! deserialize_impl_integer {
                         Err(E::unexpected(
                             None,
                             &format!(
-                                "Cannot deserialize {x} into a {}",
+                                "cannot deserialize {x} into a {}",
                                 std::any::type_name::<$t>()
                             ),
                             location,
@@ -153,7 +153,7 @@ macro_rules! deserialize_impl_negative_integer {
                         Err(E::unexpected(
                             None,
                             &format!(
-                                "Cannot deserialize {x} into a {}",
+                                "cannot deserialize {x} into a {}",
                                 std::any::type_name::<$t>()
                             ),
                             location,
@@ -163,7 +163,7 @@ macro_rules! deserialize_impl_negative_integer {
                         Err(E::unexpected(
                             None,
                             &format!(
-                                "Cannot deserialize {x} into a {}",
+                                "cannot deserialize {x} into a {}",
                                 std::any::type_name::<$t>()
                             ),
                             location,
@@ -347,7 +347,7 @@ where
                         }
                         Err(_) => {
                             error = Some(E::unexpected(error,&format!(
-                                "The key \"{string_key}\" could not be deserialized into the key type `{}`.",
+                                "the key \"{string_key}\" could not be deserialized into the key type `{}`",
                                 std::any::type_name::<Key>()
                             ), location)?);
                         }
@@ -397,7 +397,7 @@ where
                         }
                         Err(_) => {
                             error = Some(E::unexpected(error,&format!(
-                                "The key \"{string_key}\" could not be deserialized into the key type `{}`.",
+                                "the key \"{string_key}\" could not be deserialized into the key type `{}`",
                                 std::any::type_name::<Key>()
                             ), location)?);
                         }
@@ -513,7 +513,7 @@ where
                 if len != 2 {
                     return Err(E::unexpected(
                         None,
-                        "The sequence should have exactly 2 elements.",
+                        "the sequence should have exactly 2 elements",
                         location,
                     )?);
                 }
@@ -576,7 +576,7 @@ where
                 if len != 2 {
                     return Err(E::unexpected(
                         None,
-                        "The sequence should have exactly 2 elements.",
+                        "the sequence should have exactly 2 elements",
                         location,
                     )?);
                 }
