@@ -2,6 +2,8 @@
 #![allow(clippy::len_without_is_empty)]
 mod default_error;
 mod impls;
+#[cfg(feature = "serde-cs")]
+pub mod serde_cs;
 #[cfg(feature = "serde_json")]
 mod serde_json;
 mod value;
