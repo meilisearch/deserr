@@ -28,10 +28,12 @@ pub fn generate_derive_struct_impl(
                     // this is the case where the value is not a map
                     v => {
                         ::std::result::Result::Err(
-                            ::deserr::take_result_content(<#err_ty as ::deserr::DeserializeError>::incorrect_value_kind(
+                            ::deserr::take_result_content(<#err_ty as ::deserr::DeserializeError>::error::<V>(
                                 None,
-                                v,
-                                &[::deserr::ValueKind::Map],
+                                ::deserr::ErrorKind::IncorrectValueKind {
+                                    actual: v,
+                                    accepted: &[::deserr::ValueKind::Map],
+                                },
                                 deserr_location__
                             ))
                         )

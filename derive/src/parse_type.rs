@@ -394,9 +394,11 @@ impl NamedFieldsInfo {
                 }
                 None => {
                     quote! {
-                        deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::DeserializeError>::missing_field(
+                        deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::DeserializeError>::error::<V>(
                             deserr_error__,
-                            #key_name,
+                            ::deserr::ErrorKind::MissingField {
+                                field: #key_name,
+                            },
                             deserr_location__
                         )?);
                     }
@@ -441,10 +443,12 @@ impl NamedFieldsInfo {
             Some(DenyUnknownFields::DefaultError) => {
                 // Here we must give as argument the accepted keys
                 quote! {
-                    deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::DeserializeError>::unknown_key(
+                    deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::DeserializeError>::error::<V>(
                         deserr_error__,
-                        deserr_key__,
-                        &[#(#key_names),*],
+                        deserr::ErrorKind::UnknownKey {
+                            key: deserr_key__,
+                            accepted: &[#(#key_names),*],
+                        },
                         deserr_location__
                     )?);
                 }

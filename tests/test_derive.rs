@@ -1,5 +1,6 @@
 use deserr::{
-    DefaultError, DeserializeError, DeserializeFromValue, MergeWithError, ValuePointerRef,
+    DefaultError, DeserializeError, DeserializeFromValue, ErrorKind, MergeWithError,
+    ValuePointerRef,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
@@ -18,11 +19,12 @@ enum Untagged {
     B,
 }
 
-fn unknown_field_error_gen<E>(k: &str, _accepted: &[&str], location: deserr::ValuePointerRef) -> E
+fn unknown_field_error_gen<E>(k: &str, accepted: &[&str], location: deserr::ValuePointerRef) -> E
 where
     E: DeserializeError,
 {
-    match E::unexpected(None, k, location) {
+    match E::error::<serde_json::Value>(None, ErrorKind::UnknownKey { key: k, accepted }, location)
+    {
         Ok(e) => e,
         Err(e) => e,
     }
@@ -340,6 +342,7 @@ fn validate_it(x: Validated) -> Result<Validated, MyValidationError> {
         Ok(x)
     }
 }
+
 fn validate_it2(x: Validated2) -> Result<Validated2, MyValidationError> {
     if x.x as u16 > x.y {
         Err(MyValidationError)

@@ -40,7 +40,7 @@ for the type `serde_json::Value`. This allows using Deserr to deserialize from J
 
 ### Implementing deserialize for a custom type
 ```rust
-use deserr::{DeserializeError, DeserializeFromValue, DefaultError, Value, ValueKind, IntoValue, MergeWithError, ValuePointerRef, ValuePointer};
+use deserr::{DeserializeError, DeserializeFromValue, ErrorKind, DefaultError, Value, ValueKind, IntoValue, MergeWithError, ValuePointerRef, ValuePointer};
 
 enum MyError {
     ForbiddenName,
@@ -48,37 +48,11 @@ enum MyError {
 }
 
 impl DeserializeError for MyError {
-    /// Return the origin of the error, if it can be found
-    fn location(&self) -> Option<ValuePointer> {
-        None
-    }
-
-    /// Create a new error due to an unexpected value kind.
-    ///
-    /// Return `Ok` to continue deserializing or `Err` to fail early.
-    fn incorrect_value_kind<V: IntoValue>(_self_: Option<Self>, actual: Value<V>, accepted: &[ValueKind], location: ValuePointerRef) -> Result<Self, Self> {
-        Err(Self::Other(DefaultError::incorrect_value_kind(None, actual, accepted, location)?))
-    }
-
-    /// Create a new error due to a missing key.
-    ///
-    /// Return `Ok` to continue deserializing or `Err` to fail early.
-    fn missing_field(_self_: Option<Self>, field: &str, location: ValuePointerRef) -> Result<Self, Self> {
-        Err(Self::Other(DefaultError::missing_field(None, field, location)?))
-    }
-
-    /// Create a new error due to finding an unknown key.
-    ///
-    /// Return `Ok` to continue deserializing or `Err` to fail early.
-    fn unknown_key(_self_: Option<Self>, key: &str, accepted: &[&str], location: ValuePointerRef) -> Result<Self, Self> {
-        Err(Self::Other(DefaultError::unknown_key(None, key, accepted, location)?))
-    }
-
     /// Create a new error with the custom message.
     ///
     /// Return `Ok` to continue deserializing or `Err` to fail early.
-    fn unexpected(_self_: Option<Self>, field: &str, location: ValuePointerRef) -> Result<Self, Self> {
-        Err(Self::Other(DefaultError::unexpected(None, field, location)?))
+    fn error<V: IntoValue>(_self_: Option<Self>, error: ErrorKind<V>, location: ValuePointerRef) -> Result<Self, Self> {
+        Err(Self::Other(DefaultError::error(None, error, location)?))
     }
 }
 
@@ -107,7 +81,7 @@ impl DeserializeFromValue<MyError> for Name {
                 }
             }
             value => {
-                match MyError::incorrect_value_kind(None, value, &[ValueKind::String], location) {
+                match MyError::error(None, ErrorKind::IncorrectValueKind { actual: value, accepted: &[ValueKind::String] }, location) {
                     Ok(_) => unreachable!(),
                     Err(e) => Err(e),
                 }

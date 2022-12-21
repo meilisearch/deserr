@@ -287,6 +287,7 @@ pub trait DeserializeFromValue<E: DeserializeError>: Sized {
         value: Value<V>,
         location: ValuePointerRef,
     ) -> Result<Self, E>;
+
     /// The value of `Self`, if any, when deserializing from a non-existent value.
     fn default() -> Option<Self> {
         None
@@ -356,44 +357,30 @@ pub trait MergeWithError<T>: Sized {
     fn merge(self_: Option<Self>, other: T, merge_location: ValuePointerRef) -> Result<Self, Self>;
 }
 
+pub enum ErrorKind<'a, V: IntoValue> {
+    IncorrectValueKind {
+        actual: Value<V>,
+        accepted: &'a [ValueKind],
+    },
+    MissingField {
+        field: &'a str,
+    },
+    UnknownKey {
+        key: &'a str,
+        accepted: &'a [&'a str],
+    },
+    Unexpected {
+        msg: String,
+    },
+}
+
 /// A trait for errors returned by [`deserialize_from_value`](DeserializeFromValue::deserialize_from_value).
 pub trait DeserializeError: Sized + MergeWithError<Self> {
-    /// Return the origin of the error, if it can be found
-    fn location(&self) -> Option<ValuePointer>;
-
-    /// Create a new error due to an unexpected value kind.
-    ///
-    /// Return `Ok` to continue deserializing or `Err` to fail early.
-    fn incorrect_value_kind<V: IntoValue>(
+    fn error<V: IntoValue>(
         self_: Option<Self>,
-        actual: Value<V>,
-        accepted: &[ValueKind],
+        error: ErrorKind<V>,
         location: ValuePointerRef,
     ) -> Result<Self, Self>;
-
-    /// Create a new error due to a missing key.
-    ///
-    /// Return `Ok` to continue deserializing or `Err` to fail early.
-    fn missing_field(
-        self_: Option<Self>,
-        field: &str,
-        location: ValuePointerRef,
-    ) -> Result<Self, Self>;
-
-    /// Create a new error due to finding an unknown key.
-    ///
-    /// Return `Ok` to continue deserializing or `Err` to fail early.
-    fn unknown_key(
-        self_: Option<Self>,
-        key: &str,
-        accepted: &[&str],
-        location: ValuePointerRef,
-    ) -> Result<Self, Self>;
-
-    /// Create a new error with the custom message.
-    ///
-    /// Return `Ok` to continue deserializing or `Err` to fail early.
-    fn unexpected(self_: Option<Self>, msg: &str, location: ValuePointerRef) -> Result<Self, Self>;
 }
 
 /// Used by the derive proc macro. Do not use.
@@ -403,6 +390,7 @@ pub enum FieldState<T> {
     Err,
     Some(T),
 }
+
 impl<T> From<Option<T>> for FieldState<T> {
     fn from(x: Option<T>) -> Self {
         match x {
@@ -411,10 +399,12 @@ impl<T> From<Option<T>> for FieldState<T> {
         }
     }
 }
+
 impl<T> FieldState<T> {
     pub fn is_missing(&self) -> bool {
         matches!(self, FieldState::Missing)
     }
+
     #[track_caller]
     pub fn unwrap(self) -> T {
         match self {
@@ -422,6 +412,7 @@ impl<T> FieldState<T> {
             _ => panic!("Unwrapping an empty field state"),
         }
     }
+
     pub fn map<U>(self, f: impl Fn(T) -> U) -> FieldState<U> {
         match self {
             FieldState::Some(x) => FieldState::Some(f(x)),

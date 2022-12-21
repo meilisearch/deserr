@@ -1,5 +1,5 @@
 use crate::{
-    DeserializeError, DeserializeFromValue, IntoValue, Map, Sequence, Value, ValueKind,
+    DeserializeError, DeserializeFromValue, ErrorKind, IntoValue, Map, Sequence, Value, ValueKind,
     ValuePointerRef,
 };
 use serde_json::{Map as JMap, Number, Value as JValue};
@@ -80,9 +80,11 @@ impl<E: DeserializeError> DeserializeFromValue<E> for JValue {
             Value::Float(f) => match Number::from_f64(f) {
                 Some(n) => JValue::Number(n),
                 None => {
-                    return Err(E::unexpected(
+                    return Err(E::error::<V>(
                         error,
-                        &format!("the float {f} is not representable in JSON"),
+                        ErrorKind::Unexpected {
+                            msg: format!("the float {f} is not representable in JSON"),
+                        },
                         location,
                     )?);
                 }

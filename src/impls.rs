@@ -1,5 +1,5 @@
 use crate::{
-    DeserializeError, DeserializeFromValue, IntoValue, Map, Sequence, Value, ValueKind,
+    DeserializeError, DeserializeFromValue, ErrorKind, IntoValue, Map, Sequence, Value, ValueKind,
     ValuePointerRef,
 };
 use std::{
@@ -52,10 +52,12 @@ where
     ) -> Result<Self, E> {
         match value {
             Value::Null => Ok(()),
-            v => Err(E::incorrect_value_kind(
+            v => Err(E::error(
                 None,
-                v,
-                &[ValueKind::Null],
+                ErrorKind::IncorrectValueKind {
+                    actual: v,
+                    accepted: &[ValueKind::Null],
+                },
                 location,
             )?),
         }
@@ -72,10 +74,12 @@ where
     ) -> Result<Self, E> {
         match value {
             Value::Boolean(b) => Ok(b),
-            v => Err(E::incorrect_value_kind(
+            v => Err(E::error(
                 None,
-                v,
-                &[ValueKind::Boolean],
+                ErrorKind::IncorrectValueKind {
+                    actual: v,
+                    accepted: &[ValueKind::Boolean],
+                },
                 location,
             )?),
         }
@@ -93,27 +97,38 @@ macro_rules! deserialize_impl_integer {
                 location: ValuePointerRef,
             ) -> Result<Self, E> {
                 let err = |value: Value<V>| -> Result<E, E> {
-                    E::incorrect_value_kind(None, value, &[ValueKind::Integer], location)
+                    E::error(
+                        None,
+                        ErrorKind::IncorrectValueKind {
+                            actual: value,
+                            accepted: &[ValueKind::Integer],
+                        },
+                        location,
+                    )
                 };
 
                 match value {
                     Value::Integer(x) => <$t>::try_from(x).or_else(|_| {
-                        Err(E::unexpected(
+                        Err(E::error::<V>(
                             None,
-                            &format!(
-                                "cannot deserialize {x} into a {}",
-                                std::any::type_name::<$t>()
-                            ),
+                            ErrorKind::Unexpected {
+                                msg: format!(
+                                    "cannot deserialize {x} into a {}",
+                                    std::any::type_name::<$t>()
+                                ),
+                            },
                             location,
                         )?)
                     }),
                     Value::NegativeInteger(x) => <$t>::try_from(x).or_else(|_| {
-                        Err(E::unexpected(
+                        Err(E::error::<V>(
                             None,
-                            &format!(
-                                "cannot deserialize {x} into a {}",
-                                std::any::type_name::<$t>()
-                            ),
+                            ErrorKind::Unexpected {
+                                msg: format!(
+                                    "cannot deserialize {x} into a {}",
+                                    std::any::type_name::<$t>()
+                                ),
+                            },
                             location,
                         )?)
                     }),
@@ -140,32 +155,38 @@ macro_rules! deserialize_impl_negative_integer {
                 location: ValuePointerRef,
             ) -> Result<Self, E> {
                 let err = |value: Value<V>| {
-                    E::incorrect_value_kind(
+                    E::error(
                         None,
-                        value,
-                        &[ValueKind::Integer, ValueKind::NegativeInteger],
+                        ErrorKind::IncorrectValueKind {
+                            actual: value,
+                            accepted: &[ValueKind::Integer, ValueKind::NegativeInteger],
+                        },
                         location,
                     )
                 };
 
                 match value {
                     Value::Integer(x) => <$t>::try_from(x).or_else(|_| {
-                        Err(E::unexpected(
+                        Err(E::error::<V>(
                             None,
-                            &format!(
-                                "cannot deserialize {x} into a {}",
-                                std::any::type_name::<$t>()
-                            ),
+                            ErrorKind::Unexpected {
+                                msg: format!(
+                                    "cannot deserialize {x} into a {}",
+                                    std::any::type_name::<$t>()
+                                ),
+                            },
                             location,
                         )?)
                     }),
                     Value::NegativeInteger(x) => <$t>::try_from(x).or_else(|_| {
-                        Err(E::unexpected(
+                        Err(E::error::<V>(
                             None,
-                            &format!(
-                                "cannot deserialize {x} into a {}",
-                                std::any::type_name::<$t>()
-                            ),
+                            ErrorKind::Unexpected {
+                                msg: format!(
+                                    "cannot deserialize {x} into a {}",
+                                    std::any::type_name::<$t>()
+                                ),
+                            },
                             location,
                         )?)
                     }),
@@ -203,14 +224,16 @@ macro_rules! deserialize_impl_float {
                         return Ok(x as $t);
                     }
                     v => {
-                        return Err(E::incorrect_value_kind(
+                        return Err(E::error(
                             None,
-                            v,
-                            &[
-                                ValueKind::Float,
-                                ValueKind::Integer,
-                                ValueKind::NegativeInteger,
-                            ],
+                            ErrorKind::IncorrectValueKind {
+                                actual: v,
+                                accepted: &[
+                                    ValueKind::Float,
+                                    ValueKind::Integer,
+                                    ValueKind::NegativeInteger,
+                                ],
+                            },
                             location,
                         )?)
                     }
@@ -232,10 +255,12 @@ where
     ) -> Result<Self, E> {
         match value {
             Value::String(x) => Ok(x),
-            v => Err(E::incorrect_value_kind(
+            v => Err(E::error(
                 None,
-                v,
-                &[ValueKind::String],
+                ErrorKind::IncorrectValueKind {
+                    actual: v,
+                    accepted: &[ValueKind::String],
+                },
                 location,
             )?),
         }
@@ -273,10 +298,12 @@ where
                     Ok(vec)
                 }
             }
-            v => Err(E::incorrect_value_kind(
+            v => Err(E::error(
                 None,
-                v,
-                &[ValueKind::Sequence],
+                ErrorKind::IncorrectValueKind {
+                    actual: v,
+                    accepted: &[ValueKind::Sequence],
+                },
                 location,
             )?),
         }
@@ -346,19 +373,25 @@ where
                             }
                         }
                         Err(_) => {
-                            error = Some(E::unexpected(error,&format!(
-                                "the key \"{string_key}\" could not be deserialized into the key type `{}`",
-                                std::any::type_name::<Key>()
-                            ), location)?);
+                            error = Some(E::error::<V>(
+                                error,
+                                ErrorKind::Unexpected {
+                                    msg: format!(
+                                    "the key \"{string_key}\" could not be deserialized into the key type `{}`",
+                                    std::any::type_name::<Key>())
+                                },
+                                location)?);
                         }
                     }
                 }
                 Ok(res)
             }
-            v => Err(E::incorrect_value_kind(
+            v => Err(E::error(
                 None,
-                v,
-                &[ValueKind::Map],
+                ErrorKind::IncorrectValueKind {
+                    actual: v,
+                    accepted: &[ValueKind::Map],
+                },
                 location,
             )?),
         }
@@ -396,19 +429,25 @@ where
                             }
                         }
                         Err(_) => {
-                            error = Some(E::unexpected(error,&format!(
-                                "the key \"{string_key}\" could not be deserialized into the key type `{}`",
-                                std::any::type_name::<Key>()
-                            ), location)?);
+                            error = Some(E::error::<V>(
+                                error,
+                                ErrorKind::Unexpected {
+                                    msg: format!("the key \"{string_key}\" could not be deserialized into the key type `{}`",
+                                    std::any::type_name::<Key>())
+                                },
+                                location
+                            )?);
                         }
                     }
                 }
                 Ok(res)
             }
-            v => Err(E::incorrect_value_kind(
+            v => Err(E::error(
                 None,
-                v,
-                &[ValueKind::Map],
+                ErrorKind::IncorrectValueKind {
+                    actual: v,
+                    accepted: &[ValueKind::Map],
+                },
                 location,
             )?),
         }
@@ -446,10 +485,12 @@ where
                     Ok(set)
                 }
             }
-            v => Err(E::incorrect_value_kind(
+            v => Err(E::error(
                 None,
-                v,
-                &[ValueKind::Sequence],
+                ErrorKind::IncorrectValueKind {
+                    actual: v,
+                    accepted: &[ValueKind::Sequence],
+                },
                 location,
             )?),
         }
@@ -487,10 +528,12 @@ where
                     Ok(set)
                 }
             }
-            v => Err(E::incorrect_value_kind(
+            v => Err(E::error(
                 None,
-                v,
-                &[ValueKind::Sequence],
+                ErrorKind::IncorrectValueKind {
+                    actual: v,
+                    accepted: &[ValueKind::Sequence],
+                },
                 location,
             )?),
         }
@@ -511,9 +554,11 @@ where
             Value::Sequence(seq) => {
                 let len = seq.len();
                 if len != 2 {
-                    return Err(E::unexpected(
+                    return Err(E::error::<V>(
                         None,
-                        "the sequence should have exactly 2 elements",
+                        ErrorKind::Unexpected {
+                            msg: String::from("the sequence should have exactly 2 elements"),
+                        },
                         location,
                     )?);
                 }
@@ -549,10 +594,12 @@ where
                     Ok((a.unwrap(), b.unwrap()))
                 }
             }
-            v => Err(E::incorrect_value_kind(
+            v => Err(E::error(
                 None,
-                v,
-                &[ValueKind::Sequence],
+                ErrorKind::IncorrectValueKind {
+                    actual: v,
+                    accepted: &[ValueKind::Sequence],
+                },
                 location,
             )?),
         }
@@ -574,9 +621,11 @@ where
             Value::Sequence(seq) => {
                 let len = seq.len();
                 if len != 2 {
-                    return Err(E::unexpected(
+                    return Err(E::error::<V>(
                         None,
-                        "the sequence should have exactly 2 elements",
+                        ErrorKind::Unexpected {
+                            msg: String::from("the sequence should have exactly 2 elements"),
+                        },
                         location,
                     )?);
                 }
@@ -623,10 +672,12 @@ where
                     Ok((a.unwrap(), b.unwrap(), c.unwrap()))
                 }
             }
-            v => Err(E::incorrect_value_kind(
+            v => Err(E::error(
                 None,
-                v,
-                &[ValueKind::Sequence],
+                ErrorKind::IncorrectValueKind {
+                    actual: v,
+                    accepted: &[ValueKind::Sequence],
+                },
                 location,
             )?),
         }

@@ -21,46 +21,24 @@ impl MergeWithError<DefaultError> for DefaultError {
 }
 
 impl DeserializeError for DefaultError {
-    fn location(&self) -> Option<ValuePointer> {
-        None
-    }
-
-    fn incorrect_value_kind<V: IntoValue>(
+    fn error<V: IntoValue>(
         _self_: Option<Self>,
-        _actual: Value<V>,
-        accepted: &[ValueKind],
+        error: ErrorKind<V>,
         _location: ValuePointerRef,
     ) -> Result<Self, Self> {
-        Err(Self::IncorrectValueKind {
-            accepted: accepted.into(),
+        Err(match error {
+            ErrorKind::IncorrectValueKind { actual, accepted } => Self::IncorrectValueKind {
+                accepted: accepted.to_vec(),
+            },
+            ErrorKind::MissingField { field } => Self::MissingField(field.to_string()),
+            ErrorKind::UnknownKey { key, accepted } => Self::UnknownKey {
+                key: key.to_string(),
+                accepted: accepted
+                    .iter()
+                    .map(|accepted| accepted.to_string())
+                    .collect(),
+            },
+            ErrorKind::Unexpected { msg } => Self::Unexpected(msg),
         })
-    }
-
-    fn missing_field(
-        _self_: Option<Self>,
-        field: &str,
-        _location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(Self::MissingField(field.to_string()))
-    }
-
-    fn unknown_key(
-        _self_: Option<Self>,
-        key: &str,
-        accepted: &[&str],
-        _location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(Self::UnknownKey {
-            key: key.to_string(),
-            accepted: accepted.iter().map(<_>::to_string).collect(),
-        })
-    }
-
-    fn unexpected(
-        _self_: Option<Self>,
-        msg: &str,
-        _location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(Self::Unexpected(msg.to_string()))
     }
 }
