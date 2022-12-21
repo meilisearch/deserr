@@ -27,7 +27,10 @@ impl DeserializeError for DefaultError {
         _location: ValuePointerRef,
     ) -> Result<Self, Self> {
         Err(match error {
-            ErrorKind::IncorrectValueKind { actual, accepted } => Self::IncorrectValueKind {
+            ErrorKind::IncorrectValueKind {
+                actual: _,
+                accepted,
+            } => Self::IncorrectValueKind {
                 accepted: accepted.to_vec(),
             },
             ErrorKind::MissingField { field } => Self::MissingField(field.to_string()),
