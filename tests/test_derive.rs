@@ -58,6 +58,7 @@ struct StructWithDefaultAttr {
     #[deserr(default = create_default_option_string())]
     z: Option<String>,
 }
+
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[deserr(error = DefaultError)]
 struct StructWithTraitDefaultAttr {
@@ -69,6 +70,7 @@ struct StructWithTraitDefaultAttr {
 fn create_default_u8() -> u8 {
     152
 }
+
 fn create_default_option_string() -> Option<String> {
     Some("hello".to_owned())
 }
@@ -96,6 +98,7 @@ enum EnumWithOptionData {
 struct RenamedAllCamelCaseStruct {
     renamed_field: bool,
 }
+
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[deserr(error = DefaultError, rename_all = lowercase)]
 #[serde(rename_all = "lowercase")]
@@ -293,12 +296,14 @@ enum Hello {
     A,
     B,
 }
+
 #[derive(Debug, PartialEq, DeserializeFromValue)]
 #[deserr(error = DefaultError, from(bool) = parse_hello2 -> NeverError)]
 enum Hello2 {
     A,
     B,
 }
+
 #[derive(Debug, PartialEq, DeserializeFromValue)]
 #[deserr(from(& String) = parse_hello3 -> DefaultError)]
 enum Hello3 {
@@ -417,6 +422,7 @@ where
 
     assert_eq!(actual, expected);
 }
+
 #[track_caller]
 fn assert_ok_matches<T, E>(j: &str, expected: T)
 where

@@ -162,6 +162,17 @@ impl<V: IntoValue> From<Value<V>> for JValue {
     }
 }
 
+impl ValuePointerRef<'_> {
+    // if the error happened in the root, then an empty string is returned.
+    pub fn as_json(&self) -> String {
+        match self {
+            ValuePointerRef::Origin => String::new(),
+            ValuePointerRef::Key { key, prev } => prev.as_json() + "." + key,
+            ValuePointerRef::Index { index, prev } => format!("{}[{index}]", prev.as_json()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
