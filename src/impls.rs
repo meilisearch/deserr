@@ -113,7 +113,7 @@ macro_rules! deserialize_impl_integer {
                             None,
                             ErrorKind::Unexpected {
                                 msg: format!(
-                                    "cannot deserialize {x} into a {}",
+                                    "invalid value: `{x}`, expected `{}`",
                                     std::any::type_name::<$t>()
                                 ),
                             },
@@ -125,7 +125,7 @@ macro_rules! deserialize_impl_integer {
                             None,
                             ErrorKind::Unexpected {
                                 msg: format!(
-                                    "cannot deserialize {x} into a {}",
+                                    "invalid value: `{x}` expected `{}`",
                                     std::any::type_name::<$t>()
                                 ),
                             },
@@ -171,7 +171,7 @@ macro_rules! deserialize_impl_negative_integer {
                             None,
                             ErrorKind::Unexpected {
                                 msg: format!(
-                                    "cannot deserialize {x} into a {}",
+                                    "invalid value: `{x}`, expected `{}`",
                                     std::any::type_name::<$t>()
                                 ),
                             },
@@ -183,7 +183,7 @@ macro_rules! deserialize_impl_negative_integer {
                             None,
                             ErrorKind::Unexpected {
                                 msg: format!(
-                                    "cannot deserialize {x} into a {}",
+                                    "invalid value: `{x}`, expected `{}`",
                                     std::any::type_name::<$t>()
                                 ),
                             },

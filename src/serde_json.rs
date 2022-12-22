@@ -1,6 +1,8 @@
+use std::fmt::Display;
+
 use crate::{
-    DeserializeError, DeserializeFromValue, ErrorKind, IntoValue, Map, Sequence, Value, ValueKind,
-    ValuePointerRef,
+    DeserializeError, DeserializeFromValue, ErrorKind, IntoValue, Map, MergeWithError, Sequence,
+    Value, ValueKind, ValuePointerRef,
 };
 use serde_json::{Map as JMap, Number, Value as JValue};
 
@@ -158,6 +160,89 @@ impl<V: IntoValue> From<Value<V>> for JValue {
                 .into_iter()
                 .map(|(k, v)| (k, JValue::from(v.into_value())))
                 .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct JsonError(String);
+
+impl Display for JsonError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl MergeWithError<JsonError> for JsonError {
+    fn merge(
+        _self_: Option<Self>,
+        other: JsonError,
+        _merge_location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        Err(other)
+    }
+}
+
+impl DeserializeError for JsonError {
+    fn error<V: IntoValue>(
+        _self_: Option<Self>,
+        error: ErrorKind<V>,
+        location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        let location = location.as_json();
+
+        match error {
+            ErrorKind::IncorrectValueKind { actual, accepted } => {
+                let expected = match accepted.len() {
+                    0 => format!(""),
+                    1 => format!(", expected a {}", accepted[0]),
+                    _ => format!(
+                        ", expected one of {}",
+                        accepted
+                            .iter()
+                            .map(|accepted| accepted.to_string())
+                            .collect::<Vec<String>>()
+                            .join(", ")
+                    ),
+                };
+
+                let kind = actual.kind();
+                // if we're not able to get the value as a string then we print nothing.
+                let received = match serde_json::to_string(&serde_json::Value::from(actual)) {
+                    Ok(value) => format!("`{}`", value),
+                    Err(_) => String::new(),
+                };
+
+                let format = format!("invalid type: {kind} {received}{expected} at `{location}`.",);
+                Err(JsonError(format))
+            }
+            ErrorKind::MissingField { field } => {
+                // serde_json original message:
+                // Json deserialize error: missing field `lol` at line 1 column 2
+
+                Err(JsonError(format!(
+                    "Json deserialize error: missing field `{field}` at `{location}`"
+                )))
+            }
+            ErrorKind::UnknownKey { key, accepted } => {
+                let format = format!(
+                    "Json deserialize error: unknown field `{}`, expected one of {} at `{}`.",
+                    key,
+                    accepted
+                        .iter()
+                        .map(|accepted| format!("`{}`", accepted))
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    location
+                );
+
+                Err(JsonError(format))
+            }
+            ErrorKind::Unexpected { msg } => {
+                // serde_json original message:
+                // The json payload provided is malformed. `trailing characters at line 1 column 19`.
+                Err(JsonError(format!("{msg} at `{location}`.")))
+            }
         }
     }
 }

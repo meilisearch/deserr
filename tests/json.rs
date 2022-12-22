@@ -1,4 +1,8 @@
-use deserr::{DeserializeError, ErrorKind, IntoValue, MergeWithError, ValuePointerRef};
+use std::collections::{BTreeMap, HashMap};
+
+use deserr::{
+    serde_json::JsonError, DeserializeError, ErrorKind, IntoValue, MergeWithError, ValuePointerRef,
+};
 use serde_json::json;
 
 pub struct JsonPointer(String);
@@ -22,6 +26,7 @@ impl DeserializeError for JsonPointer {
         Err(JsonPointer(location.as_json()))
     }
 }
+
 #[test]
 fn test_pointer_as_json() {
     #[allow(dead_code)]
@@ -82,4 +87,88 @@ fn test_pointer_as_json() {
     )
     .unwrap_err();
     insta::assert_display_snapshot!(ret.0, @".right[1].top");
+}
+
+#[test]
+fn test_default_error_message() {
+    #[allow(dead_code)]
+    #[derive(Debug, deserr::DeserializeFromValue, serde::Deserialize)]
+    #[deserr(deny_unknown_fields)]
+    #[serde(deny_unknown_fields)]
+    struct Test {
+        top: usize,
+        right: String,
+        left: (isize, isize),
+        bottom: BTreeMap<char, usize>,
+    }
+
+    // this should deserialize correctly
+    let ret = deserr::deserialize::<Test, _, JsonError>(
+        json!({ "top": 2, "right": "42", "left": [3, 3], "bottom": { "a": 4, "b": 5 } }),
+    )
+    .unwrap();
+    insta::assert_debug_snapshot!(ret, @r###"
+    Test {
+        top: 2,
+        right: "42",
+        left: (
+            3,
+            3,
+        ),
+        bottom: {
+            'a': 4,
+            'b': 5,
+        },
+    }
+    "###);
+
+    // can't deserialize a negative integer into an usize
+    let value = json!({ "top": -2, "right": "42", "left": [3, 3], "bottom": { "a": 4, "b": 5 } });
+    let deser = deserr::deserialize::<Test, _, JsonError>(value.clone()).unwrap_err();
+    let serde = serde_json::from_value::<Test>(value).unwrap_err();
+    insta::assert_display_snapshot!(deser, @"invalid value: `-2` expected `usize` at `.top`.");
+    insta::assert_display_snapshot!(serde, @"invalid value: integer `-2`, expected usize");
+
+    // can't deserialize an integer into a string
+    let value = json!({ "top": 2, "right": 42, "left": [3, 3], "bottom": { "a": 4, "b": 5 } });
+    let deser = deserr::deserialize::<Test, _, JsonError>(value.clone()).unwrap_err();
+    let serde = serde_json::from_value::<Test>(value).unwrap_err();
+    insta::assert_display_snapshot!(deser, @"invalid type: Integer `42`, expected a String at `.right`.");
+    insta::assert_display_snapshot!(serde, @"invalid type: integer `42`, expected a string");
+
+    // can't deserialize an integer into an array
+    let value = json!({ "top": 2, "right": "hello", "left": 2, "bottom": { "a": 4, "b": 5 } });
+    let deser = deserr::deserialize::<Test, _, JsonError>(value.clone()).unwrap_err();
+    let serde = serde_json::from_value::<Test>(value).unwrap_err();
+    insta::assert_display_snapshot!(deser, @"invalid type: Integer `2`, expected a Sequence at `.left`.");
+    insta::assert_display_snapshot!(serde, @"invalid type: integer `2`, expected a tuple of size 2");
+
+    // array of wrong length
+    let value = json!({ "top": 2, "right": "hello", "left": [2], "bottom": { "a": 4, "b": 5 } });
+    let deser = deserr::deserialize::<Test, _, JsonError>(value.clone()).unwrap_err();
+    let serde = serde_json::from_value::<Test>(value).unwrap_err();
+    insta::assert_display_snapshot!(deser, @"the sequence should have exactly 2 elements at `.left`.");
+    insta::assert_display_snapshot!(serde, @"invalid length 1, expected a tuple of size 2");
+
+    // array of wrong length
+    let value =
+        json!({ "top": 2, "right": "hello", "left": [2, 3, 4], "bottom": { "a": 4, "b": 5 } });
+    let deser = deserr::deserialize::<Test, _, JsonError>(value.clone()).unwrap_err();
+    let serde = serde_json::from_value::<Test>(value).unwrap_err();
+    insta::assert_display_snapshot!(deser, @"the sequence should have exactly 2 elements at `.left`.");
+    insta::assert_display_snapshot!(serde, @"invalid length 3, expected fewer elements in array");
+
+    // string instead of object
+    let value = json!({ "top": 2, "right": "hello", "left": [2, 3], "bottom": "hello" });
+    let deser = deserr::deserialize::<Test, _, JsonError>(value.clone()).unwrap_err();
+    let serde = serde_json::from_value::<Test>(value).unwrap_err();
+    insta::assert_display_snapshot!(deser, @r###"invalid type: String `"hello"`, expected a Map at `.bottom`."###);
+    insta::assert_display_snapshot!(serde, @r###"invalid type: string "hello", expected a map"###);
+
+    // string instead of char IN the object
+    let value = json!({ "top": 2, "right": "hello", "left": [2, 3], "bottom": { "a": "hello" }});
+    let deser = deserr::deserialize::<Test, _, JsonError>(value.clone()).unwrap_err();
+    let serde = serde_json::from_value::<Test>(value).unwrap_err();
+    insta::assert_display_snapshot!(deser, @r###"invalid type: String `"hello"`, expected a Integer at `.bottom.a`."###);
+    insta::assert_display_snapshot!(serde, @r###"invalid type: string "hello", expected usize"###);
 }
