@@ -58,6 +58,15 @@ impl<'a> ValuePointerRef<'a> {
         }
     }
 
+    /// Return the last field encountered if there is one.
+    pub fn last_field(&self) -> Option<&str> {
+        match self {
+            ValuePointerRef::Origin => None,
+            ValuePointerRef::Key { key, .. } => Some(key.as_ref()),
+            ValuePointerRef::Index { prev, .. } => prev.last_field(),
+        }
+    }
+
     /// Convert `self` to its owned version
     pub fn to_owned(&self) -> ValuePointer {
         let mut cur = self;
@@ -91,22 +100,6 @@ pub enum ValuePointerComponent {
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ValuePointer {
     pub path: Vec<ValuePointerComponent>,
-}
-
-impl Display for ValuePointer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for component in self.path.iter().rev() {
-            match component {
-                ValuePointerComponent::Index(i) => {
-                    write!(f, ".{i}")?;
-                }
-                ValuePointerComponent::Key(s) => {
-                    write!(f, ".{s}")?;
-                }
-            }
-        }
-        Ok(())
-    }
 }
 
 /// Equivalent to [`Value`] but without the associated data.

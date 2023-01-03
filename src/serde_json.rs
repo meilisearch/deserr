@@ -165,7 +165,7 @@ impl<V: IntoValue> From<Value<V>> for JValue {
 }
 
 #[derive(Debug, Clone)]
-pub struct JsonError(String);
+pub struct JsonError(pub String);
 
 impl Display for JsonError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
