@@ -178,6 +178,7 @@ impl syn::parse::Parse for FieldAttributesInfo {
                 }
                 "from" => {
                     let from_attr = parse_attribute_from(attr_name.span(), &input)?;
+                    // #[deserr( .. from(from_ty) = function::path::<_> -> to_ty )]
                     other.from = Some(from_attr);
                 }
                 _ => {
@@ -231,6 +232,7 @@ pub enum RenameAll {
     /// `#[deserr(rename_all = lowercase)]`
     LowerCase,
 }
+
 /// The value of the `tag` field attribute
 #[derive(Debug, Clone)]
 pub enum TagType {
@@ -239,11 +241,13 @@ pub enum TagType {
     /// An external tag is the default value, when there is no `tag` attribute.
     External,
 }
+
 impl Default for TagType {
     fn default() -> Self {
         Self::External
     }
 }
+
 /// The value of the `deny_unknown_fields` field attribute
 #[derive(Debug, Clone)]
 pub enum DenyUnknownFields {
@@ -296,6 +300,7 @@ pub struct ContainerAttributesInfo {
     tag_span: Option<Span>,
     deny_unknown_fields_span: Option<Span>,
 }
+
 impl ContainerAttributesInfo {
     /// Merges the other data attributes into `self`.
     ///
@@ -473,6 +478,7 @@ impl syn::parse::Parse for ContainerAttributesInfo {
                 }
                 "from" => {
                     let from_attr = parse_attribute_from(attr_name.span(), &input)?;
+                    // #[deserr( .. from(from_ty) = function::path::<_> -> to_ty )]
                     this.from = Some(from_attr);
                 }
                 "validate" => {

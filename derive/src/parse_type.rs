@@ -3,6 +3,7 @@ use crate::attribute_parser::{
     validate_container_attributes, AttributeFrom, ContainerAttributesInfo, DefaultFieldAttribute,
     DenyUnknownFields, FunctionReturningError, RenameAll, TagType,
 };
+use crate::derive_user_provided_function;
 
 use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
@@ -317,6 +318,7 @@ pub struct NamedFieldsInfo {
     pub field_tys: Vec<syn::Type>,
     pub field_defaults: Vec<TokenStream>,
     pub field_errs: Vec<syn::Type>,
+    pub field_froms: Vec<TokenStream>,
     pub field_maps: Vec<TokenStream>,
     pub missing_field_errors: Vec<TokenStream>,
     pub key_names: Vec<String>,
@@ -348,6 +350,8 @@ impl NamedFieldsInfo {
         let mut field_errs = vec![];
         // the token stream representing the error to return when the field is missing and has no default value
         let mut missing_field_errors = vec![];
+        // the token stream which maps the deserialised field value
+        let mut field_froms = vec![];
         // the token stream which maps the deserialised field value
         let mut field_maps = vec![];
         // `true` iff the field has the needs_predicate attribute
@@ -404,12 +408,20 @@ impl NamedFieldsInfo {
                     }
                 }
             };
+
             let error = match attrs.error {
                 Some(error) => error,
                 None => data_attrs
                     .err_ty
                     .clone()
                     .unwrap_or_else(|| parse_quote!(__Deserr_E)),
+            };
+
+            let field_from = match attrs.from {
+                Some(_from) => {
+                    quote! { ::std::convert::identity }
+                }
+                None => quote! { ::std::convert::identity },
             };
 
             let field_map = match attrs.map {
@@ -428,6 +440,7 @@ impl NamedFieldsInfo {
             key_names.push(key_name.clone());
             field_defaults.push(field_default);
             field_errs.push(error);
+            field_froms.push(field_from);
             field_maps.push(field_map);
             missing_field_errors.push(missing_field_error);
             needs_predicate.push(attrs.needs_predicate);
@@ -469,6 +482,7 @@ impl NamedFieldsInfo {
             key_names,
             field_defaults,
             field_errs,
+            field_froms,
             field_maps,
             needs_predicate,
             missing_field_errors,
