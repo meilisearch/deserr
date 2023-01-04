@@ -1,9 +1,10 @@
 use deserr::{
-    DefaultError, DeserializeError, DeserializeFromValue, ErrorKind, MergeWithError,
+    DefaultError, DeserializeError, DeserializeFromValue, ErrorKind, MergeWithError, ValueKind,
     ValuePointerRef,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
+use std::str::FromStr;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[serde(tag = "sometag")]
@@ -236,7 +237,7 @@ struct Generic<A> {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(where_predicate = __Deserr_E: MergeWithError<DefaultError>, where_predicate = A: DeserializeFromValue<DefaultError>)]
+#[deserr(where_predicate = __Deserr_E: MergeWithError<DefaultError> + std::convert::From<std::convert::Infallible>, where_predicate = A: DeserializeFromValue<DefaultError>)]
 struct Generic2<A> {
     #[deserr(error = DefaultError)]
     some_field: Option<A>,
@@ -370,16 +371,20 @@ struct Validated2 {
     y: u16,
 }
 
-/*
-use std::str::FromStr;
-
-#[derive(Debug, DeserializeFromValue)]
-struct From {
+#[derive(Debug, PartialEq, Eq, DeserializeFromValue)]
+pub struct From {
     #[deserr(from(&String) = u8::from_str -> std::num::ParseIntError)]
     x: u8,
     y: u16,
 }
-*/
+
+#[derive(Debug, PartialEq, Eq, DeserializeFromValue)]
+pub struct From2 {
+    #[deserr(from(&String) = u8::from_str -> std::num::ParseIntError)]
+    x: u8,
+    #[deserr(from(&String) = u16::from_str -> std::num::ParseIntError)]
+    y: u16,
+}
 
 impl MergeWithError<NeverError> for DefaultError {
     fn merge(
@@ -689,20 +694,38 @@ fn test_de() {
             some_field: Some(1),
         },
     );
+
     assert_ok_matches::<FieldMap, DefaultError>(
         r#"{  }"#,
         FieldMap {
             some_field: Some(1),
         },
     );
+
     assert_ok_matches::<FieldMap, DefaultError>(
         r#"{ "some_field": 0 }"#,
         FieldMap { some_field: None },
     );
+
     assert_ok_matches::<FieldMap, DefaultError>(
         r#"{ "some_field": 2 }"#,
         FieldMap {
             some_field: Some(2),
         },
     );
+
+    assert_ok_matches::<From, DefaultError>(r#"{ "x": "2", "y": 14 }"#, From { x: 2, y: 14 });
+    assert_error_matches::<From, DefaultError>(
+        r#"{ "x": "hello", "y": 14 }"#,
+        DefaultError::Unexpected(String::from("invalid digit found in string")),
+    );
+    assert_error_matches::<From, DefaultError>(
+        r#"{ "x": 2, "y": 14 }"#,
+        DefaultError::IncorrectValueKind {
+            accepted: vec![ValueKind::String],
+        },
+    );
+
+    // just want to ensure that it works even though we're going to ask multiple time the same constraint
+    assert_ok_matches::<From2, DefaultError>(r#"{ "x": "2", "y": "14" }"#, From2 { x: 2, y: 14 });
 }

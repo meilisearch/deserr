@@ -62,8 +62,8 @@ impl From<DefaultError> for MyError {
     }
 }
 
-impl From<std::convert::Infailible> for MyError {
-    fn from(_: std::convert::Infailible) -> Self {
+impl From<std::convert::Infallible> for MyError {
+    fn from(_: std::convert::Infallible) -> Self {
         unreachable!()
     }
 }

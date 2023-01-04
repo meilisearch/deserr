@@ -85,9 +85,9 @@ impl DerivedTypeInfo {
 
         // The error type as given by the attribute #[deserr(error = err_ty)]
         let user_provided_err_ty: Option<&syn::Type> = attrs.err_ty.as_ref();
-        let err_ty = user_provided_err_ty.cloned().unwrap_or_else(|| {
-            parse_quote!(__Deserr_E: ::std::convert::From<::std::convert::Infallible>)
-        });
+        let err_ty = user_provided_err_ty
+            .cloned()
+            .unwrap_or_else(|| parse_quote!(__Deserr_E));
 
         // Now we build the TraitImplementationInfo structure
 
@@ -174,6 +174,33 @@ impl DerivedTypeInfo {
             // The goal of creating these simple bindings is to be able to reference them in a quote! macro
             let ident = input.ident;
 
+            // extract all the error types that can occurs from the `from` attributes in the struct
+            let extra_constraint = match data {
+                TraitImplementationInfo::Struct(NamedFieldsInfo {
+                    ref field_from_errors,
+                    ..
+                }) => field_from_errors
+                    .iter()
+                    .filter_map(|error| error.as_ref())
+                    .map(|error| quote!(+ ::std::convert::From<#error>))
+                    .collect::<TokenStream>(),
+                TraitImplementationInfo::Enum { ref variants, .. } => variants
+                    .iter()
+                    .filter_map(|variant| match variant.data {
+                        VariantData::Unit => None,
+                        VariantData::Named(ref variant_info) => Some(variant_info),
+                    })
+                    .flat_map(|error| {
+                        error
+                            .field_from_errors
+                            .iter()
+                            .filter_map(|error| error.as_ref())
+                    })
+                    .map(|error| quote!(+ std::convert::From<#error>))
+                    .collect(),
+                _ => TokenStream::new(),
+            };
+
             // append the additional clause to the existing where clause
             let mut new_predicates = input
                 .generics
@@ -259,7 +286,7 @@ impl DerivedTypeInfo {
                 .extend(attrs.where_predicates.clone());
 
             quote! {
-                impl #impl_generics ::deserr::DeserializeFromValue<#err_ty> for #ident #ty_generics #bounded_where_clause
+                impl #impl_generics ::deserr::DeserializeFromValue<#err_ty> for #ident #ty_generics #bounded_where_clause #extra_constraint
             }
         };
         {}; // the `impl` above breaks my text editor's syntax highlighting, inserting a pair
@@ -318,6 +345,7 @@ pub struct NamedFieldsInfo {
     pub field_defaults: Vec<TokenStream>,
     pub field_errs: Vec<syn::Type>,
     pub field_from_fns: Vec<TokenStream>,
+    pub field_from_errors: Vec<Option<syn::Type>>,
     pub field_maps: Vec<TokenStream>,
     pub missing_field_errors: Vec<TokenStream>,
     pub key_names: Vec<String>,
@@ -351,6 +379,8 @@ impl NamedFieldsInfo {
         let mut missing_field_errors = vec![];
         // the token stream which maps the deserialised field value from one type to another
         let mut field_from_fns = vec![];
+        // The list of error types that can be returned by the from clauses
+        let mut field_from_errors = vec![];
         // the token stream which maps the deserialised field value
         let mut field_maps = vec![];
         // `true` iff the field has the needs_predicate attribute
@@ -430,6 +460,11 @@ impl NamedFieldsInfo {
                 }
             };
 
+            let field_from_error = match attrs.from {
+                Some(ref from) => Some(from.function.error_ty.clone()),
+                None => None,
+            };
+
             let field_ty = match attrs.from {
                 Some(from) => from.from_ty,
                 None => field_ty.clone(),
@@ -452,6 +487,7 @@ impl NamedFieldsInfo {
             field_defaults.push(field_default);
             field_errs.push(error);
             field_from_fns.push(field_from_fn);
+            field_from_errors.push(field_from_error);
             field_maps.push(field_map);
             missing_field_errors.push(missing_field_error);
             needs_predicate.push(attrs.needs_predicate);
@@ -494,6 +530,7 @@ impl NamedFieldsInfo {
             field_defaults,
             field_errs,
             field_from_fns,
+            field_from_errors,
             field_maps,
             needs_predicate,
             missing_field_errors,

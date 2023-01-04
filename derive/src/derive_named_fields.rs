@@ -13,6 +13,7 @@ pub fn generate_named_fields_impl(
         field_defaults,
         field_errs,
         field_from_fns,
+        field_from_errors: _,
         field_maps,
         missing_field_errors,
         key_names,

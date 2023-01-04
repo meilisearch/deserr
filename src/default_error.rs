@@ -1,3 +1,5 @@
+use std::num::ParseIntError;
+
 use crate::*;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -49,5 +51,11 @@ impl DeserializeError for DefaultError {
 impl From<std::convert::Infallible> for DefaultError {
     fn from(_: std::convert::Infallible) -> Self {
         unreachable!("Tried to convert an infaillible to a `DefaultError`.")
+    }
+}
+
+impl From<ParseIntError> for DefaultError {
+    fn from(value: ParseIntError) -> Self {
+        Self::Unexpected(value.to_string())
     }
 }

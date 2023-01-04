@@ -247,6 +247,12 @@ impl DeserializeError for JsonError {
     }
 }
 
+impl From<std::convert::Infallible> for JsonError {
+    fn from(_: std::convert::Infallible) -> Self {
+        unreachable!()
+    }
+}
+
 impl ValuePointerRef<'_> {
     // if the error happened in the root, then an empty string is returned.
     pub fn as_json(&self) -> String {
