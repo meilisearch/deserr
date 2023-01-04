@@ -222,6 +222,11 @@ impl<T> FieldState<T> {
     }
 }
 
+#[doc(hidden)]
+pub fn from_identity<T>(from: T) -> Result<T, std::convert::Infallible> {
+    Ok(from)
+}
+
 /// Used by the derive proc macro. Do not use.
 #[doc(hidden)]
 pub fn take_result_content<T>(r: Result<T, T>) -> T {

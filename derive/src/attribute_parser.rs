@@ -1,8 +1,10 @@
 use proc_macro2::{Ident, Span};
+use quote::quote;
 use syn::{
     parenthesized,
     parse::{ParseBuffer, ParseStream},
-    parse2, Attribute, DeriveInput, Expr, ExprPath, GenericParam, LitStr, Token, WherePredicate,
+    parse2, parse_quote, Attribute, DeriveInput, Expr, ExprPath, GenericParam, LitStr, Token,
+    WherePredicate,
 };
 
 // pub struct MapFieldAttribute {
@@ -268,6 +270,20 @@ pub struct AttributeFrom {
     pub from_ty: syn::Type,
     pub function: FunctionReturningError,
     span: Span,
+}
+
+impl AttributeFrom {
+    pub fn identity(from_ty: syn::Type) -> Self {
+        AttributeFrom {
+            is_ref: false,
+            from_ty,
+            function: FunctionReturningError {
+                function: parse_quote!(::deserr::from_identity),
+                error_ty: parse_quote!(::std::convert::Infallible),
+            },
+            span: Span::call_site(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -318,7 +318,7 @@ pub struct NamedFieldsInfo {
     pub field_tys: Vec<syn::Type>,
     pub field_defaults: Vec<TokenStream>,
     pub field_errs: Vec<syn::Type>,
-    pub field_froms: Vec<TokenStream>,
+    pub field_froms: Vec<AttributeFrom>,
     pub field_maps: Vec<TokenStream>,
     pub missing_field_errors: Vec<TokenStream>,
     pub key_names: Vec<String>,
@@ -418,10 +418,8 @@ impl NamedFieldsInfo {
             };
 
             let field_from = match attrs.from {
-                Some(_from) => {
-                    quote! { ::std::convert::identity }
-                }
-                None => quote! { ::std::convert::identity },
+                Some(from) => from,
+                None => AttributeFrom::identity(err_ty.clone()),
             };
 
             let field_map = match attrs.map {
