@@ -62,6 +62,13 @@ impl From<DefaultError> for MyError {
     }
 }
 
+impl From<std::convert::Infailible> for MyError {
+    fn from(_: std::convert::Infailible) -> Self {
+        unreachable!()
+    }
+}
+
+
 impl MergeWithError<MyError> for MyError {
     fn merge(self_: Option<Self>, other: MyError, merge_location: ValuePointerRef) -> Result<Self, Self> {
         Err(other)

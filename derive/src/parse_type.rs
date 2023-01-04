@@ -3,7 +3,6 @@ use crate::attribute_parser::{
     validate_container_attributes, AttributeFrom, ContainerAttributesInfo, DefaultFieldAttribute,
     DenyUnknownFields, FunctionReturningError, RenameAll, TagType,
 };
-use crate::derive_user_provided_function;
 
 use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
@@ -86,9 +85,9 @@ impl DerivedTypeInfo {
 
         // The error type as given by the attribute #[deserr(error = err_ty)]
         let user_provided_err_ty: Option<&syn::Type> = attrs.err_ty.as_ref();
-        let err_ty = user_provided_err_ty
-            .cloned()
-            .unwrap_or_else(|| parse_quote!(__Deserr_E));
+        let err_ty = user_provided_err_ty.cloned().unwrap_or_else(|| {
+            parse_quote!(__Deserr_E: ::std::convert::From<::std::convert::Infallible>)
+        });
 
         // Now we build the TraitImplementationInfo structure
 
@@ -318,7 +317,7 @@ pub struct NamedFieldsInfo {
     pub field_tys: Vec<syn::Type>,
     pub field_defaults: Vec<TokenStream>,
     pub field_errs: Vec<syn::Type>,
-    pub field_froms: Vec<AttributeFrom>,
+    pub field_from_fns: Vec<TokenStream>,
     pub field_maps: Vec<TokenStream>,
     pub missing_field_errors: Vec<TokenStream>,
     pub key_names: Vec<String>,
@@ -338,7 +337,7 @@ impl NamedFieldsInfo {
     ) -> syn::Result<Self> {
         // the identifier of the field
         let mut field_names = vec![];
-        // the type of the field
+        // the type of the field or the type of the `from` if there was one
         let mut field_tys = vec![];
         // the key (in the serialised value) corresponding to the field
         // influenced by the `rename` and `rename_all` attributes
@@ -350,8 +349,8 @@ impl NamedFieldsInfo {
         let mut field_errs = vec![];
         // the token stream representing the error to return when the field is missing and has no default value
         let mut missing_field_errors = vec![];
-        // the token stream which maps the deserialised field value
-        let mut field_froms = vec![];
+        // the token stream which maps the deserialised field value from one type to another
+        let mut field_from_fns = vec![];
         // the token stream which maps the deserialised field value
         let mut field_maps = vec![];
         // `true` iff the field has the needs_predicate attribute
@@ -417,9 +416,23 @@ impl NamedFieldsInfo {
                     .unwrap_or_else(|| parse_quote!(__Deserr_E)),
             };
 
-            let field_from = match attrs.from {
-                Some(from) => from,
-                None => AttributeFrom::identity(err_ty.clone()),
+            let field_from_fn = match attrs.from {
+                Some(ref from) => {
+                    let fun = &from.function.function;
+                    if from.is_ref {
+                        quote! { |val| #fun(&val) }
+                    } else {
+                        quote! { #fun }
+                    }
+                }
+                None => {
+                    quote! { ::deserr::from_identity }
+                }
+            };
+
+            let field_ty = match attrs.from {
+                Some(from) => from.from_ty,
+                None => field_ty.clone(),
             };
 
             let field_map = match attrs.map {
@@ -438,7 +451,7 @@ impl NamedFieldsInfo {
             key_names.push(key_name.clone());
             field_defaults.push(field_default);
             field_errs.push(error);
-            field_froms.push(field_from);
+            field_from_fns.push(field_from_fn);
             field_maps.push(field_map);
             missing_field_errors.push(missing_field_error);
             needs_predicate.push(attrs.needs_predicate);
@@ -480,7 +493,7 @@ impl NamedFieldsInfo {
             key_names,
             field_defaults,
             field_errs,
-            field_froms,
+            field_from_fns,
             field_maps,
             needs_predicate,
             missing_field_errors,

@@ -12,7 +12,7 @@ pub fn generate_named_fields_impl(
         field_tys,
         field_defaults,
         field_errs,
-        field_froms,
+        field_from_fns,
         field_maps,
         missing_field_errors,
         key_names,
@@ -41,7 +41,6 @@ pub fn generate_named_fields_impl(
                                 ::deserr::IntoValue::into_value(deserr_value__),
                                 deserr_location__.push_key(deserr_key__.as_str())
                             ) {
-                            /// TODO: HERE
                                 Ok(x) => ::deserr::FieldState::Some(x),
                                 Err(e) => {
                                     deserr_error__ = Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
@@ -74,7 +73,8 @@ pub fn generate_named_fields_impl(
             // Otherwise, an error was thrown earlier
             ::std::result::Result::Ok(#create {
                 #(
-                    #field_names : #field_names.map(#field_maps).unwrap(),
+                    // apply the from and then the map
+                    #field_names : #field_names.map(#field_from_fns).map(|res| res.map(#field_maps)).unwrap()?,
                 )*
             })
         }

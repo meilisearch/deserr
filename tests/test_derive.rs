@@ -370,6 +370,17 @@ struct Validated2 {
     y: u16,
 }
 
+/*
+use std::str::FromStr;
+
+#[derive(Debug, DeserializeFromValue)]
+struct From {
+    #[deserr(from(&String) = u8::from_str -> std::num::ParseIntError)]
+    x: u8,
+    y: u16,
+}
+*/
+
 impl MergeWithError<NeverError> for DefaultError {
     fn merge(
         _self_: Option<Self>,
