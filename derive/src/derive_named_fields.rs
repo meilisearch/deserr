@@ -14,6 +14,7 @@ pub fn generate_named_fields_impl(
         field_errs,
         field_from_fns,
         field_from_errors: _,
+        field_from_is_used,
         field_maps,
         missing_field_errors,
         key_names,
@@ -74,11 +75,18 @@ pub fn generate_named_fields_impl(
             // Otherwise, an error was thrown earlier
             ::std::result::Result::Ok(#create {
                 #(
-                    // apply the from and then the map
-                    #field_names : #field_names.map(#field_from_fns).map(|res| res.map(#field_maps)).unwrap()?,
+                    // apply the from if we needs to and then the map
+                    #field_names : {
+                        if #field_from_is_used {
+                            #field_names.map(#field_from_fns).map(|res| res.map(#field_maps)).unwrap()?
+                        } else {
+                            // this variant is impossible to construct thus we can unwrap safely here
+                            // unwraping here mean we don't need to implement `From<convert::Infallible>` for your error type.
+                            #field_names.map(#field_from_fns).map(|from| from.unwrap()).map(#field_maps).unwrap()
+                        }
+                    },
                 )*
             })
         }
-
     }
 }

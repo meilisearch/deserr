@@ -48,11 +48,11 @@ impl DeserializeError for DefaultError {
     }
 }
 
-impl From<std::convert::Infallible> for DefaultError {
-    fn from(_: std::convert::Infallible) -> Self {
-        unreachable!("Tried to convert an infaillible to a `DefaultError`.")
-    }
-}
+// impl From<std::convert::Infallible> for DefaultError {
+//     fn from(_: std::convert::Infallible) -> Self {
+//         unreachable!("Tried to convert an infaillible to a `DefaultError`.")
+//     }
+// }
 
 impl From<ParseIntError> for DefaultError {
     fn from(value: ParseIntError) -> Self {

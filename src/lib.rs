@@ -175,9 +175,7 @@ pub enum ErrorKind<'a, V: IntoValue> {
 }
 
 /// A trait for errors returned by [`deserialize_from_value`](DeserializeFromValue::deserialize_from_value).
-pub trait DeserializeError:
-    Sized + MergeWithError<Self> + std::convert::From<std::convert::Infallible>
-{
+pub trait DeserializeError: Sized + MergeWithError<Self> {
     fn error<V: IntoValue>(
         self_: Option<Self>,
         error: ErrorKind<V>,
