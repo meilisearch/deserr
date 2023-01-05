@@ -373,16 +373,35 @@ struct Validated2 {
 
 #[derive(Debug, PartialEq, Eq, DeserializeFromValue)]
 pub struct From {
-    #[deserr(from(&String) = u8::from_str -> std::num::ParseIntError)]
+    #[deserr(from(&String) = u8_from_str -> MyParseIntError)]
     x: u8,
     y: u16,
 }
 
+pub struct MyParseIntError(std::num::ParseIntError);
+
+fn usize_from_str(x: &str) -> Result<usize, MyParseIntError> {
+    usize::from_str(x).map_err(MyParseIntError)
+}
+fn u8_from_str(x: &str) -> Result<u8, MyParseIntError> {
+    u8::from_str(x).map_err(MyParseIntError)
+}
+
+impl MergeWithError<MyParseIntError> for DefaultError {
+    fn merge(
+        _self_: Option<Self>,
+        other: MyParseIntError,
+        _merge_location: ValuePointerRef,
+    ) -> Result<Self, Self> {
+        Err(DefaultError::Unexpected(other.0.to_string()))
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, DeserializeFromValue)]
 pub struct From2 {
-    #[deserr(from(&String) = u8::from_str -> std::num::ParseIntError)]
+    #[deserr(from(&String) = u8_from_str -> MyParseIntError)]
     x: u8,
-    #[deserr(default = 3, from(&String) = usize::from_str -> std::num::ParseIntError)]
+    #[deserr(default = 3, from(&String) = usize_from_str -> MyParseIntError)]
     y: usize,
 }
 
