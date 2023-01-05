@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use deserr::{
     serde_json::JsonError, DeserializeError, ErrorKind, IntoValue, MergeWithError, ValuePointerRef,

@@ -347,7 +347,6 @@ pub struct NamedFieldsInfo {
 
     pub field_from_fns: Vec<Option<TokenStream>>,
     pub field_from_errors: Vec<Option<syn::Type>>,
-    pub field_from_is_used: Vec<bool>,
 
     pub field_maps: Vec<TokenStream>,
     pub missing_field_errors: Vec<TokenStream>,
@@ -380,12 +379,10 @@ impl NamedFieldsInfo {
         let mut field_errs = vec![];
         // the token stream representing the error to return when the field is missing and has no default value
         let mut missing_field_errors = vec![];
-        // the token stream which maps the deserialised field value from one type to another
+        // an Option of token stream which maps the deserialised field value from one type to another
         let mut field_from_fns = vec![];
-        // The list of error types that can be returned by the from clauses
+        // The list of error types that can be returned by the `from` clauses
         let mut field_from_errors = vec![];
-        // The list of error types that can be returned by the from clauses
-        let mut field_from_is_used = vec![];
         // the token stream which maps the deserialised field value
         let mut field_maps = vec![];
         // `true` iff the field has the needs_predicate attribute
@@ -491,7 +488,6 @@ impl NamedFieldsInfo {
             field_errs.push(error);
             field_from_fns.push(field_from_fn);
             field_from_errors.push(field_from_error);
-            field_from_is_used.push(attrs.from.is_some());
             field_maps.push(field_map);
             missing_field_errors.push(missing_field_error);
             needs_predicate.push(attrs.needs_predicate);
@@ -535,7 +531,6 @@ impl NamedFieldsInfo {
             field_errs,
             field_from_fns,
             field_from_errors,
-            field_from_is_used,
             field_maps,
             needs_predicate,
             missing_field_errors,
