@@ -1,4 +1,7 @@
-use std::fmt::{Debug, Display};
+use std::{
+    convert::Infallible,
+    fmt::{Debug, Display},
+};
 
 /// A location within a [`Value`].
 ///
@@ -195,4 +198,46 @@ pub trait Map {
     fn len(&self) -> usize;
     fn remove(&mut self, key: &str) -> Option<Self::Value>;
     fn into_iter(self) -> Self::Iter;
+}
+
+impl IntoValue for Infallible {
+    type Sequence = Self;
+    type Map = Self;
+
+    fn kind(&self) -> ValueKind {
+        unreachable!()
+    }
+
+    fn into_value(self) -> Value<Self> {
+        unreachable!()
+    }
+}
+
+impl Sequence for Infallible {
+    type Value = Self;
+    type Iter = std::iter::Empty<Infallible>;
+
+    fn len(&self) -> usize {
+        unreachable!()
+    }
+
+    fn into_iter(self) -> Self::Iter {
+        unreachable!()
+    }
+}
+impl Map for Infallible {
+    type Value = Self;
+    type Iter = std::iter::Empty<(String, Infallible)>;
+
+    fn len(&self) -> usize {
+        unreachable!()
+    }
+
+    fn remove(&mut self, _key: &str) -> Option<Self::Value> {
+        unreachable!()
+    }
+
+    fn into_iter(self) -> Self::Iter {
+        unreachable!()
+    }
 }
