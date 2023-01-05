@@ -21,6 +21,14 @@ pub fn generate_named_fields_impl(
         unknown_key,
         needs_predicate: _,
     } = fields;
+    let struct_initialization = (0..field_names.len())
+        .map(|idx| (&field_names[idx], &field_from_fns[idx], &field_maps[idx]))
+        .map(|(name, from, map)| match from {
+            Some(from) => quote!(
+                            #name: #name.map(#from).map(|res| res.map(#map)).unwrap()?,),
+            None => quote!(#name: #name.map(#map).unwrap(),),
+        })
+        .collect::<TokenStream>();
     quote! {
         // Start by declaring all the fields as mutable optionals
         // Their initial value is given by the precomputed `#field_defaults`,
@@ -74,6 +82,9 @@ pub fn generate_named_fields_impl(
             // If the deserialization was successful, then all #field_names are `Some(..)`
             // Otherwise, an error was thrown earlier
             ::std::result::Result::Ok(#create {
+                #struct_initialization
+
+                /*
                 #(
                     // apply the from if we needs to and then the map
                     #field_names : {
@@ -86,6 +97,7 @@ pub fn generate_named_fields_impl(
                         }
                     },
                 )*
+                */
             })
         }
     }

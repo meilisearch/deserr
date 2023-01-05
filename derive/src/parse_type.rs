@@ -345,7 +345,7 @@ pub struct NamedFieldsInfo {
     pub field_defaults: Vec<TokenStream>,
     pub field_errs: Vec<syn::Type>,
 
-    pub field_from_fns: Vec<TokenStream>,
+    pub field_from_fns: Vec<Option<TokenStream>>,
     pub field_from_errors: Vec<Option<syn::Type>>,
     pub field_from_is_used: Vec<bool>,
 
@@ -455,14 +455,12 @@ impl NamedFieldsInfo {
                 Some(ref from) => {
                     let fun = &from.function.function;
                     if from.is_ref {
-                        quote! { |val| #fun(&val) }
+                        Some(quote! { |val| #fun(&val) })
                     } else {
-                        quote! { #fun }
+                        Some(quote! { #fun })
                     }
                 }
-                None => {
-                    quote! { ::deserr::from_identity }
-                }
+                None => None,
             };
 
             let field_from_error = match attrs.from {
