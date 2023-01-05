@@ -213,6 +213,24 @@ impl<T> FieldState<T> {
         }
     }
 
+    #[track_caller]
+    pub fn unwrap_or(self, value: T) -> T {
+        match self {
+            FieldState::Some(x) => x,
+            FieldState::Missing => value,
+            FieldState::Err => value,
+        }
+    }
+
+    #[track_caller]
+    pub fn ok_or<E>(self, err: E) -> Result<T, E> {
+        match self {
+            FieldState::Some(x) => Ok(x),
+            FieldState::Missing => Err(err),
+            FieldState::Err => Err(err),
+        }
+    }
+
     pub fn map<U>(self, f: impl Fn(T) -> U) -> FieldState<U> {
         match self {
             FieldState::Some(x) => FieldState::Some(f(x)),
@@ -220,11 +238,6 @@ impl<T> FieldState<T> {
             FieldState::Err => FieldState::Err,
         }
     }
-}
-
-#[doc(hidden)]
-pub fn from_identity<T>(from: T) -> Result<T, std::convert::Infallible> {
-    Ok(from)
 }
 
 /// Used by the derive proc macro. Do not use.

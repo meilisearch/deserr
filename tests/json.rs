@@ -27,12 +27,6 @@ impl DeserializeError for JsonPointer {
     }
 }
 
-impl From<std::convert::Infallible> for JsonPointer {
-    fn from(_: std::convert::Infallible) -> Self {
-        unreachable!()
-    }
-}
-
 #[test]
 fn test_pointer_as_json() {
     #[allow(dead_code)]

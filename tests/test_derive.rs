@@ -237,7 +237,7 @@ struct Generic<A> {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(where_predicate = __Deserr_E: MergeWithError<DefaultError> + std::convert::From<std::convert::Infallible>, where_predicate = A: DeserializeFromValue<DefaultError>)]
+#[deserr(where_predicate = __Deserr_E: MergeWithError<DefaultError>, where_predicate = A: DeserializeFromValue<DefaultError>)]
 struct Generic2<A> {
     #[deserr(error = DefaultError)]
     some_field: Option<A>,
@@ -382,8 +382,8 @@ pub struct From {
 pub struct From2 {
     #[deserr(from(&String) = u8::from_str -> std::num::ParseIntError)]
     x: u8,
-    #[deserr(from(&String) = u16::from_str -> std::num::ParseIntError)]
-    y: u16,
+    #[deserr(default = 3, from(&String) = usize::from_str -> std::num::ParseIntError)]
+    y: usize,
 }
 
 impl MergeWithError<NeverError> for DefaultError {
@@ -422,8 +422,12 @@ where
             assert_eq!(actual_deserr, actual_serde);
         }
         (Err(_), Err(_)) => {}
-        (Ok(_), Err(_)) => panic!("deserr fails to deserialize but serde does not"),
-        (Err(_), Ok(_)) => panic!("serde fails to deserialize but deserr does not"),
+        (Ok(_), Err(e)) => {
+            panic!("deserr fails to deserialize but serde does not with error: {e:?}")
+        }
+        (Err(e), Ok(_)) => {
+            panic!("serde fails to deserialize but deserr does not with error: {e:?}")
+        }
     }
 }
 
@@ -728,4 +732,5 @@ fn test_de() {
 
     // just want to ensure that it works even though we're going to ask multiple time the same constraint
     assert_ok_matches::<From2, DefaultError>(r#"{ "x": "2", "y": "14" }"#, From2 { x: 2, y: 14 });
+    assert_ok_matches::<From2, DefaultError>(r#"{ "x": "2" }"#, From2 { x: 2, y: 3 });
 }
