@@ -12,6 +12,12 @@ impl DeserializeError for MyError {
     }
 }
 
+impl From<std::convert::Infallible> for MyError {
+    fn from(_: std::convert::Infallible) -> Self {
+        unreachable!()
+    }
+}
+
 impl MergeWithError<MyError> for MyError {
     fn merge(
         _self_: Option<Self>,

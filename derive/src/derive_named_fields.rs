@@ -20,13 +20,14 @@ pub fn generate_named_fields_impl(
         unknown_key,
         needs_predicate: _,
     } = fields;
-    let froms = field_from_fns
-        .iter()
-        .map(|from| match from {
-            Some(from) => quote!((#from)(x)?),
-            None => quote!(x),
+    let struct_initialization = (0..field_names.len())
+        .map(|idx| (&field_names[idx], &field_from_fns[idx], &field_maps[idx]))
+        .map(|(name, from, map)| match from {
+            Some(from) => quote!(
+                            #name: #name.map(#from).map(|res| res.map(#map)).unwrap()?,),
+            None => quote!(#name: #name.map(#map).unwrap(),),
         })
-        .collect::<Vec<_>>();
+        .collect::<TokenStream>();
 
     quote! {
         // Start by declaring all the fields as mutable optionals
@@ -43,7 +44,6 @@ pub fn generate_named_fields_impl(
         for (deserr_key__, deserr_value__) in ::deserr::Map::into_iter(deserr_map__) {
             match deserr_key__.as_str() {
                 // For each known key, look at the corresponding value and try to deserialize it
-
                 #(
                     #key_names => {
                         #field_names = match
@@ -51,7 +51,7 @@ pub fn generate_named_fields_impl(
                                 ::deserr::IntoValue::into_value(deserr_value__),
                                 deserr_location__.push_key(deserr_key__.as_str())
                             ) {
-                                Ok(x) => ::deserr::FieldState::Some(#froms),
+                                Ok(x) => ::deserr::FieldState::Some(x),
                                 Err(e) => {
                                     deserr_error__ = Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
                                         deserr_error__,
@@ -72,7 +72,7 @@ pub fn generate_named_fields_impl(
         // Now we check whether any field was missing
         #(
             if #field_names .is_missing() {
-                    #missing_field_errors
+                #missing_field_errors
             }
         )*
 
@@ -82,9 +82,7 @@ pub fn generate_named_fields_impl(
             // If the deserialization was successful, then all #field_names are `Some(..)`
             // Otherwise, an error was thrown earlier
             ::std::result::Result::Ok(#create {
-                #(
-                    #field_names : #field_names.map(#field_maps).unwrap(),
-                )*
+                #struct_initialization
             })
         }
     }

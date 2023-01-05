@@ -448,16 +448,11 @@ impl NamedFieldsInfo {
                     .unwrap_or_else(|| parse_quote!(__Deserr_E)),
             };
 
-            let field_ty = match attrs.from {
-                Some(ref from) => from.from_ty.clone(),
-                None => field_ty.clone(),
-            };
-
             let field_from_fn = match attrs.from {
                 Some(ref from) => {
                     let fun = &from.function.function;
                     if from.is_ref {
-                        Some(quote! { |val: #field_ty | #fun(&val) })
+                        Some(quote! { |val| #fun(&val) })
                     } else {
                         Some(quote! { #fun })
                     }
@@ -469,6 +464,11 @@ impl NamedFieldsInfo {
                 .from
                 .as_ref()
                 .map(|from| from.function.error_ty.clone());
+
+            let field_ty = match attrs.from {
+                Some(ref from) => from.from_ty.clone(),
+                None => field_ty.clone(),
+            };
 
             let field_map = match attrs.map {
                 Some(func) => {
@@ -523,7 +523,6 @@ impl NamedFieldsInfo {
             },
             None => quote! {},
         };
-
         Ok(Self {
             field_names,
             field_tys,
