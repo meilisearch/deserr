@@ -20,11 +20,28 @@ pub fn generate_named_fields_impl(
         unknown_key,
         needs_predicate: _,
     } = fields;
+
     let froms = field_from_fns
         .iter()
-        .map(|from| match from {
-            Some(from) => quote!((#from)(x)?),
-            None => quote!(x),
+        .map(|from_func| match from_func {
+            Some(from_func) => quote!(
+                match (#from_func)(x) {
+                    ::std::result::Result::Ok(x) => {
+                        ::deserr::FieldState::Some(x)
+                    }
+                    ::std::result::Result::Err(e) => {
+                        deserr_error__ = Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
+                            deserr_error__,
+                            e,
+                            deserr_location__.push_key(deserr_key__.as_str())
+                        )?);
+                        ::deserr::FieldState::Err
+                    }
+                }
+            ),
+            None => quote! {
+                ::deserr::FieldState::Some(x)
+            },
         })
         .collect::<Vec<_>>();
 
@@ -51,8 +68,10 @@ pub fn generate_named_fields_impl(
                                 ::deserr::IntoValue::into_value(deserr_value__),
                                 deserr_location__.push_key(deserr_key__.as_str())
                             ) {
-                                Ok(x) => ::deserr::FieldState::Some(#froms),
-                                Err(e) => {
+                                ::std::result::Result::Ok(x) => {
+                                    #froms
+                                },
+                                ::std::result::Result::Err(e) => {
                                     deserr_error__ = Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
                                         deserr_error__,
                                         e,

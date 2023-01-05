@@ -182,7 +182,7 @@ impl DerivedTypeInfo {
                 }) => field_from_errors
                     .iter()
                     .filter_map(|error| error.as_ref())
-                    .map(|error| quote!(+ ::std::convert::From<#error>))
+                    .map(|error| quote!(+ ::deserr::MergeWithError<#error>))
                     .collect::<TokenStream>(),
                 TraitImplementationInfo::Enum { ref variants, .. } => variants
                     .iter()
@@ -196,7 +196,7 @@ impl DerivedTypeInfo {
                             .iter()
                             .filter_map(|error| error.as_ref())
                     })
-                    .map(|error| quote!(+ std::convert::From<#error>))
+                    .map(|error| quote!(+ ::deserr::MergeWithError<#error>))
                     .collect(),
                 _ => TokenStream::new(),
             };
@@ -289,8 +289,6 @@ impl DerivedTypeInfo {
                 impl #impl_generics ::deserr::DeserializeFromValue<#err_ty> for #ident #ty_generics #bounded_where_clause #extra_constraint
             }
         };
-        {}; // the `impl` above breaks my text editor's syntax highlighting, inserting a pair
-            // of curly braces here fixes it
 
         let validate = if let Some(validate_func) = attrs.validate {
             let FunctionReturningError {
