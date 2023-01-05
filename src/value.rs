@@ -70,6 +70,20 @@ impl<'a> ValuePointerRef<'a> {
         }
     }
 
+    /// Return the first field encountered if there is one.
+    /// Eg;
+    /// "toto.tata[42].lol" -> "toto"
+    /// "toto" -> "toto"
+    /// "[1][2][3]" -> None
+    /// "" -> None
+    pub fn first_field(&self) -> Option<&str> {
+        match self {
+            ValuePointerRef::Origin => None,
+            ValuePointerRef::Key { key, prev } => prev.first_field().or(Some(key)),
+            ValuePointerRef::Index { prev, .. } => prev.first_field(),
+        }
+    }
+
     /// Convert `self` to its owned version
     pub fn to_owned(&self) -> ValuePointer {
         let mut cur = self;
