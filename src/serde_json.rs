@@ -194,7 +194,7 @@ impl DeserializeError for JsonError {
         match error {
             ErrorKind::IncorrectValueKind { actual, accepted } => {
                 let expected = match accepted.len() {
-                    0 => format!(""),
+                    0 => String::new(),
                     1 => format!(", expected a {}", accepted[0]),
                     _ => format!(
                         ", expected one of {}",

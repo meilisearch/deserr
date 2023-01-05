@@ -62,7 +62,7 @@ impl<'a> ValuePointerRef<'a> {
     pub fn last_field(&self) -> Option<&str> {
         match self {
             ValuePointerRef::Origin => None,
-            ValuePointerRef::Key { key, .. } => Some(key.as_ref()),
+            ValuePointerRef::Key { key, .. } => Some(key),
             ValuePointerRef::Index { prev, .. } => prev.last_field(),
         }
     }

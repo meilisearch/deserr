@@ -460,10 +460,10 @@ impl NamedFieldsInfo {
                 None => None,
             };
 
-            let field_from_error = match attrs.from {
-                Some(ref from) => Some(from.function.error_ty.clone()),
-                None => None,
-            };
+            let field_from_error = attrs
+                .from
+                .as_ref()
+                .map(|from| from.function.error_ty.clone());
 
             let field_ty = match attrs.from {
                 Some(ref from) => from.from_ty.clone(),
