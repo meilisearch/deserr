@@ -24,6 +24,8 @@ pub struct FieldAttributesInfo {
     pub error: Option<syn::Type>,
     /// The function to apply to the result after it has been deserialised successfully
     pub map: Option<syn::ExprPath>,
+    /// The function used to deserialize the whole type
+    pub from: Option<AttributeFrom>,
     /// Whether an additional where clause should be added to deserialize this field
     pub needs_predicate: bool,
 
@@ -104,6 +106,15 @@ impl FieldAttributesInfo {
             }
             self.map = Some(map)
         }
+        if let Some(from) = other.from {
+            if let Some(_self_from) = &self.from {
+                return Err(syn::Error::new(
+                    from.span,
+                    "The `from` field attribute is defined twice.",
+                ));
+            }
+            self.from = Some(from)
+        }
         self.needs_predicate |= other.needs_predicate;
 
         Ok(())
@@ -128,47 +139,54 @@ impl syn::parse::Parse for FieldAttributesInfo {
         // consumed input: #[deserr( .... )]
 
         loop {
+            let mut other = FieldAttributesInfo::default();
             let attr_name = input.parse::<Ident>()?;
             // consumed input: #[deserr( ... attr_name ... )]
             match attr_name.to_string().as_str() {
                 "rename" => {
-                    this.rename = Some(parse_rename(&input)?);
+                    other.rename = Some(parse_rename(&input)?);
                 }
                 "default" => {
                     if input.peek(Token![=]) {
                         let _eq = input.parse::<Token![=]>()?;
                         let expr = input.parse::<Expr>()?;
                         // #[deserr( ... default = expr )]
-                        this.default = Some(DefaultFieldAttribute::Function(expr));
+                        other.default = Some(DefaultFieldAttribute::Function(expr));
                     } else {
-                        this.default = Some(DefaultFieldAttribute::DefaultTrait);
+                        other.default = Some(DefaultFieldAttribute::DefaultTrait);
                     }
-                    this.default_span = Some(attr_name.span());
+                    other.default_span = Some(attr_name.span());
                 }
                 "missing_field_error" => {
                     let _eq = input.parse::<Token![=]>()?;
                     let expr = input.parse::<Expr>()?;
                     // #[deserr( ... missing_field_error = expr )]
-                    this.missing_field_error = Some(expr);
+                    other.missing_field_error = Some(expr);
                 }
-                "needs_predicate" => this.needs_predicate = true,
+                "needs_predicate" => other.needs_predicate = true,
                 "error" => {
                     let _eq = input.parse::<Token![=]>()?;
                     let err_ty = input.parse::<syn::Type>()?;
                     // #[deserr( ... error = err_ty )]
-                    this.error = Some(err_ty);
+                    other.error = Some(err_ty);
                 }
                 "map" => {
                     let _eq = input.parse::<Token![=]>()?;
                     let func = input.parse::<syn::ExprPath>()?;
                     // #[deserr( ... map = func )]
-                    this.map = Some(func);
+                    other.map = Some(func);
+                }
+                "from" => {
+                    let from_attr = parse_attribute_from(attr_name.span(), &input)?;
+                    // #[deserr( .. from(from_ty) = function::path::<_> -> to_ty )]
+                    other.from = Some(from_attr);
                 }
                 _ => {
                     let message = format!("Unknown deserr field attribute: {}", attr_name);
                     return Result::Err(syn::Error::new_spanned(attr_name, message));
                 }
             }
+            this.merge(other)?;
 
             if input.peek(Token![,]) {
                 let _comma = input.parse::<Token![,]>()?;
@@ -214,6 +232,7 @@ pub enum RenameAll {
     /// `#[deserr(rename_all = lowercase)]`
     LowerCase,
 }
+
 /// The value of the `tag` field attribute
 #[derive(Debug, Clone)]
 pub enum TagType {
@@ -222,11 +241,13 @@ pub enum TagType {
     /// An external tag is the default value, when there is no `tag` attribute.
     External,
 }
+
 impl Default for TagType {
     fn default() -> Self {
         Self::External
     }
 }
+
 /// The value of the `deny_unknown_fields` field attribute
 #[derive(Debug, Clone)]
 pub enum DenyUnknownFields {
@@ -279,6 +300,7 @@ pub struct ContainerAttributesInfo {
     tag_span: Option<Span>,
     deny_unknown_fields_span: Option<Span>,
 }
+
 impl ContainerAttributesInfo {
     /// Merges the other data attributes into `self`.
     ///
@@ -456,6 +478,7 @@ impl syn::parse::Parse for ContainerAttributesInfo {
                 }
                 "from" => {
                     let from_attr = parse_attribute_from(attr_name.span(), &input)?;
+                    // #[deserr( .. from(from_ty) = function::path::<_> -> to_ty )]
                     this.from = Some(from_attr);
                 }
                 "validate" => {

@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use deserr::{
     serde_json::JsonError, DeserializeError, ErrorKind, IntoValue, MergeWithError, ValuePointerRef,
@@ -24,6 +24,12 @@ impl DeserializeError for JsonPointer {
         location: ValuePointerRef,
     ) -> Result<Self, Self> {
         Err(JsonPointer(location.as_json()))
+    }
+}
+
+impl From<std::convert::Infallible> for JsonPointer {
+    fn from(_: std::convert::Infallible) -> Self {
+        unreachable!()
     }
 }
 

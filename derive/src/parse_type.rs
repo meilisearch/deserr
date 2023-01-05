@@ -174,6 +174,33 @@ impl DerivedTypeInfo {
             // The goal of creating these simple bindings is to be able to reference them in a quote! macro
             let ident = input.ident;
 
+            // extract all the error types that can occurs from the `from` attributes in the struct
+            let extra_constraint = match data {
+                TraitImplementationInfo::Struct(NamedFieldsInfo {
+                    ref field_from_errors,
+                    ..
+                }) => field_from_errors
+                    .iter()
+                    .filter_map(|error| error.as_ref())
+                    .map(|error| quote!(+ ::std::convert::From<#error>))
+                    .collect::<TokenStream>(),
+                TraitImplementationInfo::Enum { ref variants, .. } => variants
+                    .iter()
+                    .filter_map(|variant| match variant.data {
+                        VariantData::Unit => None,
+                        VariantData::Named(ref variant_info) => Some(variant_info),
+                    })
+                    .flat_map(|error| {
+                        error
+                            .field_from_errors
+                            .iter()
+                            .filter_map(|error| error.as_ref())
+                    })
+                    .map(|error| quote!(+ std::convert::From<#error>))
+                    .collect(),
+                _ => TokenStream::new(),
+            };
+
             // append the additional clause to the existing where clause
             let mut new_predicates = input
                 .generics
@@ -259,7 +286,7 @@ impl DerivedTypeInfo {
                 .extend(attrs.where_predicates.clone());
 
             quote! {
-                impl #impl_generics ::deserr::DeserializeFromValue<#err_ty> for #ident #ty_generics #bounded_where_clause
+                impl #impl_generics ::deserr::DeserializeFromValue<#err_ty> for #ident #ty_generics #bounded_where_clause #extra_constraint
             }
         };
         {}; // the `impl` above breaks my text editor's syntax highlighting, inserting a pair
@@ -317,6 +344,10 @@ pub struct NamedFieldsInfo {
     pub field_tys: Vec<syn::Type>,
     pub field_defaults: Vec<TokenStream>,
     pub field_errs: Vec<syn::Type>,
+
+    pub field_from_fns: Vec<Option<TokenStream>>,
+    pub field_from_errors: Vec<Option<syn::Type>>,
+
     pub field_maps: Vec<TokenStream>,
     pub missing_field_errors: Vec<TokenStream>,
     pub key_names: Vec<String>,
@@ -336,7 +367,7 @@ impl NamedFieldsInfo {
     ) -> syn::Result<Self> {
         // the identifier of the field
         let mut field_names = vec![];
-        // the type of the field
+        // the type of the field or the type of the `from` if there was one
         let mut field_tys = vec![];
         // the key (in the serialised value) corresponding to the field
         // influenced by the `rename` and `rename_all` attributes
@@ -348,6 +379,10 @@ impl NamedFieldsInfo {
         let mut field_errs = vec![];
         // the token stream representing the error to return when the field is missing and has no default value
         let mut missing_field_errors = vec![];
+        // an Option of token stream which maps the deserialised field value from one type to another
+        let mut field_from_fns = vec![];
+        // The list of error types that can be returned by the `from` clauses
+        let mut field_from_errors = vec![];
         // the token stream which maps the deserialised field value
         let mut field_maps = vec![];
         // `true` iff the field has the needs_predicate attribute
@@ -404,12 +439,35 @@ impl NamedFieldsInfo {
                     }
                 }
             };
+
             let error = match attrs.error {
                 Some(error) => error,
                 None => data_attrs
                     .err_ty
                     .clone()
                     .unwrap_or_else(|| parse_quote!(__Deserr_E)),
+            };
+
+            let field_from_fn = match attrs.from {
+                Some(ref from) => {
+                    let fun = &from.function.function;
+                    if from.is_ref {
+                        Some(quote! { |val| #fun(&val) })
+                    } else {
+                        Some(quote! { #fun })
+                    }
+                }
+                None => None,
+            };
+
+            let field_from_error = match attrs.from {
+                Some(ref from) => Some(from.function.error_ty.clone()),
+                None => None,
+            };
+
+            let field_ty = match attrs.from {
+                Some(ref from) => from.from_ty.clone(),
+                None => field_ty.clone(),
             };
 
             let field_map = match attrs.map {
@@ -428,6 +486,8 @@ impl NamedFieldsInfo {
             key_names.push(key_name.clone());
             field_defaults.push(field_default);
             field_errs.push(error);
+            field_from_fns.push(field_from_fn);
+            field_from_errors.push(field_from_error);
             field_maps.push(field_map);
             missing_field_errors.push(missing_field_error);
             needs_predicate.push(attrs.needs_predicate);
@@ -469,6 +529,8 @@ impl NamedFieldsInfo {
             key_names,
             field_defaults,
             field_errs,
+            field_from_fns,
+            field_from_errors,
             field_maps,
             needs_predicate,
             missing_field_errors,
