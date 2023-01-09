@@ -177,33 +177,6 @@ impl DerivedTypeInfo {
             // The goal of creating these simple bindings is to be able to reference them in a quote! macro
             let ident = input.ident;
 
-            // extract all the error types that can occurs from the `from` attributes in the struct
-            let extra_constraint = match data {
-                TraitImplementationInfo::Struct(NamedFieldsInfo {
-                    ref field_from_errors,
-                    ..
-                }) => field_from_errors
-                    .iter()
-                    .filter_map(|error| error.as_ref())
-                    .map(|error| quote!(+ ::deserr::MergeWithError<#error>))
-                    .collect::<TokenStream>(),
-                TraitImplementationInfo::Enum { ref variants, .. } => variants
-                    .iter()
-                    .filter_map(|variant| match variant.data {
-                        VariantData::Unit => None,
-                        VariantData::Named(ref variant_info) => Some(variant_info),
-                    })
-                    .flat_map(|error| {
-                        error
-                            .field_from_errors
-                            .iter()
-                            .filter_map(|error| error.as_ref())
-                    })
-                    .map(|error| quote!(+ ::deserr::MergeWithError<#error>))
-                    .collect(),
-                _ => TokenStream::new(),
-            };
-
             // append the additional clause to the existing where clause
             let mut new_predicates = input
                 .generics
@@ -221,6 +194,32 @@ impl DerivedTypeInfo {
                 new_predicates.push(parse_quote!(
                     #err_ty : ::deserr::DeserializeError
                 ));
+            }
+            match &data {
+                TraitImplementationInfo::Struct(NamedFieldsInfo {
+                    field_from_errors, ..
+                }) => {
+                    for field_from_error in field_from_errors.iter().flatten() {
+                        new_predicates.push(parse_quote!(
+                            #err_ty : ::deserr::MergeWithError<#field_from_error>
+                        ))
+                    }
+                }
+                TraitImplementationInfo::Enum { variants, .. } => {
+                    for variant in variants {
+                        match &variant.data {
+                            VariantData::Unit => continue,
+                            VariantData::Named(variant_info) => {
+                                for field_from_error in variant_info.field_from_errors.iter() {
+                                    new_predicates.push(parse_quote!(
+                                        #err_ty : ::deserr::MergeWithError<#field_from_error>
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+                TraitImplementationInfo::UserProvidedFunction { .. } => {}
             }
 
             // Add MergeWithError<FromFunctionError> requirement
@@ -289,7 +288,7 @@ impl DerivedTypeInfo {
                 .extend(attrs.where_predicates.clone());
 
             quote! {
-                impl #impl_generics ::deserr::DeserializeFromValue<#err_ty> for #ident #ty_generics #bounded_where_clause #extra_constraint
+                impl #impl_generics ::deserr::DeserializeFromValue<#err_ty> for #ident #ty_generics #bounded_where_clause
             }
         };
 
