@@ -1,6 +1,6 @@
 [package]
 name = "deserr-internal"
-version = "0.1.0"
+version = "0.1.2"
 authors = ["Lo <loic@meilisearch.com>"]
 license = "MIT OR Apache-2.0"
 description = "Derive macros for Deserr. Use the re-exports from the deserr crate instead."
