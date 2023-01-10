@@ -663,7 +663,7 @@ fn test_de() {
             "t": "A"
         }
         "#,
-        DefaultError::CustomMissingField(0),
+        DefaultError::CustomMissingField(1),
     );
 
     // enum with custom missing field error, error check 2
