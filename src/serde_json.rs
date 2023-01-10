@@ -238,6 +238,20 @@ impl DeserializeError for JsonError {
 
                 Err(JsonError(format))
             }
+            ErrorKind::UnknownValue { value, accepted } => {
+                let format = format!(
+                    "Json deserialize error: unknown value `{}`, expected one of {} at `{}`.",
+                    value,
+                    accepted
+                        .iter()
+                        .map(|accepted| format!("`{}`", accepted))
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    location
+                );
+
+                Err(JsonError(format))
+            }
             ErrorKind::Unexpected { msg } => {
                 // serde_json original message:
                 // The json payload provided is malformed. `trailing characters at line 1 column 19`.
@@ -336,7 +350,24 @@ mod test {
         }
         let value = json!({ "me": "la" });
         let err = deserr::deserialize::<MultiIncorrect, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Incorrect tag value at `.me`.");
+        insta::assert_display_snapshot!(err, @"Json deserialize error: unknown value `la`, expected one of `One`, `Two`, `Three` at `.me`.");
+
+        #[allow(dead_code)]
+        #[derive(deserr::DeserializeFromValue, Debug)]
+        #[deserr(rename_all = lowercase)]
+        enum CamelCaseVariants {
+            TheObjectiveCamelIsNOICE,
+            Bloup,
+        }
+
+        #[allow(dead_code)]
+        #[derive(deserr::DeserializeFromValue, Debug)]
+        struct MultiIncorrectWithRename {
+            me: CamelCaseVariants,
+        }
+        let value = json!({ "me": "la" });
+        let err = deserr::deserialize::<MultiIncorrectWithRename, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Json deserialize error: unknown value `la`, expected one of `theobjectivecamelisnoice`, `bloup` at `.me`.");
     }
 
     #[test]

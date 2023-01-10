@@ -164,6 +164,14 @@ pub fn generate_derive_untagged_enum_impl(
     info: CommonDerivedTypeInfo,
     variants: Vec<VariantInfo>,
 ) -> TokenStream {
+    // all the variant of the enum as a slice of `&str`
+    let all_variants_as_str = variants
+        .iter()
+        .map(|v| &v.key_name)
+        .map(|v| quote!(#v, ))
+        .collect::<TokenStream>();
+    let all_variants_as_str = quote!(&[#all_variants_as_str]);
+
     // `variant_impls` is the token stream of the code responsible for deserialising
     // the enum variants and returning the correct variant. Since we've already ensured
     // the enum was untagged, we can re-use the `generate_derive_tagged_enum_variant_impl`
@@ -189,13 +197,13 @@ pub fn generate_derive_untagged_enum_impl(
                             #(#variants_impls)*
                             // this is the case where the tag exists and is a string, but its value does not
                             // correspond to any valid enum variant name
-                            _ => {
+                            s => {
                                 ::std::result::Result::Err(
                                     <#err_ty as ::deserr::DeserializeError>::error::<V>(
                                         None,
-                                        // TODO: expected one of {expected_tags_list}, found {actual_tag} error message
-                                        ::deserr::ErrorKind::Unexpected {
-                                            msg: "Incorrect tag value".to_string(),
+                                        ::deserr::ErrorKind::UnknownValue {
+                                            value: s,
+                                            accepted: #all_variants_as_str,
                                         },
                                         deserr_location__
                                     )?

@@ -6,9 +6,18 @@ use crate::*;
 pub enum DefaultError {
     Unexpected(String),
     MissingField(String),
-    IncorrectValueKind { accepted: Vec<ValueKind> },
-    UnknownKey { key: String, accepted: Vec<String> },
-    CustomMissingField(u8),
+    IncorrectValueKind {
+        accepted: Vec<ValueKind>,
+    },
+    UnknownKey {
+        key: String,
+        accepted: Vec<String>,
+    },
+    UnknownValue {
+        value: String,
+        accepted: Vec<String>,
+    },
+    CustomMissingField(usize),
     Validation,
 }
 
@@ -38,6 +47,13 @@ impl DeserializeError for DefaultError {
             ErrorKind::MissingField { field } => Self::MissingField(field.to_string()),
             ErrorKind::UnknownKey { key, accepted } => Self::UnknownKey {
                 key: key.to_string(),
+                accepted: accepted
+                    .iter()
+                    .map(|accepted| accepted.to_string())
+                    .collect(),
+            },
+            ErrorKind::UnknownValue { value, accepted } => Self::UnknownValue {
+                value: value.to_string(),
                 accepted: accepted
                     .iter()
                     .map(|accepted| accepted.to_string())

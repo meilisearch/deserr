@@ -170,6 +170,10 @@ pub enum ErrorKind<'a, V: IntoValue> {
         key: &'a str,
         accepted: &'a [&'a str],
     },
+    UnknownValue {
+        value: &'a str,
+        accepted: &'a [&'a str],
+    },
     Unexpected {
         msg: String,
     },

@@ -56,8 +56,10 @@ pub enum TraitImplementationInfo {
 pub struct VariantInfo {
     /// The identifier of the enum variant
     pub ident: Ident,
+
     /// Describes the kind of variant and its content
     pub data: VariantData,
+
     /// The key name (in the serialized value) that represents this variant.
     ///
     /// It is relevant to the `rename` and `rename_all` attributes
@@ -71,6 +73,7 @@ pub struct VariantInfo {
 pub enum VariantData {
     /// The variant is a unit variant, such as `Option::None`
     Unit,
+
     /// The variant is a variant with named fields, such as `Position { line: usize, col: usize }`
     Named(NamedFieldsInfo),
 }
