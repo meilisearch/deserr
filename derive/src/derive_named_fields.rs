@@ -23,16 +23,33 @@ pub fn generate_named_fields_impl(
 
     let froms = field_from_fns
         .iter()
-        .map(|from_func| match from_func {
+        .zip(field_errs.iter())
+        .map(|(from_func, field_err)| match from_func {
             Some(from_func) => quote!(
                 match (#from_func)(x) {
                     ::std::result::Result::Ok(x) => {
                         ::deserr::FieldState::Some(x)
                     }
                     ::std::result::Result::Err(e) => {
-                        deserr_error__ = Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
-                            deserr_error__,
+                        let tmp_deserr_error__ = match <#field_err as ::deserr::MergeWithError<_>>::merge(
+                            None,
                             e,
+                            deserr_location__.push_key(deserr_key__.as_str())
+                        ) {
+                            ::std::result::Result::Ok(e) => e,
+                            ::std::result::Result::Err(e) => {
+                                return ::std::result::Result::Err(
+                                    <#err_ty as ::deserr::MergeWithError<_>>::merge(
+                                        deserr_error__,
+                                        e,
+                                        deserr_location__.push_key(deserr_key__.as_str())
+                                    )?
+                                )
+                            }
+                        };
+                        deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
+                            deserr_error__,
+                            tmp_deserr_error__,
                             deserr_location__.push_key(deserr_key__.as_str())
                         )?);
                         ::deserr::FieldState::Err
@@ -91,7 +108,7 @@ pub fn generate_named_fields_impl(
         // Now we check whether any field was missing
         #(
             if #field_names .is_missing() {
-                    #missing_field_errors
+                #missing_field_errors
             }
         )*
 

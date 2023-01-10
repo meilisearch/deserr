@@ -177,33 +177,6 @@ impl DerivedTypeInfo {
             // The goal of creating these simple bindings is to be able to reference them in a quote! macro
             let ident = input.ident;
 
-            // extract all the error types that can occurs from the `from` attributes in the struct
-            let extra_constraint = match data {
-                TraitImplementationInfo::Struct(NamedFieldsInfo {
-                    ref field_from_errors,
-                    ..
-                }) => field_from_errors
-                    .iter()
-                    .filter_map(|error| error.as_ref())
-                    .map(|error| quote!(+ ::deserr::MergeWithError<#error>))
-                    .collect::<TokenStream>(),
-                TraitImplementationInfo::Enum { ref variants, .. } => variants
-                    .iter()
-                    .filter_map(|variant| match variant.data {
-                        VariantData::Unit => None,
-                        VariantData::Named(ref variant_info) => Some(variant_info),
-                    })
-                    .flat_map(|error| {
-                        error
-                            .field_from_errors
-                            .iter()
-                            .filter_map(|error| error.as_ref())
-                    })
-                    .map(|error| quote!(+ ::deserr::MergeWithError<#error>))
-                    .collect(),
-                _ => TokenStream::new(),
-            };
-
             // append the additional clause to the existing where clause
             let mut new_predicates = input
                 .generics
@@ -221,6 +194,34 @@ impl DerivedTypeInfo {
                 new_predicates.push(parse_quote!(
                     #err_ty : ::deserr::DeserializeError
                 ));
+            }
+            match &data {
+                TraitImplementationInfo::Struct(NamedFieldsInfo {
+                    field_from_errors, ..
+                }) => {
+                    for field_from_error in field_from_errors.iter().flatten() {
+                        new_predicates.push(parse_quote!(
+                            #err_ty : ::deserr::MergeWithError<#field_from_error>
+                        ))
+                    }
+                }
+                TraitImplementationInfo::Enum { variants, .. } => {
+                    for variant in variants {
+                        match &variant.data {
+                            VariantData::Unit => continue,
+                            VariantData::Named(variant_info) => {
+                                for field_from_error in
+                                    variant_info.field_from_errors.iter().flatten()
+                                {
+                                    new_predicates.push(parse_quote!(
+                                        #err_ty : ::deserr::MergeWithError<#field_from_error>
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+                TraitImplementationInfo::UserProvidedFunction { .. } => {}
             }
 
             // Add MergeWithError<FromFunctionError> requirement
@@ -289,7 +290,7 @@ impl DerivedTypeInfo {
                 .extend(attrs.where_predicates.clone());
 
             quote! {
-                impl #impl_generics ::deserr::DeserializeFromValue<#err_ty> for #ident #ty_generics #bounded_where_clause #extra_constraint
+                impl #impl_generics ::deserr::DeserializeFromValue<#err_ty> for #ident #ty_generics #bounded_where_clause
             }
         };
 
@@ -389,17 +390,23 @@ impl NamedFieldsInfo {
         // `true` iff the field has the needs_predicate attribute
         let mut needs_predicate = vec![];
 
-        for field in fields.named.iter() {
+        let mut fields_extra = fields
+            .named
+            .into_iter()
+            .map(|field| {
+                let attrs = read_deserr_field_attributes(&field.attrs)?;
+                Ok((field, attrs))
+            })
+            .collect::<Result<Vec<_>, syn::Error>>()?;
+
+        // We put all the non-skipped fields at the beginning, so that when we iterate
+        // over the non-skipped key names, we can access their corresponding field names
+        // using the same index.
+        fields_extra.sort_by_key(|x| x.1.skipped);
+
+        for (field, attrs) in fields_extra.iter() {
             let field_name = field.ident.clone().unwrap();
             let field_ty = &field.ty;
-
-            let attrs = read_deserr_field_attributes(&field.attrs)?;
-            let renamed = attrs.rename.as_ref().map(|i| i.value());
-            let key_name = key_name_for_ident(
-                field_name.to_string(),
-                data_attrs.rename_all.as_ref(),
-                renamed.as_deref(),
-            );
 
             let field_default = if let Some(default) = &attrs.default {
                 match default {
@@ -412,35 +419,46 @@ impl NamedFieldsInfo {
                         quote! { ::std::option::Option::Some(#expr) }
                     }
                 }
+            } else if attrs.skipped {
+                quote! { ::std::option::Option::Some(::std::default::Default::default()) }
             } else {
                 // no `default` attribute => use the DeserializeFromValue::default() method
                 quote! { ::deserr::DeserializeFromValue::<#err_ty>::default() }
             };
 
-            let missing_field_error = match attrs.missing_field_error {
-                Some(error_expr) => {
+            let field_ty = match attrs.from {
+                Some(ref from) => from.from_ty.clone(),
+                None => field_ty.clone(),
+            };
+
+            let field_map = match &attrs.map {
+                Some(func) => {
                     quote! {
-                        let deserr_e__ = #error_expr ;
-                        deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
-                            deserr_error__,
-                            deserr_e__,
-                            deserr_location__
-                        )?);
+                        #func
                     }
                 }
                 None => {
-                    quote! {
-                        deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::DeserializeError>::error::<V>(
-                            deserr_error__,
-                            ::deserr::ErrorKind::MissingField {
-                                field: #key_name,
-                            },
-                            deserr_location__
-                        )?);
-                    }
+                    quote! { ::std::convert::identity }
                 }
             };
 
+            field_names.push(field_name);
+            field_tys.push(field_ty.clone());
+            field_defaults.push(field_default);
+            field_maps.push(field_map);
+            needs_predicate.push(attrs.needs_predicate);
+        }
+
+        for (field, attrs) in fields_extra.into_iter().filter(|x| !x.1.skipped) {
+            let field_ty = &field.ty;
+            let field_name = field.ident.clone().unwrap();
+
+            let renamed = attrs.rename.as_ref().map(|i| i.value());
+            let key_name = key_name_for_ident(
+                field_name.to_string(),
+                data_attrs.rename_all.as_ref(),
+                renamed.as_deref(),
+            );
             let error = match attrs.error {
                 Some(error) => error,
                 None => data_attrs
@@ -471,27 +489,35 @@ impl NamedFieldsInfo {
                 .as_ref()
                 .map(|from| from.function.error_ty.clone());
 
-            let field_map = match attrs.map {
-                Some(func) => {
+            let missing_field_error = match &attrs.missing_field_error {
+                Some(error_function) => {
                     quote! {
-                        #func
+                        let deserr_e__ = #error_function ( #key_name, deserr_location__ ) ;
+                        deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
+                            deserr_error__,
+                            deserr_e__,
+                            deserr_location__
+                        )?);
                     }
                 }
                 None => {
-                    quote! { ::std::convert::identity }
+                    quote! {
+                        deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::DeserializeError>::error::<V>(
+                            deserr_error__,
+                            ::deserr::ErrorKind::MissingField {
+                                field: #key_name,
+                            },
+                            deserr_location__
+                        )?);
+                    }
                 }
             };
 
-            field_names.push(field_name);
-            field_tys.push(field_ty.clone());
             key_names.push(key_name.clone());
-            field_defaults.push(field_default);
             field_errs.push(error);
             field_from_fns.push(field_from_fn);
             field_from_errors.push(field_from_error);
-            field_maps.push(field_map);
             missing_field_errors.push(missing_field_error);
-            needs_predicate.push(attrs.needs_predicate);
         }
 
         // Create the token stream representing the code to handle an unknown field key.
@@ -506,7 +532,7 @@ impl NamedFieldsInfo {
                 quote! {
                     deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::DeserializeError>::error::<V>(
                         deserr_error__,
-                        deserr::ErrorKind::UnknownKey {
+                        ::deserr::ErrorKind::UnknownKey {
                             key: deserr_key__,
                             accepted: &[#(#key_names),*],
                         },

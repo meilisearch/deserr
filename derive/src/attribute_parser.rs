@@ -19,7 +19,7 @@ pub struct FieldAttributesInfo {
     /// The default value to deserialise to when the field is missing.
     pub default: Option<DefaultFieldAttribute>,
     /// The error to return when the field is missing and no default value exists.
-    pub missing_field_error: Option<Expr>,
+    pub missing_field_error: Option<ExprPath>,
     /// The type of the error used to deserialize the field
     pub error: Option<syn::Type>,
     /// The function to apply to the result after it has been deserialised successfully
@@ -28,6 +28,8 @@ pub struct FieldAttributesInfo {
     pub from: Option<AttributeFrom>,
     /// Whether an additional where clause should be added to deserialize this field
     pub needs_predicate: bool,
+    /// Whether the field should be skipped
+    pub skipped: bool,
 
     /// Span of the `default` attribute, if any, for compile error reporting purposes
     default_span: Option<Span>,
@@ -116,6 +118,7 @@ impl FieldAttributesInfo {
             self.from = Some(from)
         }
         self.needs_predicate |= other.needs_predicate;
+        self.skipped |= other.skipped;
 
         Ok(())
     }
@@ -159,9 +162,9 @@ impl syn::parse::Parse for FieldAttributesInfo {
                 }
                 "missing_field_error" => {
                     let _eq = input.parse::<Token![=]>()?;
-                    let expr = input.parse::<Expr>()?;
-                    // #[deserr( ... missing_field_error = expr )]
-                    other.missing_field_error = Some(expr);
+                    let func = input.parse::<ExprPath>()?;
+                    // #[deserr( ... missing_field_error = func )]
+                    other.missing_field_error = Some(func);
                 }
                 "needs_predicate" => other.needs_predicate = true,
                 "error" => {
@@ -180,6 +183,9 @@ impl syn::parse::Parse for FieldAttributesInfo {
                     let from_attr = parse_attribute_from(attr_name.span(), &input)?;
                     // #[deserr( .. from(from_ty) = function::path::<_> -> to_ty )]
                     other.from = Some(from_attr);
+                }
+                "skip" => {
+                    other.skipped = true;
                 }
                 _ => {
                     let message = format!("Unknown deserr field attribute: {}", attr_name);

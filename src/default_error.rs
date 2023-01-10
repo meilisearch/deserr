@@ -3,7 +3,13 @@ use std::num::ParseIntError;
 use crate::*;
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum DefaultError {
+pub struct DefaultError {
+    pub location: ValuePointer,
+    pub content: DefaultErrorContent,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum DefaultErrorContent {
     Unexpected(String),
     MissingField(String),
     IncorrectValueKind {
@@ -35,37 +41,46 @@ impl DeserializeError for DefaultError {
     fn error<V: IntoValue>(
         _self_: Option<Self>,
         error: ErrorKind<V>,
-        _location: ValuePointerRef,
+        location: ValuePointerRef,
     ) -> Result<Self, Self> {
-        Err(match error {
+        let content = match error {
             ErrorKind::IncorrectValueKind {
                 actual: _,
                 accepted,
-            } => Self::IncorrectValueKind {
+            } => DefaultErrorContent::IncorrectValueKind {
                 accepted: accepted.to_vec(),
             },
-            ErrorKind::MissingField { field } => Self::MissingField(field.to_string()),
-            ErrorKind::UnknownKey { key, accepted } => Self::UnknownKey {
+            ErrorKind::MissingField { field } => {
+                DefaultErrorContent::MissingField(field.to_string())
+            }
+            ErrorKind::UnknownKey { key, accepted } => DefaultErrorContent::UnknownKey {
                 key: key.to_string(),
                 accepted: accepted
                     .iter()
                     .map(|accepted| accepted.to_string())
                     .collect(),
             },
-            ErrorKind::UnknownValue { value, accepted } => Self::UnknownValue {
+            ErrorKind::UnknownValue { value, accepted } => DefaultErrorContent::UnknownValue {
                 value: value.to_string(),
                 accepted: accepted
                     .iter()
                     .map(|accepted| accepted.to_string())
                     .collect(),
             },
-            ErrorKind::Unexpected { msg } => Self::Unexpected(msg),
+            ErrorKind::Unexpected { msg } => DefaultErrorContent::Unexpected(msg),
+        };
+        Err(Self {
+            location: location.to_owned(),
+            content,
         })
     }
 }
 
 impl From<ParseIntError> for DefaultError {
     fn from(value: ParseIntError) -> Self {
-        Self::Unexpected(value.to_string())
+        Self {
+            location: ValuePointerRef::Origin.to_owned(),
+            content: DefaultErrorContent::Unexpected(value.to_string()),
+        }
     }
 }

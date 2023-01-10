@@ -1,6 +1,6 @@
 use deserr::{
-    DefaultError, DeserializeError, DeserializeFromValue, ErrorKind, MergeWithError, ValueKind,
-    ValuePointerRef,
+    DefaultError, DefaultErrorContent, DeserializeError, DeserializeFromValue, ErrorKind,
+    MergeWithError, ValueKind, ValuePointerRef,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
@@ -147,10 +147,13 @@ struct StructDenyUnknownFields {
     x: bool,
 }
 
-fn unknown_field_error(k: &str, _accepted: &[&str], _location: ValuePointerRef) -> DefaultError {
-    DefaultError::UnknownKey {
-        key: k.to_owned(),
-        accepted: vec!["don't know".to_string()],
+fn unknown_field_error(k: &str, _accepted: &[&str], location: ValuePointerRef) -> DefaultError {
+    DefaultError {
+        location: location.to_owned(),
+        content: DefaultErrorContent::UnknownKey {
+            key: k.to_owned(),
+            accepted: vec!["don't know".to_string()],
+        },
     }
 }
 
@@ -176,13 +179,25 @@ enum EnumDenyUnknownFieldsCustom {
     SomeField { my_field: bool },
     Other { my_field: bool, y: u8 },
 }
+fn missing_x_field(_field_name: &str, location: ValuePointerRef) -> DefaultError {
+    DefaultError {
+        location: location.to_owned(),
+        content: DefaultErrorContent::MissingField("lol".to_string()),
+    }
+}
+fn custom_mising_field(_field_name: &str, location: ValuePointerRef) -> DefaultError {
+    DefaultError {
+        location: location.to_owned(),
+        content: DefaultErrorContent::CustomMissingField(1),
+    }
+}
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[deserr(error = DefaultError)]
 struct StructMissingFieldError {
-    #[deserr(missing_field_error = DefaultError::MissingField("lol".to_string()))]
+    #[deserr(missing_field_error = missing_x_field)]
     x: bool,
-    #[deserr(missing_field_error = DefaultError::CustomMissingField(1))]
+    #[deserr(missing_field_error = custom_mising_field)]
     y: bool,
 }
 
@@ -190,7 +205,7 @@ struct StructMissingFieldError {
 #[deserr(error = DefaultError, tag = "t")]
 enum EnumMissingFieldError {
     A {
-        #[deserr(missing_field_error = DefaultError::CustomMissingField(0))]
+        #[deserr(missing_field_error = custom_mising_field)]
         x: bool,
     },
     B {
@@ -287,7 +302,10 @@ fn parse_hello3(b: &str) -> Result<Hello3, DefaultError> {
     match b {
         "A" => Ok(Hello3::A),
         "B" => Ok(Hello3::B),
-        _ => Err(DefaultError::Unexpected("Hello3 from error".to_string())),
+        _ => Err(DefaultError {
+            location: ValuePointerRef::Origin.to_owned(),
+            content: DefaultErrorContent::Unexpected("Hello3 from error".to_string()),
+        }),
     }
 }
 
@@ -335,9 +353,12 @@ impl MergeWithError<MyValidationError> for DefaultError {
     fn merge(
         _self_: Option<Self>,
         _other: MyValidationError,
-        _merge_location: ValuePointerRef,
+        merge_location: ValuePointerRef,
     ) -> Result<Self, Self> {
-        Err(DefaultError::Validation)
+        Err(DefaultError {
+            location: merge_location.to_owned(),
+            content: DefaultErrorContent::Validation,
+        })
     }
 }
 
@@ -391,9 +412,12 @@ impl MergeWithError<MyParseIntError> for DefaultError {
     fn merge(
         _self_: Option<Self>,
         other: MyParseIntError,
-        _merge_location: ValuePointerRef,
+        merge_location: ValuePointerRef,
     ) -> Result<Self, Self> {
-        Err(DefaultError::Unexpected(other.0.to_string()))
+        Err(DefaultError {
+            location: merge_location.to_owned(),
+            content: DefaultErrorContent::Unexpected(other.0.to_string()),
+        })
     }
 }
 
@@ -413,6 +437,38 @@ impl MergeWithError<NeverError> for DefaultError {
     ) -> Result<Self, Self> {
         unreachable!()
     }
+}
+
+#[derive(Debug, PartialEq, Eq, Deserialize, DeserializeFromValue)]
+pub struct Skipped1 {
+    #[deserr(skip)]
+    #[serde(skip)]
+    x: u8,
+    #[deserr(skip)]
+    #[serde(skip)]
+    y: Option<u8>,
+
+    z: bool,
+}
+
+fn default_skipped_x() -> u8 {
+    1
+}
+fn default_skipped_y() -> Option<u8> {
+    Some(3)
+}
+
+#[derive(Debug, PartialEq, Eq, Deserialize, DeserializeFromValue)]
+#[deserr(deny_unknown_fields)]
+pub struct Skipped2 {
+    #[deserr(default = default_skipped_x(), skip)]
+    #[serde(default = "default_skipped_x", skip)]
+    x: u8,
+    #[deserr(skip, default = default_skipped_y())]
+    #[serde(skip, default = "default_skipped_y")]
+    y: Option<u8>,
+
+    z: bool,
 }
 
 #[track_caller]
@@ -640,7 +696,10 @@ fn test_de() {
             "y": true
         }
         "#,
-        DefaultError::MissingField("lol".to_string()),
+        DefaultError {
+            location: ValuePointerRef::Origin.to_owned(),
+            content: DefaultErrorContent::MissingField("lol".to_string()),
+        },
     );
     // struct with custom missing field error, error check 2
     assert_error_matches::<StructMissingFieldError, DefaultError>(
@@ -648,7 +707,10 @@ fn test_de() {
             "x": true
         }
         "#,
-        DefaultError::CustomMissingField(1),
+        DefaultError {
+            location: ValuePointerRef::Origin.to_owned(),
+            content: DefaultErrorContent::CustomMissingField(1),
+        },
     );
 
     // enum with custom missing field error, error check 1
@@ -657,7 +719,10 @@ fn test_de() {
             "t": "A"
         }
         "#,
-        DefaultError::CustomMissingField(0),
+        DefaultError {
+            location: ValuePointerRef::Origin.to_owned(),
+            content: DefaultErrorContent::CustomMissingField(1),
+        },
     );
 
     // enum with custom missing field error, error check 2
@@ -666,7 +731,10 @@ fn test_de() {
             "t": "B"
         }
         "#,
-        DefaultError::MissingField("x".to_owned()),
+        DefaultError {
+            location: ValuePointerRef::Origin.to_owned(),
+            content: DefaultErrorContent::MissingField("x".to_owned()),
+        },
     );
 
     // enum with renamed variants, roundtrip 1
@@ -708,7 +776,10 @@ fn test_de() {
             "y": 1
         }
         "#,
-        DefaultError::Validation,
+        DefaultError {
+            location: ValuePointerRef::Origin.to_owned(),
+            content: DefaultErrorContent::Validation,
+        },
     );
 
     assert_ok_matches::<FieldMap, DefaultError>(
@@ -740,16 +811,50 @@ fn test_de() {
     assert_ok_matches::<From, DefaultError>(r#"{ "x": "2", "y": 14 }"#, From { x: 2, y: 14 });
     assert_error_matches::<From, DefaultError>(
         r#"{ "x": "hello", "y": 14 }"#,
-        DefaultError::Unexpected(String::from("invalid digit found in string")),
+        DefaultError {
+            location: ValuePointerRef::Origin.push_key("x").to_owned(),
+            content: DefaultErrorContent::Unexpected(String::from("invalid digit found in string")),
+        },
     );
     assert_error_matches::<From, DefaultError>(
         r#"{ "x": 2, "y": 14 }"#,
-        DefaultError::IncorrectValueKind {
-            accepted: vec![ValueKind::String],
+        DefaultError {
+            location: ValuePointerRef::Origin.push_key("x").to_owned(),
+            content: DefaultErrorContent::IncorrectValueKind {
+                accepted: vec![ValueKind::String],
+            },
         },
     );
 
     // just want to ensure that it works even though we're going to ask multiple time the same constraint
     assert_ok_matches::<From2, DefaultError>(r#"{ "x": "2", "y": "14" }"#, From2 { x: 2, y: 14 });
     assert_ok_matches::<From2, DefaultError>(r#"{ "x": "2" }"#, From2 { x: 2, y: 3 });
+
+    // Struct skipped fields
+    compare_with_serde::<Skipped1>(
+        r#"{
+            "x": 89,
+            "z": true
+        }
+        "#,
+    );
+
+    // Struct skipped fields
+    compare_with_serde::<Skipped2>(
+        r#"{
+            "z": true
+        }
+        "#,
+    );
+
+    assert_error_matches::<Skipped2, DefaultError>(
+        r#"{ "x": 78, "z": true }"#,
+        DefaultError {
+            location: ValuePointerRef::Origin.to_owned(),
+            content: DefaultErrorContent::UnknownKey {
+                key: "x".to_owned(),
+                accepted: vec!["z".to_owned()],
+            },
+        },
+    );
 }

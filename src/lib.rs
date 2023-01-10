@@ -9,6 +9,7 @@ pub mod serde_json;
 mod value;
 
 pub use default_error::DefaultError;
+pub use default_error::DefaultErrorContent;
 extern crate self as deserr;
 
 /**
