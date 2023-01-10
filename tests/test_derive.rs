@@ -362,7 +362,7 @@ impl MergeWithError<MyValidationError> for DefaultError {
     }
 }
 
-fn validate_it(x: Validated) -> Result<Validated, MyValidationError> {
+fn validate_it(x: Validated, _location: ValuePointerRef) -> Result<Validated, MyValidationError> {
     if x.x as u16 > x.y {
         Err(MyValidationError)
     } else {
@@ -370,7 +370,10 @@ fn validate_it(x: Validated) -> Result<Validated, MyValidationError> {
     }
 }
 
-fn validate_it2(x: Validated2) -> Result<Validated2, MyValidationError> {
+fn validate_it2(
+    x: Validated2,
+    _location: ValuePointerRef,
+) -> Result<Validated2, MyValidationError> {
     if x.x as u16 > x.y {
         Err(MyValidationError)
     } else {
