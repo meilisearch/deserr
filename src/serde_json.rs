@@ -297,4 +297,86 @@ mod test {
 
         assert_eq!(value, deserr);
     }
+
+    #[test]
+    fn error_msg_missing_field() {
+        #[allow(dead_code)]
+        #[derive(deserr::DeserializeFromValue, Debug)]
+        struct Missing {
+            me: usize,
+        }
+        let value = json!({ "toto": 2 });
+        let err = deserr::deserialize::<Missing, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Json deserialize error: missing field `me` at ``");
+    }
+
+    #[test]
+    fn error_msg_incorrect() {
+        #[allow(dead_code)]
+        #[derive(deserr::DeserializeFromValue, Debug)]
+        struct Incorrect {
+            me: usize,
+        }
+        let value = json!({ "me": [2] });
+        let err = deserr::deserialize::<Incorrect, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"invalid type: Sequence `[2]`, expected a Integer at `.me`.");
+
+        #[allow(dead_code)]
+        #[derive(deserr::DeserializeFromValue, Debug)]
+        enum Variants {
+            One,
+            Two,
+            Three,
+        }
+
+        #[allow(dead_code)]
+        #[derive(deserr::DeserializeFromValue, Debug)]
+        struct MultiIncorrect {
+            me: Variants,
+        }
+        let value = json!({ "me": "la" });
+        let err = deserr::deserialize::<MultiIncorrect, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Incorrect tag value at `.me`.");
+    }
+
+    #[test]
+    fn error_msg_unknown_key() {
+        #[allow(dead_code)]
+        #[derive(deserr::DeserializeFromValue, Debug)]
+        #[deserr(deny_unknown_fields)]
+        struct SingleUnknownField {
+            me: usize,
+        }
+        let value = json!({ "me": 2, "u": "uwu" });
+        let err = deserr::deserialize::<SingleUnknownField, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Json deserialize error: unknown field `u`, expected one of `me` at ``.");
+
+        #[allow(dead_code)]
+        #[derive(deserr::DeserializeFromValue, Debug)]
+        #[deserr(deny_unknown_fields)]
+        struct MultiUnknownField {
+            me: usize,
+            and: String,
+        }
+        let value = json!({ "me": 2, "and": "u", "uwu": "OwO" });
+        let err = deserr::deserialize::<MultiUnknownField, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Json deserialize error: unknown field `uwu`, expected one of `me`, `and` at ``.");
+    }
+
+    #[test]
+    fn error_msg_unexpected() {
+        #[allow(dead_code)]
+        #[derive(deserr::DeserializeFromValue, Debug)]
+        #[deserr(deny_unknown_fields)]
+        struct UnexpectedTuple {
+            me: (usize, String),
+        }
+        let value = json!({ "me": [2] });
+        let err = deserr::deserialize::<UnexpectedTuple, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"the sequence should have exactly 2 elements at `.me`.");
+
+        let value = json!({ "me": [2, 3, 4] });
+        let err = deserr::deserialize::<UnexpectedTuple, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"the sequence should have exactly 2 elements at `.me`.");
+    }
 }

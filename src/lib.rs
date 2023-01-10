@@ -9,6 +9,7 @@ pub mod serde_json;
 mod value;
 
 pub use default_error::DefaultError;
+extern crate self as deserr;
 
 /**
 It is possible to derive the `DeserializeFromValue` trait for structs and enums with named fields.
