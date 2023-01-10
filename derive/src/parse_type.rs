@@ -210,7 +210,9 @@ impl DerivedTypeInfo {
                         match &variant.data {
                             VariantData::Unit => continue,
                             VariantData::Named(variant_info) => {
-                                for field_from_error in variant_info.field_from_errors.iter() {
+                                for field_from_error in
+                                    variant_info.field_from_errors.iter().flatten()
+                                {
                                     new_predicates.push(parse_quote!(
                                         #err_ty : ::deserr::MergeWithError<#field_from_error>
                                     ));
@@ -417,9 +419,9 @@ impl NamedFieldsInfo {
             };
 
             let missing_field_error = match attrs.missing_field_error {
-                Some(error_expr) => {
+                Some(error_function) => {
                     quote! {
-                        let deserr_e__ = #error_expr ;
+                        let deserr_e__ = #error_function ( #key_name, deserr_location__ ) ;
                         deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
                             deserr_error__,
                             deserr_e__,
@@ -483,14 +485,17 @@ impl NamedFieldsInfo {
 
             field_names.push(field_name);
             field_tys.push(field_ty.clone());
-            key_names.push(key_name.clone());
             field_defaults.push(field_default);
-            field_errs.push(error);
-            field_from_fns.push(field_from_fn);
-            field_from_errors.push(field_from_error);
             field_maps.push(field_map);
-            missing_field_errors.push(missing_field_error);
             needs_predicate.push(attrs.needs_predicate);
+
+            if !attrs.skipped {
+                key_names.push(key_name.clone());
+                missing_field_errors.push(missing_field_error);
+                field_errs.push(error);
+                field_from_fns.push(field_from_fn);
+                field_from_errors.push(field_from_error);
+            }
         }
 
         // Create the token stream representing the code to handle an unknown field key.

@@ -176,13 +176,19 @@ enum EnumDenyUnknownFieldsCustom {
     SomeField { my_field: bool },
     Other { my_field: bool, y: u8 },
 }
+fn missing_x_field(_field_name: &str, _location: ValuePointerRef) -> DefaultError {
+    DefaultError::MissingField("lol".to_string())
+}
+fn custom_mising_field(_field_name: &str, _location: ValuePointerRef) -> DefaultError {
+    DefaultError::CustomMissingField(1)
+}
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[deserr(error = DefaultError)]
 struct StructMissingFieldError {
-    #[deserr(missing_field_error = DefaultError::MissingField("lol".to_string()))]
+    #[deserr(missing_field_error = missing_x_field)]
     x: bool,
-    #[deserr(missing_field_error = DefaultError::CustomMissingField(1))]
+    #[deserr(missing_field_error = custom_mising_field)]
     y: bool,
 }
 
@@ -190,7 +196,7 @@ struct StructMissingFieldError {
 #[deserr(error = DefaultError, tag = "t")]
 enum EnumMissingFieldError {
     A {
-        #[deserr(missing_field_error = DefaultError::CustomMissingField(0))]
+        #[deserr(missing_field_error = custom_mising_field)]
         x: bool,
     },
     B {
