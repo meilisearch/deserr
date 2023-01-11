@@ -422,8 +422,15 @@ impl NamedFieldsInfo {
             } else if attrs.skipped {
                 quote! { ::std::option::Option::Some(::std::default::Default::default()) }
             } else {
+                let error = match attrs.error.clone() {
+                    Some(error) => error,
+                    None => data_attrs
+                        .err_ty
+                        .clone()
+                        .unwrap_or_else(|| parse_quote!(__Deserr_E)),
+                };
                 // no `default` attribute => use the DeserializeFromValue::default() method
-                quote! { ::deserr::DeserializeFromValue::<#err_ty>::default() }
+                quote! { ::deserr::DeserializeFromValue::<#error>::default() }
             };
 
             let field_ty = match attrs.from {
