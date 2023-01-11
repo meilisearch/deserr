@@ -300,7 +300,7 @@ impl DerivedTypeInfo {
                 error_ty: func_error_type,
             } = validate_func;
             quote! {
-                #validate_func (deserr_final__) .map_err(|validate_error__|{
+                #validate_func (deserr_final__, deserr_location__) .map_err(|validate_error__|{
                     ::deserr::take_result_content(
                         <#err_ty as ::deserr::MergeWithError<#func_error_type>>::merge(
                             None,
@@ -422,8 +422,15 @@ impl NamedFieldsInfo {
             } else if attrs.skipped {
                 quote! { ::std::option::Option::Some(::std::default::Default::default()) }
             } else {
+                let error = match attrs.error.clone() {
+                    Some(error) => error,
+                    None => data_attrs
+                        .err_ty
+                        .clone()
+                        .unwrap_or_else(|| parse_quote!(__Deserr_E)),
+                };
                 // no `default` attribute => use the DeserializeFromValue::default() method
-                quote! { ::deserr::DeserializeFromValue::<#err_ty>::default() }
+                quote! { ::deserr::DeserializeFromValue::<#error>::default() }
             };
 
             let field_ty = match attrs.from {
