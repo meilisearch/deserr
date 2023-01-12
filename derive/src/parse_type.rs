@@ -412,25 +412,17 @@ impl NamedFieldsInfo {
                 match default {
                     // #[deserr(default)] => use the Default trait
                     DefaultFieldAttribute::DefaultTrait => {
-                        quote! { ::std::option::Option::Some(::std::default::Default::default()) }
+                        quote! { ::deserr::FieldState::Some(::std::default::Default::default()) }
                     }
                     // #[deserr(default = expr)] => use the given expression
                     DefaultFieldAttribute::Function(expr) => {
-                        quote! { ::std::option::Option::Some(#expr) }
+                        quote! { ::deserr::FieldState::Some(#expr) }
                     }
                 }
             } else if attrs.skipped {
-                quote! { ::std::option::Option::Some(::std::default::Default::default()) }
+                quote! { ::deserr::FieldState::Some(::std::default::Default::default()) }
             } else {
-                let error = match attrs.error.clone() {
-                    Some(error) => error,
-                    None => data_attrs
-                        .err_ty
-                        .clone()
-                        .unwrap_or_else(|| parse_quote!(__Deserr_E)),
-                };
-                // no `default` attribute => use the DeserializeFromValue::default() method
-                quote! { ::deserr::DeserializeFromValue::<#error>::default() }
+                quote! { ::deserr::FieldState::Missing }
             };
 
             let field_ty = match attrs.from {

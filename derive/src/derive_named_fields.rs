@@ -70,7 +70,7 @@ pub fn generate_named_fields_impl(
         // The initial value of #field_names is `None` if the field has no initial value and
         // thus must be given by the map, and `Some` otherwise.
         #(
-            let mut #field_names : ::deserr::FieldState<_> = #field_defaults .into();
+            let mut #field_names : ::deserr::FieldState<_> = #field_defaults ;
         )*
         // We traverse the entire map instead of looking for specific keys, because we want
         // to handle the case where a key is unknown and the attribute `deny_unknown_fields` was used.

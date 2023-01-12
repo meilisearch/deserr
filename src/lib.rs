@@ -89,11 +89,6 @@ pub trait DeserializeFromValue<E: DeserializeError>: Sized {
         value: Value<V>,
         location: ValuePointerRef,
     ) -> Result<Self, E>;
-
-    /// The value of `Self`, if any, when deserializing from a non-existent value.
-    fn default() -> Option<Self> {
-        None
-    }
 }
 
 /// Deserialize the given value.
@@ -195,15 +190,6 @@ pub enum FieldState<T> {
     Missing,
     Err,
     Some(T),
-}
-
-impl<T> From<Option<T>> for FieldState<T> {
-    fn from(x: Option<T>) -> Self {
-        match x {
-            Some(x) => FieldState::Some(x),
-            None => FieldState::Missing,
-        }
-    }
 }
 
 impl<T> FieldState<T> {
