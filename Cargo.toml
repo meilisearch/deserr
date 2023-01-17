@@ -1,6 +1,6 @@
 [package]
 name = "deserr"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Lo <loic@meilisearch.com>"]
 license = "MIT OR Apache-2.0"
 description = "Deserarialization library with focus on error handling"
@@ -13,7 +13,7 @@ edition = "2021"
 [dependencies]
 serde_json = { version = "1.0", optional = true }
 serde-cs = { version = "0.2.4", optional = true }
-deserr-internal = { version = "=0.1.4", path = "derive" }
+deserr-internal = { version = "=0.1.5", path = "derive" }
 
 [features]
 default = ["serde-json", "serde-cs"]
