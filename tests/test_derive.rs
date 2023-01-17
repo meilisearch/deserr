@@ -44,7 +44,9 @@ struct Example {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 struct Nested {
+    #[deserr(default)]
     y: Option<Vec<String>>,
+    #[deserr(default)]
     z: Option<String>,
 }
 
@@ -81,6 +83,7 @@ fn create_default_option_string() -> Option<String> {
 #[deserr(error = DefaultError, tag = "t")]
 enum EnumWithOptionData {
     A {
+        #[deserr(default)]
         x: Option<u8>,
     },
     B {
@@ -254,7 +257,7 @@ struct Generic<A> {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[deserr(where_predicate = __Deserr_E: MergeWithError<DefaultError>, where_predicate = A: DeserializeFromValue<DefaultError>)]
 struct Generic2<A> {
-    #[deserr(error = DefaultError)]
+    #[deserr(error = DefaultError, default)]
     some_field: Option<A>,
 }
 
@@ -267,7 +270,7 @@ fn map_option(x: Option<u8>) -> Option<u8> {
 }
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 struct FieldMap {
-    #[deserr(map = map_option)]
+    #[deserr(default, map = map_option)]
     some_field: Option<u8>,
 }
 
@@ -281,6 +284,7 @@ struct FieldMap {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[deserr(where_predicate = Option<u8> : DeserializeFromValue<__Deserr_E>)]
 struct FieldConditions {
+    #[deserr(default)]
     some_field: Option<u8>,
 }
 

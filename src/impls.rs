@@ -20,10 +20,6 @@ where
     ) -> Result<Self, E> {
         Ok(Self)
     }
-
-    fn default() -> Option<Self> {
-        Some(Self)
-    }
 }
 
 impl<T> Sequence for Vec<T>
@@ -323,9 +319,6 @@ where
             Value::Null => Ok(None),
             value => T::deserialize_from_value(value, location).map(Some),
         }
-    }
-    fn default() -> Option<Self> {
-        Some(None)
     }
 }
 
