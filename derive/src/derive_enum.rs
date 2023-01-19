@@ -218,7 +218,7 @@ pub fn generate_derive_untagged_enum_impl(
                                 None,
                                 ::deserr::ErrorKind::IncorrectValueKind {
                                     actual: v,
-                                    accepted: &[::deserr::ValueKind::Map],
+                                    accepted: &[::deserr::ValueKind::String],
                                 },
                                 deserr_location__
                             )?
