@@ -13,7 +13,7 @@ edition = "2021"
 [dependencies]
 serde_json = { version = "1.0", optional = true }
 serde-cs = { version = "0.2.4", optional = true }
-deserr-internal = { version = "=0.1.5", path = "derive" }
+deserr-internal = { version = "=0.1.6", path = "derive" }
 
 [features]
 default = ["serde-json", "serde-cs"]
