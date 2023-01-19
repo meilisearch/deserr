@@ -126,7 +126,7 @@ fn test_default_error_message() {
     let value = json!({ "top": -2, "right": "42", "left": [3, 3], "bottom": { "a": 4, "b": 5 } });
     let deser = deserr::deserialize::<Test, _, JsonError>(value.clone()).unwrap_err();
     let serde = serde_json::from_value::<Test>(value).unwrap_err();
-    insta::assert_display_snapshot!(deser, @"invalid value: `-2` expected `usize` at `.top`.");
+    insta::assert_display_snapshot!(deser, @"invalid type: NegativeInteger `-2`, expected a Integer at `.top`.");
     insta::assert_display_snapshot!(serde, @"invalid value: integer `-2`, expected usize");
 
     // can't deserialize an integer into a string

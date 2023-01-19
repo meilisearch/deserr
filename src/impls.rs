@@ -109,20 +109,8 @@ macro_rules! deserialize_impl_integer {
                             None,
                             ErrorKind::Unexpected {
                                 msg: format!(
-                                    "invalid value: `{x}`, expected `{}`",
-                                    std::any::type_name::<$t>()
-                                ),
-                            },
-                            location,
-                        )?)
-                    }),
-                    Value::NegativeInteger(x) => <$t>::try_from(x).or_else(|_| {
-                        Err(E::error::<V>(
-                            None,
-                            ErrorKind::Unexpected {
-                                msg: format!(
-                                    "invalid value: `{x}` expected `{}`",
-                                    std::any::type_name::<$t>()
+                                    "value: `{x}` is too large to be deserialized, maximum value authorized is `{}`",
+                                    <$t>::MAX
                                 ),
                             },
                             location,
@@ -167,8 +155,8 @@ macro_rules! deserialize_impl_negative_integer {
                             None,
                             ErrorKind::Unexpected {
                                 msg: format!(
-                                    "invalid value: `{x}`, expected `{}`",
-                                    std::any::type_name::<$t>()
+                                    "value: `{x}` is too large to be deserialized, maximum value authorized is `{}`",
+                                    <$t>::MAX
                                 ),
                             },
                             location,
@@ -179,8 +167,8 @@ macro_rules! deserialize_impl_negative_integer {
                             None,
                             ErrorKind::Unexpected {
                                 msg: format!(
-                                    "invalid value: `{x}`, expected `{}`",
-                                    std::any::type_name::<$t>()
+                                    "value: `{x}` is too small to be deserialized, minimum value authorized is `{}`",
+                                    <$t>::MIN
                                 ),
                             },
                             location,
