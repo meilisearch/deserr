@@ -1,9 +1,12 @@
 #![doc = include_str!("../README.md")]
+
+#[cfg(feature = "actix-web")]
+pub mod actix_web;
 mod default_error;
 mod impls;
 #[cfg(feature = "serde-cs")]
 pub mod serde_cs;
-#[cfg(feature = "serde_json")]
+#[cfg(feature = "serde-json")]
 pub mod serde_json;
 mod value;
 
