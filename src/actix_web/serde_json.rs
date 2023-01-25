@@ -10,6 +10,8 @@ use actix_web::{FromRequest, HttpRequest, ResponseError};
 use deserr::{DeserializeError, DeserializeFromValue};
 use futures::ready;
 
+use crate::serde_json::JsonError;
+
 /// Extractor for typed data from Json request payloads
 /// deserialised by deserr.
 ///
@@ -74,5 +76,17 @@ where
         };
 
         Poll::Ready(res)
+    }
+}
+
+impl actix_web::ResponseError for JsonError {
+    fn status_code(&self) -> actix_web::http::StatusCode {
+        actix_web::http::StatusCode::BAD_REQUEST
+    }
+
+    fn error_response(&self) -> actix_web::HttpResponse<actix_web::body::BoxBody> {
+        actix_web::HttpResponseBuilder::new(self.status_code())
+            .content_type("text/plain")
+            .body(self.to_string())
     }
 }

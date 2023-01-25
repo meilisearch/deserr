@@ -272,19 +272,6 @@ impl ValuePointerRef<'_> {
     }
 }
 
-#[cfg(feature = "actix-web")]
-impl actix_web::ResponseError for JsonError {
-    fn status_code(&self) -> actix_web::http::StatusCode {
-        actix_web::http::StatusCode::BAD_REQUEST
-    }
-
-    fn error_response(&self) -> actix_web::HttpResponse<actix_web::body::BoxBody> {
-        actix_web::HttpResponseBuilder::new(self.status_code())
-            .content_type("text/plain")
-            .body(self.to_string())
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
