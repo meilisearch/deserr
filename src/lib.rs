@@ -1,5 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![allow(clippy::len_without_is_empty)]
 mod default_error;
 mod impls;
 #[cfg(feature = "serde-cs")]

@@ -202,6 +202,10 @@ pub trait Sequence {
 
     fn len(&self) -> usize;
     fn into_iter(self) -> Self::Iter;
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 /// A keyed map of values conforming to [`IntoValue`].
@@ -212,6 +216,10 @@ pub trait Map {
     fn len(&self) -> usize;
     fn remove(&mut self, key: &str) -> Option<Self::Value>;
     fn into_iter(self) -> Self::Iter;
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 impl IntoValue for Infallible {
