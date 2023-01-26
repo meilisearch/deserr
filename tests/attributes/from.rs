@@ -70,7 +70,7 @@ fn from_container_attribute() {
     "###);
 
     let data = deserialize::<AsciiString, _, JsonError>(json!("🥺"))
-        .unwrap_err();
+.unwrap_err();
 
     assert_display_snapshot!(data, @"Json deserialize error: unknown field `turbo`, expected one of `word` at ``.");
 
@@ -90,7 +90,7 @@ fn from_container_attribute() {
     "###);
 
     let data = deserialize::<Struct, _, JsonError>(json!({ "doggo": "👉 👈"}))
-        .unwrap_err();
+ .unwrap_err();
 
     assert_display_snapshot!(data, @"Json deserialize error: unknown field `turbo`, expected one of `word` at ``.");
 }
@@ -129,7 +129,7 @@ fn from_field_attribute() {
     "###);
 
     let data = deserialize::<Struct, _, JsonError>(json!({ "doggo": "👉 👈"}))
-        .unwrap_err();
+ .unwrap_err();
 
     assert_display_snapshot!(data, @"Json deserialize error: unknown field `turbo`, expected one of `word` at ``.");
 }
