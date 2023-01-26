@@ -39,7 +39,7 @@ pub fn derive_deserialize(input: TokenStream) -> TokenStream {
                         derived_type_info.common,
                         variants,
                     )
-                    .into()               
+                    .into()
                 }
                 TagType::External =>
                     syn::Error::new(
