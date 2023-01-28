@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{convert::Infallible, fmt::Display};
 
 use crate::{
     DeserializeError, DeserializeFromValue, ErrorKind, IntoValue, Map, MergeWithError, Sequence,
@@ -180,6 +180,18 @@ impl MergeWithError<JsonError> for JsonError {
         _merge_location: ValuePointerRef,
     ) -> Result<Self, Self> {
         Err(other)
+    }
+}
+
+impl<E: std::error::Error> MergeWithError<E> for JsonError {
+    fn merge(self_: Option<Self>, other: E, merge_location: ValuePointerRef) -> Result<Self, Self> {
+        JsonError::error::<Infallible>(
+            self_,
+            ErrorKind::Unexpected {
+                msg: other.to_string(),
+            },
+            merge_location,
+        )
     }
 }
 
