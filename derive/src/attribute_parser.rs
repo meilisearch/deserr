@@ -25,7 +25,7 @@ pub struct FieldAttributesInfo {
     /// The function to apply to the result after it has been deserialised successfully
     pub map: Option<syn::ExprPath>,
     /// The function used to deserialize the whole type
-    pub from: Option<AttributeFrom>,
+    pub try_from: Option<AttributeTryFrom>,
     /// Whether an additional where clause should be added to deserialize this field
     pub needs_predicate: bool,
     /// Whether the field should be skipped
@@ -108,14 +108,14 @@ impl FieldAttributesInfo {
             }
             self.map = Some(map)
         }
-        if let Some(from) = other.from {
-            if let Some(_self_from) = &self.from {
+        if let Some(from) = other.try_from {
+            if let Some(_self_from) = &self.try_from {
                 return Err(syn::Error::new(
                     from.span,
                     "The `from` field attribute is defined twice.",
                 ));
             }
-            self.from = Some(from)
+            self.try_from = Some(from)
         }
         self.needs_predicate |= other.needs_predicate;
         self.skipped |= other.skipped;
@@ -179,10 +179,10 @@ impl syn::parse::Parse for FieldAttributesInfo {
                     // #[deserr( ... map = func )]
                     other.map = Some(func);
                 }
-                "from" => {
-                    let from_attr = parse_attribute_from(attr_name.span(), &input)?;
-                    // #[deserr( .. from(from_ty) = function::path::<_> -> to_ty )]
-                    other.from = Some(from_attr);
+                "try_from" => {
+                    let try_from_attr = parse_attribute_try_from(attr_name.span(), &input)?;
+                    // #[deserr( .. try_from(from_ty) = function::path::<_> -> to_ty )]
+                    other.try_from = Some(try_from_attr);
                 }
                 "skip" => {
                     other.skipped = true;
@@ -269,9 +269,9 @@ pub enum DenyUnknownFields {
 }
 
 #[derive(Debug, Clone)]
-pub struct AttributeFrom {
+pub struct AttributeTryFrom {
     pub is_ref: bool,
-    pub from_ty: syn::Type,
+    pub try_from_ty: syn::Type,
     pub function: FunctionReturningError,
     span: Span,
 }
@@ -296,7 +296,7 @@ pub struct ContainerAttributesInfo {
     pub where_predicates: Vec<WherePredicate>,
 
     /// The function used to deserialize the whole container
-    pub from: Option<AttributeFrom>,
+    pub try_from: Option<AttributeTryFrom>,
 
     /// A function to call on the deserialized value to validate it
     pub validate: Option<FunctionReturningError>,
@@ -358,14 +358,14 @@ impl ContainerAttributesInfo {
             }
             self.deny_unknown_fields = Some(x);
         }
-        if let Some(x) = other.from {
-            if let Some(self_from) = &self.from {
+        if let Some(x) = other.try_from {
+            if let Some(self_from) = &self.try_from {
                 return Err(syn::Error::new(
                     self_from.span,
                     "The `from` attribute is defined twice.",
                 ));
             }
-            self.from = Some(x);
+            self.try_from = Some(x);
         }
         if let Some(x) = other.validate {
             if let Some(self_validate_span) = &self.validate_span {
@@ -418,7 +418,10 @@ fn parse_function_returning_error(
     Ok(FunctionReturningError { function, error_ty })
 }
 
-fn parse_attribute_from(span: Span, input: &ParseBuffer) -> Result<AttributeFrom, syn::Error> {
+fn parse_attribute_try_from(
+    span: Span,
+    input: &ParseBuffer,
+) -> Result<AttributeTryFrom, syn::Error> {
     let content;
     let _ = parenthesized!(content in input);
     // #[deserr( .. from(..) ..)]
@@ -430,9 +433,9 @@ fn parse_attribute_from(span: Span, input: &ParseBuffer) -> Result<AttributeFrom
     // #[deserr( .. from(from_ty) = ..)]
     let function = parse_function_returning_error(input)?;
 
-    Ok(AttributeFrom {
+    Ok(AttributeTryFrom {
         is_ref,
-        from_ty,
+        try_from_ty: from_ty,
         function,
         span,
     })
@@ -482,10 +485,10 @@ impl syn::parse::Parse for ContainerAttributesInfo {
                     }
                     this.deny_unknown_fields_span = Some(attr_name.span());
                 }
-                "from" => {
-                    let from_attr = parse_attribute_from(attr_name.span(), &input)?;
-                    // #[deserr( .. from(from_ty) = function::path::<_> -> to_ty )]
-                    this.from = Some(from_attr);
+                "try_from" => {
+                    let try_from_attr = parse_attribute_try_from(attr_name.span(), &input)?;
+                    // #[deserr( .. try_from(from_ty) = function::path::<_> -> to_ty )]
+                    this.try_from = Some(try_from_attr);
                 }
                 "validate" => {
                     // #[deserr( ... validate .. )]
@@ -534,23 +537,23 @@ pub fn validate_container_attributes(
     attributes: &ContainerAttributesInfo,
     container: &DeriveInput,
 ) -> Result<(), syn::Error> {
-    if attributes.from.is_some() {
+    if attributes.try_from.is_some() {
         if let Some(rename_all_span) = attributes.rename_all_span {
             return Err(syn::Error::new(
                 rename_all_span,
-                "Cannot use the `rename_all` attribute together with the `from` attribute",
+                "Cannot use the `rename_all` attribute together with the `try_from` attribute",
             ));
         }
         if let Some(tag) = attributes.tag_span {
             return Err(syn::Error::new(
                 tag,
-                "Cannot use the `tag` attribute together with the `from` attribute",
+                "Cannot use the `tag` attribute together with the `try_from` attribute",
             ));
         }
         if let Some(span) = attributes.deny_unknown_fields_span {
             return Err(syn::Error::new(
                 span,
-                "Cannot use the `deny_unknown_fields` attribute together with the `from` attribute",
+                "Cannot use the `deny_unknown_fields` attribute together with the `try_from` attribute",
             ));
         }
     }
