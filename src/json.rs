@@ -1,11 +1,6 @@
-/*!
-This module implements the error messages of deserialization errors.
+//! This module implements the error messages of json deserialization errors.
+//! We try to generate the best possible human-readable description of the error.
 
-We try to:
-1. Give a human-readable description of where the error originated.
-2. Use the correct terms depending on the format of the request (json/query param)
-3. Categorise the type of the error (e.g. missing field, wrong value type, unexpected error, etc.)
-*/
 use std::{convert::Infallible, fmt::Display, ops::ControlFlow};
 
 use deserr::{ErrorKind, IntoValue, ValueKind, ValuePointerRef};
