@@ -6,7 +6,7 @@ use serde_json::json;
 fn where_attribute() {
     #[allow(unused)]
     #[derive(Debug, Deserr)]
-    #[deserr(where_predicate = T: Deserr<__Deserr_E>)]
+    #[deserr(where = T: Deserr<__Deserr_E>)]
     struct Struct<T> {
         doggo: String,
         catto: T,

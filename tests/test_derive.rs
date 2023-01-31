@@ -256,7 +256,7 @@ struct Generic<A> {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
-#[deserr(where_predicate = __Deserr_E: MergeWithError<DefaultError>, where_predicate = A: Deserr<DefaultError>)]
+#[deserr(where = __Deserr_E: MergeWithError<DefaultError>, where = A: Deserr<DefaultError>)]
 struct Generic2<A> {
     #[deserr(error = DefaultError, default)]
     some_field: Option<A>,
@@ -276,7 +276,7 @@ struct FieldMap {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
-#[deserr(where_predicate = Option<u8> : Deserr<__Deserr_E>)]
+#[deserr(where = Option<u8> : Deserr<__Deserr_E>)]
 struct FieldConditions {
     #[deserr(default)]
     some_field: Option<u8>,
@@ -329,7 +329,7 @@ enum Hello3 {
 }
 
 #[derive(Debug, PartialEq, Deserr)]
-#[deserr(where_predicate = Hello: Deserr<__Deserr_E>)]
+#[deserr(where = Hello: Deserr<__Deserr_E>)]
 struct ContainsHello {
     _x: Hello,
 }

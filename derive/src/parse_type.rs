@@ -287,7 +287,7 @@ impl DerivedTypeInfo {
             let mut bounded_where_clause = generics.where_clause.unwrap();
             bounded_where_clause
                 .predicates
-                .extend(attrs.where_predicates.clone());
+                .extend(attrs.wheres.clone());
 
             quote! {
                 impl #impl_generics ::deserr::Deserr<#err_ty> for #ident #ty_generics #bounded_where_clause

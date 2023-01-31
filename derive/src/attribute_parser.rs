@@ -293,7 +293,7 @@ pub struct ContainerAttributesInfo {
     pub deny_unknown_fields: Option<DenyUnknownFields>,
 
     pub generic_params: Vec<GenericParam>,
-    pub where_predicates: Vec<WherePredicate>,
+    pub wheres: Vec<WherePredicate>,
 
     /// The function used to deserialize the whole container
     pub from: Option<AttributeFrom>,
@@ -378,7 +378,7 @@ impl ContainerAttributesInfo {
         }
 
         self.generic_params.extend(other.generic_params);
-        self.where_predicates.extend(other.where_predicates);
+        self.wheres.extend(other.wheres);
 
         Ok(())
     }
@@ -501,11 +501,11 @@ impl syn::parse::Parse for ContainerAttributesInfo {
                     // #[deserr( ... generic_params = P )]
                     this.generic_params.push(param);
                 }
-                "where_predicate" => {
+                "where" => {
                     let _eq = input.parse::<Token![=]>()?;
                     let pred = input.parse::<WherePredicate>()?;
-                    // #[deserr( ... where_predicate = P: Display + Debug )]
-                    this.where_predicates.push(pred);
+                    // #[deserr( ... where = P: Display + Debug )]
+                    this.wheres.push(pred);
                 }
                 _ => {
                     let message = format!("Unknown deserr container attribute: {}", attr_name);
