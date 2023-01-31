@@ -1,6 +1,6 @@
-use deserr::DeserializeFromValue;
+use deserr::Deserr;
 
-#[derive(DeserializeFromValue)]
+#[derive(Deserr)]
 #[deserr(error = deserr::Error)]
 struct TupleStruct(i32, i32);
 

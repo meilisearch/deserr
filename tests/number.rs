@@ -2,7 +2,7 @@ use deserr::serde_json::JsonError;
 use serde_json::json;
 
 #[allow(unused)]
-#[derive(Debug, deserr::DeserializeFromValue)]
+#[derive(Debug, deserr::Deserr)]
 #[deserr(deny_unknown_fields)]
 struct Test {
     #[deserr(default)]

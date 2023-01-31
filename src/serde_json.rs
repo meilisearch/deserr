@@ -1,7 +1,7 @@
 use std::{convert::Infallible, fmt::Display, ops::ControlFlow};
 
 use crate::{
-    take_cf_content, DeserializeError, DeserializeFromValue, ErrorKind, IntoValue, Map,
+    take_cf_content, DeserializeError, Deserr, ErrorKind, IntoValue, Map,
     MergeWithError, Sequence, Value, ValueKind, ValuePointerRef,
 };
 use serde_json::{Map as JMap, Number, Value as JValue};
@@ -68,7 +68,7 @@ impl IntoValue for JValue {
     }
 }
 
-impl<E: DeserializeError> DeserializeFromValue<E> for JValue {
+impl<E: DeserializeError> Deserr<E> for JValue {
     fn deserialize_from_value<V: IntoValue>(
         value: Value<V>,
         location: ValuePointerRef,
@@ -337,7 +337,7 @@ mod test {
     #[test]
     fn error_msg_missing_field() {
         #[allow(dead_code)]
-        #[derive(deserr::DeserializeFromValue, Debug)]
+        #[derive(deserr::Deserr, Debug)]
         struct Missing {
             me: usize,
         }
@@ -349,7 +349,7 @@ mod test {
     #[test]
     fn error_msg_incorrect() {
         #[allow(dead_code)]
-        #[derive(deserr::DeserializeFromValue, Debug)]
+        #[derive(deserr::Deserr, Debug)]
         struct Incorrect {
             me: usize,
         }
@@ -358,7 +358,7 @@ mod test {
         insta::assert_display_snapshot!(err, @"invalid type: Sequence `[2]`, expected a Integer at `.me`.");
 
         #[allow(dead_code)]
-        #[derive(deserr::DeserializeFromValue, Debug)]
+        #[derive(deserr::Deserr, Debug)]
         enum Variants {
             One,
             Two,
@@ -366,7 +366,7 @@ mod test {
         }
 
         #[allow(dead_code)]
-        #[derive(deserr::DeserializeFromValue, Debug)]
+        #[derive(deserr::Deserr, Debug)]
         struct MultiIncorrect {
             me: Variants,
         }
@@ -375,7 +375,7 @@ mod test {
         insta::assert_display_snapshot!(err, @"Json deserialize error: unknown value `la`, expected one of `One`, `Two`, `Three` at `.me`.");
 
         #[allow(dead_code)]
-        #[derive(deserr::DeserializeFromValue, Debug)]
+        #[derive(deserr::Deserr, Debug)]
         #[deserr(rename_all = lowercase)]
         enum CamelCaseVariants {
             TheObjectiveCamelIsNOICE,
@@ -383,7 +383,7 @@ mod test {
         }
 
         #[allow(dead_code)]
-        #[derive(deserr::DeserializeFromValue, Debug)]
+        #[derive(deserr::Deserr, Debug)]
         struct MultiIncorrectWithRename {
             me: CamelCaseVariants,
         }
@@ -395,7 +395,7 @@ mod test {
     #[test]
     fn error_msg_unknown_key() {
         #[allow(dead_code)]
-        #[derive(deserr::DeserializeFromValue, Debug)]
+        #[derive(deserr::Deserr, Debug)]
         #[deserr(deny_unknown_fields)]
         struct SingleUnknownField {
             me: usize,
@@ -405,7 +405,7 @@ mod test {
         insta::assert_display_snapshot!(err, @"Json deserialize error: unknown field `u`, expected one of `me` at ``.");
 
         #[allow(dead_code)]
-        #[derive(deserr::DeserializeFromValue, Debug)]
+        #[derive(deserr::Deserr, Debug)]
         #[deserr(deny_unknown_fields)]
         struct MultiUnknownField {
             me: usize,
@@ -419,7 +419,7 @@ mod test {
     #[test]
     fn error_msg_unexpected() {
         #[allow(dead_code)]
-        #[derive(deserr::DeserializeFromValue, Debug)]
+        #[derive(deserr::Deserr, Debug)]
         #[deserr(deny_unknown_fields)]
         struct UnexpectedTuple {
             me: (usize, String),

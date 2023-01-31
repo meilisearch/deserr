@@ -1,11 +1,11 @@
-use deserr::{deserialize, serde_json::JsonError, DeserializeFromValue};
+use deserr::{deserialize, serde_json::JsonError, Deserr};
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
 
 #[test]
 fn map() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     struct Struct {
         #[deserr(map = square)]
         doggo: usize,
@@ -35,7 +35,7 @@ fn map() {
 #[test]
 fn map_and_default() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     struct Struct {
         #[deserr(default = 2, map = square)]
         doggo: usize,

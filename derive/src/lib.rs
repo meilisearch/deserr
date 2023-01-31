@@ -14,7 +14,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::{parse_macro_input, DeriveInput};
 
-#[proc_macro_derive(DeserializeFromValue, attributes(deserr, serde))]
+#[proc_macro_derive(Deserr, attributes(deserr, serde))]
 pub fn derive_deserialize(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 

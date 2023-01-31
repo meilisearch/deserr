@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 
 use deserr::{
-    deserialize, serde_json::JsonError, DeserializeError, DeserializeFromValue, ErrorKind,
+    deserialize, serde_json::JsonError, DeserializeError, Deserr, ErrorKind,
     ValuePointerRef,
 };
 use insta::{assert_debug_snapshot, assert_display_snapshot};
@@ -10,7 +10,7 @@ use serde_json::json;
 #[test]
 fn validate() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     #[deserr(validate = validate_range -> __Deserr_E)]
     struct Range {
         start: usize,

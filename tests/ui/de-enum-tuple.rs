@@ -1,6 +1,6 @@
-use deserr::DeserializeFromValue;
+use deserr::Deserr;
 
-#[derive(DeserializeFromValue)]
+#[derive(Deserr)]
 #[deserr(error = deserr::Error, tag = "t")]
 enum Enum {
     Variant(i32),

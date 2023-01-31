@@ -1,4 +1,4 @@
-error: Enum variants with unnamed associated data aren't supported by the DeserializeFromValue derive macro.
+error: Enum variants with unnamed associated data aren't supported by the Deserr derive macro.
  --> tests/ui/de-enum-tuple.rs:6:12
   |
 6 |     Variant(i32),

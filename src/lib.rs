@@ -15,26 +15,26 @@ pub use default_error::DefaultErrorContent;
 extern crate self as deserr;
 
 /**
-It is possible to derive the `DeserializeFromValue` trait for structs and enums with named fields.
+It is possible to derive the `Deserr` trait for structs and enums with named fields.
 The derive proc macro accept many arguments, explained below:
 
 The basic usage is as follows:
 ```
-use deserr::DeserializeFromValue;
+use deserr::Deserr;
 
-#[derive(DeserializeFromValue)]
+#[derive(Deserr)]
 struct MyStruct {
     x: bool,
     y: u8,
 }
 ```
-This will implement `impl<E> DeserializeFromValue<E> MyStruct` for all `E: DeserializeError`.
+This will implement `impl<E> Deserr<E> MyStruct` for all `E: DeserializeError`.
 
 To use it on enums, the attribute `tag` must be added:
 ```
-use deserr::DeserializeFromValue;
+use deserr::Deserr;
 
-#[derive(DeserializeFromValue)]
+#[derive(Deserr)]
 #[deserr(tag = "my_enum_tag")]
 enum MyEnum {
     A,
@@ -58,8 +58,8 @@ It is possible to change the name of the keys corresponding to each field using 
 attributes:
 
 ```rust
-use deserr::DeserializeFromValue;
-#[derive(DeserializeFromValue)]
+use deserr::Deserr;
+#[derive(Deserr)]
 #[deserr(rename_all = camelCase)]
 struct MyStruct {
     my_field: bool,
@@ -75,7 +75,7 @@ will parse the following:
 }
 ```
 */
-pub use deserr_internal::DeserializeFromValue;
+pub use deserr_internal::Deserr;
 pub use value::{IntoValue, Map, Sequence, Value, ValueKind, ValuePointer, ValuePointerRef};
 
 use std::fmt::Debug;
@@ -83,7 +83,7 @@ use std::ops::ControlFlow;
 
 /// A trait for types that can be deserialized from a [`Value`]. The generic type
 /// parameter `E` is the custom error that is returned when deserialization fails.
-pub trait DeserializeFromValue<E: DeserializeError>: Sized {
+pub trait Deserr<E: DeserializeError>: Sized {
     /// Attempts to deserialize `Self` from the given value. Note that this method is an
     /// implementation detail. You probably want to use the [`deserialize`] function directly instead.
     fn deserialize_from_value<V: IntoValue>(
@@ -100,7 +100,7 @@ pub trait DeserializeFromValue<E: DeserializeError>: Sized {
 /// 3. `E` is the error type we want to get when deserialization fails. For example: `MyError`
 pub fn deserialize<Ret, Val, E>(value: Val) -> Result<Ret, E>
 where
-    Ret: DeserializeFromValue<E>,
+    Ret: Deserr<E>,
     Val: IntoValue,
     E: DeserializeError,
 {
@@ -180,7 +180,7 @@ pub enum ErrorKind<'a, V: IntoValue> {
     },
 }
 
-/// A trait for errors returned by [`deserialize_from_value`](DeserializeFromValue::deserialize_from_value).
+/// A trait for errors returned by [`deserialize_from_value`](Deserr::deserialize_from_value).
 pub trait DeserializeError: Sized + MergeWithError<Self> {
     fn error<V: IntoValue>(
         self_: Option<Self>,

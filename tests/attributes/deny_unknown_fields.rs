@@ -2,7 +2,7 @@ use std::convert::Infallible;
 
 use deserr::{
     deserialize, serde_json::JsonError, take_result_content, DeserializeError,
-    DeserializeFromValue, ErrorKind, ValuePointerRef,
+    Deserr, ErrorKind, ValuePointerRef,
 };
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
@@ -10,7 +10,7 @@ use serde_json::json;
 #[test]
 fn default_deny_unknown_fields() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     #[deserr(deny_unknown_fields)]
     struct Struct {
         word: String,
@@ -33,7 +33,7 @@ fn default_deny_unknown_fields() {
 #[test]
 fn custom_deny_unknown_fields() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     #[deserr(deny_unknown_fields = custom_function)]
     struct Struct {
         word: String,

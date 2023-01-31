@@ -1,5 +1,5 @@
 use crate::{
-    take_cf_content, DeserializeError, DeserializeFromValue, ErrorKind, IntoValue, Map, Sequence,
+    take_cf_content, DeserializeError, Deserr, ErrorKind, IntoValue, Map, Sequence,
     Value, ValueKind, ValuePointerRef,
 };
 use std::{
@@ -11,7 +11,7 @@ use std::{
     str::FromStr,
 };
 
-impl<T, E> DeserializeFromValue<E> for PhantomData<T>
+impl<T, E> Deserr<E> for PhantomData<T>
 where
     E: DeserializeError,
 {
@@ -39,7 +39,7 @@ where
     }
 }
 
-impl<E> DeserializeFromValue<E> for ()
+impl<E> Deserr<E> for ()
 where
     E: DeserializeError,
 {
@@ -61,7 +61,7 @@ where
     }
 }
 
-impl<E> DeserializeFromValue<E> for bool
+impl<E> Deserr<E> for bool
 where
     E: DeserializeError,
 {
@@ -85,7 +85,7 @@ where
 
 macro_rules! deserialize_impl_integer {
     ($t:ty) => {
-        impl<E> DeserializeFromValue<E> for $t
+        impl<E> Deserr<E> for $t
         where
             E: DeserializeError,
         {
@@ -133,7 +133,7 @@ deserialize_impl_integer!(usize);
 
 macro_rules! deserialize_impl_negative_integer {
     ($t:ty) => {
-        impl<E> DeserializeFromValue<E> for $t
+        impl<E> Deserr<E> for $t
         where
             E: DeserializeError,
         {
@@ -194,7 +194,7 @@ deserialize_impl_negative_integer!(isize);
 
 macro_rules! deserialize_impl_float {
     ($t:ty) => {
-        impl<E> DeserializeFromValue<E> for $t
+        impl<E> Deserr<E> for $t
         where
             E: DeserializeError,
         {
@@ -226,7 +226,7 @@ macro_rules! deserialize_impl_float {
 deserialize_impl_float!(f32);
 deserialize_impl_float!(f64);
 
-impl<E> DeserializeFromValue<E> for String
+impl<E> Deserr<E> for String
 where
     E: DeserializeError,
 {
@@ -248,9 +248,9 @@ where
     }
 }
 
-impl<T, E> DeserializeFromValue<E> for Vec<T>
+impl<T, E> Deserr<E> for Vec<T>
 where
-    T: DeserializeFromValue<E>,
+    T: Deserr<E>,
     E: DeserializeError,
 {
     fn deserialize_from_value<V: IntoValue>(
@@ -294,9 +294,9 @@ where
     }
 }
 
-impl<T, E> DeserializeFromValue<E> for Option<T>
+impl<T, E> Deserr<E> for Option<T>
 where
-    T: DeserializeFromValue<E>,
+    T: Deserr<E>,
     E: DeserializeError,
 {
     fn deserialize_from_value<V: IntoValue>(
@@ -310,9 +310,9 @@ where
     }
 }
 
-impl<T, E> DeserializeFromValue<E> for Box<T>
+impl<T, E> Deserr<E> for Box<T>
 where
-    T: DeserializeFromValue<E>,
+    T: Deserr<E>,
     E: DeserializeError,
 {
     fn deserialize_from_value<V: IntoValue>(
@@ -323,10 +323,10 @@ where
     }
 }
 
-impl<Key, T, E> DeserializeFromValue<E> for HashMap<Key, T>
+impl<Key, T, E> Deserr<E> for HashMap<Key, T>
 where
     Key: FromStr + Hash + Eq,
-    T: DeserializeFromValue<E>,
+    T: Deserr<E>,
     E: DeserializeError,
 {
     fn deserialize_from_value<V: IntoValue>(
@@ -385,10 +385,10 @@ where
     }
 }
 
-impl<Key, T, E> DeserializeFromValue<E> for BTreeMap<Key, T>
+impl<Key, T, E> Deserr<E> for BTreeMap<Key, T>
 where
     Key: FromStr + Ord,
-    T: DeserializeFromValue<E>,
+    T: Deserr<E>,
     E: DeserializeError,
 {
     fn deserialize_from_value<V: IntoValue>(
@@ -447,9 +447,9 @@ where
     }
 }
 
-impl<T, E> DeserializeFromValue<E> for HashSet<T>
+impl<T, E> Deserr<E> for HashSet<T>
 where
-    T: DeserializeFromValue<E> + Hash + Eq,
+    T: Deserr<E> + Hash + Eq,
     E: DeserializeError,
 {
     fn deserialize_from_value<V: IntoValue>(
@@ -493,9 +493,9 @@ where
     }
 }
 
-impl<T, E> DeserializeFromValue<E> for BTreeSet<T>
+impl<T, E> Deserr<E> for BTreeSet<T>
 where
-    T: DeserializeFromValue<E> + Ord,
+    T: Deserr<E> + Ord,
     E: DeserializeError,
 {
     fn deserialize_from_value<V: IntoValue>(
@@ -539,10 +539,10 @@ where
     }
 }
 
-impl<A, B, E> DeserializeFromValue<E> for (A, B)
+impl<A, B, E> Deserr<E> for (A, B)
 where
-    A: DeserializeFromValue<E>,
-    B: DeserializeFromValue<E>,
+    A: Deserr<E>,
+    B: Deserr<E>,
     E: DeserializeError,
 {
     fn deserialize_from_value<V: IntoValue>(
@@ -611,11 +611,11 @@ where
     }
 }
 
-impl<A, B, C, E> DeserializeFromValue<E> for (A, B, C)
+impl<A, B, C, E> Deserr<E> for (A, B, C)
 where
-    A: DeserializeFromValue<E>,
-    B: DeserializeFromValue<E>,
-    C: DeserializeFromValue<E>,
+    A: Deserr<E>,
+    B: Deserr<E>,
+    C: Deserr<E>,
     E: DeserializeError,
 {
     fn deserialize_from_value<V: IntoValue>(

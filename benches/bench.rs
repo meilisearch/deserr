@@ -3,7 +3,7 @@
 
 extern crate test;
 
-use deserr::DeserializeFromValue;
+use deserr::Deserr;
 use serde_derive::{Deserialize, Serialize};
 use test::Bencher;
 
@@ -35,13 +35,13 @@ fn bench_deserialize_serdejson_value(b: &mut Bencher) {
     });
 }
 
-#[derive(Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Serialize, Deserialize, Deserr)]
 struct Twitter {
     statuses: Vec<Status>,
     search_metadata: SearchMetadata,
 }
 
-#[derive(Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Serialize, Deserialize, Deserr)]
 struct Status {
     metadata: Metadata,
     created_at: String,
@@ -70,13 +70,13 @@ struct Status {
     lang: String,
 }
 
-#[derive(Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Serialize, Deserialize, Deserr)]
 struct Metadata {
     result_type: String,
     iso_language_code: String,
 }
 
-#[derive(Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Serialize, Deserialize, Deserr)]
 struct User {
     id: u32,
     id_str: String,
@@ -120,18 +120,18 @@ struct User {
     notifications: bool,
 }
 
-#[derive(Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Serialize, Deserialize, Deserr)]
 struct UserEntities {
     url: Option<UserUrl>,
     description: UserEntitiesDescription,
 }
 
-#[derive(Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Serialize, Deserialize, Deserr)]
 struct UserUrl {
     urls: Vec<Url>,
 }
 
-#[derive(Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Serialize, Deserialize, Deserr)]
 struct Url {
     url: String,
     expanded_url: String,
@@ -139,12 +139,12 @@ struct Url {
     indices: Indices,
 }
 
-#[derive(Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Serialize, Deserialize, Deserr)]
 struct UserEntitiesDescription {
     urls: Vec<Url>,
 }
 
-#[derive(Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Serialize, Deserialize, Deserr)]
 struct StatusEntities {
     hashtags: Vec<Hashtag>,
     symbols: Vec<()>,
@@ -153,13 +153,13 @@ struct StatusEntities {
     media: Option<Vec<Media>>,
 }
 
-#[derive(Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Serialize, Deserialize, Deserr)]
 struct Hashtag {
     text: String,
     indices: Indices,
 }
 
-#[derive(Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Serialize, Deserialize, Deserr)]
 struct UserMention {
     screen_name: String,
     name: String,
@@ -168,7 +168,7 @@ struct UserMention {
     indices: Indices,
 }
 
-#[derive(Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Serialize, Deserialize, Deserr)]
 struct Media {
     id: u64,
     id_str: String,
@@ -186,7 +186,7 @@ struct Media {
     source_status_id_str: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Serialize, Deserialize, Deserr)]
 struct Sizes {
     medium: Size,
     small: Size,
@@ -194,7 +194,7 @@ struct Sizes {
     large: Size,
 }
 
-#[derive(Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Serialize, Deserialize, Deserr)]
 struct Size {
     w: u16,
     h: u16,
@@ -203,7 +203,7 @@ struct Size {
 
 type Indices = (u8, u8);
 
-#[derive(Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Serialize, Deserialize, Deserr)]
 struct SearchMetadata {
     completed_in: f32,
     max_id: u64,

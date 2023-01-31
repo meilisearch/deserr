@@ -7,7 +7,7 @@ use crate::parse_type::{
     VariantInfo,
 };
 
-/// Return a token stream that implements `DeserializeFromValue<E>` for the given derived enum with internal tag
+/// Return a token stream that implements `Deserr<E>` for the given derived enum with internal tag
 pub fn generate_derive_tagged_enum_impl(
     info: CommonDerivedTypeInfo,
     tag: String,

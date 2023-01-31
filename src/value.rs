@@ -186,7 +186,7 @@ impl<V: IntoValue> Value<V> {
     }
 }
 
-/// A trait for a value that can be deserialized via [`DeserializeFromValue`].
+/// A trait for a value that can be deserialized via [`Deserr`].
 pub trait IntoValue: Sized {
     type Sequence: Sequence<Value = Self>;
     type Map: Map<Value = Self>;

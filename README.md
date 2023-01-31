@@ -16,14 +16,14 @@ let s: &str = ".." ;
 let json: serde_json::Value = serde_json::from_str(s).unwrap();
 // finally deserialize with deserr
 let data = T::deserialize_from_value(json.into_value()).unwrap();
-// `T` must implements `DeserializeFromValue`.
+// `T` must implements `Deserr`.
 ```
 
 Thus, Deserr is slower than crates that immediately deserialize a value while
 parsing at the same time.
 
 The main parts of Deserr are:
-1. [`DeserializeFromValue<E>`] is the main trait for deserialization
+1. [`Deserr<E>`] is the main trait for deserialization
 2. [`IntoValue`] and [`Value`] describe the shape that the parsed serialized data must have
 3. [`DeserializeError`] is the trait that all deserialization errors must conform to
 4. [`MergeWithError<E>`] describes how to combine multiple errors together. It allows Deserr
@@ -31,7 +31,7 @@ to return multiple deserialization errors at once.
 5. [`ValuePointerRef`] and [`ValuePointer`] point to locations within the value. They are
 used to locate the origin of an error.
 6. [`deserialize`] is the main function to use to deserialize a value
-7. The [`DeserializeFromValue`](derive@DeserializeFromValue) derive proc macro
+7. The [`Deserr`](derive@Deserr) derive proc macro
 
 If the feature `serde` is activated, then an implementation of [`IntoValue`] is provided
 for the type `serde_json::Value`. This allows using Deserr to deserialize from JSON.
@@ -40,7 +40,7 @@ for the type `serde_json::Value`. This allows using Deserr to deserialize from J
 
 ### Implementing deserialize for a custom type
 ```rust
-use deserr::{DeserializeError, DeserializeFromValue, ErrorKind, DefaultError, Value, ValueKind, IntoValue, take_cf_content, MergeWithError, ValuePointerRef, ValuePointer};
+use deserr::{DeserializeError, Deserr, ErrorKind, DefaultError, Value, ValueKind, IntoValue, take_cf_content, MergeWithError, ValuePointerRef, ValuePointer};
 use std::ops::ControlFlow;
 
 enum MyError {
@@ -71,7 +71,7 @@ impl MergeWithError<MyError> for MyError {
 
 struct Name(String);
 
-impl DeserializeFromValue<MyError> for Name {
+impl Deserr<MyError> for Name {
     fn deserialize_from_value<V: IntoValue>(value: Value<V>, location: ValuePointerRef) -> Result<Self, MyError> {
         match value {
             Value::String(s) => {
@@ -95,7 +95,7 @@ impl DeserializeFromValue<MyError> for Name {
 ### Using macros
 
 ```rust,ignore
-#[derive(DeserializeFromValue)]
+#[derive(Deserr)]
 #[deserr(error = MyError)]
 struct User {
 	name: Name,
