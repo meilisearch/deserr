@@ -4,6 +4,7 @@
 pub mod actix_web;
 mod default_error;
 mod impls;
+mod json;
 #[cfg(feature = "serde-cs")]
 pub mod serde_cs;
 #[cfg(feature = "serde-json")]
@@ -12,6 +13,7 @@ mod value;
 
 pub use default_error::DefaultError;
 pub use default_error::DefaultErrorContent;
+pub use json::JsonError;
 extern crate self as deserr;
 
 /**

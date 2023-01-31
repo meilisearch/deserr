@@ -1,8 +1,6 @@
 use std::convert::Infallible;
 
-use deserr::{
-    deserialize, serde_json::JsonError, DeserializeError, Deserr, ErrorKind, ValuePointerRef,
-};
+use deserr::{deserialize, DeserializeError, Deserr, ErrorKind, JsonError, ValuePointerRef};
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
 
@@ -47,5 +45,5 @@ fn validate() {
 
     let data = deserialize::<Range, _, JsonError>(json!({ "start": 6, "end": 2 })).unwrap_err();
 
-    assert_display_snapshot!(data, @"`end` (`2`) should be greater than `start` (`6`) at ``.");
+    assert_display_snapshot!(data, @"Invalid value: `end` (`2`) should be greater than `start` (`6`)");
 }

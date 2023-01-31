@@ -1,4 +1,4 @@
-use deserr::{deserialize, serde_json::JsonError, Deserr};
+use deserr::{deserialize, Deserr, JsonError};
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
 
@@ -32,21 +32,21 @@ fn rename_all_camel_case() {
     )
     .unwrap_err();
 
-    assert_display_snapshot!(data, @"Json deserialize error: missing field `word` at ``");
+    assert_display_snapshot!(data, @"Missing field `word`");
 
     let data = deserialize::<Struct, _, JsonError>(
         json!({ "word": "doggo", "multiple_words": "good doggo", "renamed_field": "bork" }),
     )
     .unwrap_err();
 
-    assert_display_snapshot!(data, @"Json deserialize error: missing field `multipleWords` at ``");
+    assert_display_snapshot!(data, @"Missing field `multipleWords`");
 
     let data = deserialize::<Struct, _, JsonError>(
         json!({ "word": "doggo", "multipleWords": "good doggo", "renamedField": "bork" }),
     )
     .unwrap_err();
 
-    assert_display_snapshot!(data, @"Json deserialize error: missing field `renamed_field` at ``");
+    assert_display_snapshot!(data, @"Missing field `renamed_field`");
 }
 
 #[allow(non_snake_case)]
@@ -80,19 +80,19 @@ fn rename_all_lowercase() {
     )
     .unwrap_err();
 
-    assert_display_snapshot!(data, @"Json deserialize error: missing field `word` at ``");
+    assert_display_snapshot!(data, @"Missing field `word`");
 
     let data = deserialize::<Struct, _, JsonError>(
         json!({ "word": "doggo", "screamingWord": "good doggo", "BORK": "bork" }),
     )
     .unwrap_err();
 
-    assert_display_snapshot!(data, @"Json deserialize error: missing field `screaming_word` at ``");
+    assert_display_snapshot!(data, @"Missing field `screaming_word`");
 
     let data = deserialize::<Struct, _, JsonError>(
         json!({ "word": "doggo", "screaming_word": "good doggo", "smol": "bork" }),
     )
     .unwrap_err();
 
-    assert_display_snapshot!(data, @"Json deserialize error: missing field `BORK` at ``");
+    assert_display_snapshot!(data, @"Missing field `BORK`");
 }

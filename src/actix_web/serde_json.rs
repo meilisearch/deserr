@@ -10,7 +10,7 @@ use actix_web::{FromRequest, HttpRequest, ResponseError};
 use deserr::{DeserializeError, Deserr};
 use futures::ready;
 
-use crate::serde_json::JsonError;
+use crate::json::JsonError;
 
 /// Extractor for typed data from Json request payloads
 /// deserialised by deserr.
