@@ -1,4 +1,4 @@
-use deserr::{DeserializeError, DeserializeFromValue, IntoValue, MergeWithError};
+use deserr::{DeserializeError, Deserr, IntoValue, MergeWithError};
 use std::ops::ControlFlow;
 
 #[derive(Debug)]
@@ -23,7 +23,7 @@ impl MergeWithError<MyError> for MyError {
     }
 }
 
-#[derive(DeserializeFromValue)]
+#[derive(Deserr)]
 #[deserr(error = MyError)]
 pub struct Point {
     pub x: u32,

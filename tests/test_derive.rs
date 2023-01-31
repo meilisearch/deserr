@@ -1,5 +1,5 @@
 use deserr::{
-    DefaultError, DefaultErrorContent, DeserializeError, DeserializeFromValue, ErrorKind,
+    DefaultError, DefaultErrorContent, DeserializeError, Deserr, ErrorKind,
     MergeWithError, ValueKind, ValuePointerRef,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -7,7 +7,7 @@ use serde_json::Value;
 use std::ops::ControlFlow;
 use std::str::FromStr;
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[serde(tag = "sometag")]
 #[deserr(tag = "sometag")]
 enum Tag {
@@ -15,7 +15,7 @@ enum Tag {
     B,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 enum Untagged {
     A,
     B,
@@ -32,7 +32,7 @@ where
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(deny_unknown_fields = unknown_field_error_gen)]
 struct Example {
     x: String,
@@ -43,7 +43,7 @@ struct Example {
     n: Box<Nested>,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 struct Nested {
     #[deserr(default)]
     y: Option<Vec<String>>,
@@ -51,7 +51,7 @@ struct Nested {
     z: Option<String>,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError)]
 struct StructWithDefaultAttr {
     x: bool,
@@ -63,7 +63,7 @@ struct StructWithDefaultAttr {
     z: Option<String>,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError)]
 struct StructWithTraitDefaultAttr {
     #[serde(default)]
@@ -79,7 +79,7 @@ fn create_default_option_string() -> Option<String> {
     Some("hello".to_owned())
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[serde(tag = "t")]
 #[deserr(error = DefaultError, tag = "t")]
 enum EnumWithOptionData {
@@ -97,21 +97,21 @@ enum EnumWithOptionData {
     },
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError, rename_all = camelCase)]
 #[serde(rename_all = "camelCase")]
 struct RenamedAllCamelCaseStruct {
     renamed_field: bool,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError, rename_all = lowercase)]
 #[serde(rename_all = "lowercase")]
 struct RenamedAllLowerCaseStruct {
     renamed_field: bool,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError, tag = "t", rename_all = camelCase)]
 #[serde(tag = "t")]
 #[serde(rename_all = "camelCase")]
@@ -119,7 +119,7 @@ enum RenamedAllCamelCaseEnum {
     SomeField { my_field: bool },
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError, tag = "t")]
 #[serde(tag = "t")]
 enum RenamedAllFieldsCamelCaseEnum {
@@ -128,7 +128,7 @@ enum RenamedAllFieldsCamelCaseEnum {
     SomeField { my_field: bool },
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError)]
 struct StructWithRenamedField {
     #[deserr(rename = "renamed_field")]
@@ -136,7 +136,7 @@ struct StructWithRenamedField {
     x: bool,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError, rename_all = camelCase)]
 struct StructWithRenamedFieldAndRenameAll {
     #[deserr(rename = "renamed_field")]
@@ -144,7 +144,7 @@ struct StructWithRenamedFieldAndRenameAll {
     x: bool,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError, deny_unknown_fields)]
 #[serde(deny_unknown_fields)]
 struct StructDenyUnknownFields {
@@ -161,14 +161,14 @@ fn unknown_field_error(k: &str, _accepted: &[&str], location: ValuePointerRef) -
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError, deny_unknown_fields = unknown_field_error)]
 #[serde(deny_unknown_fields)]
 struct StructDenyUnknownFieldsCustom {
     x: bool,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError, tag = "t", deny_unknown_fields)]
 #[serde(tag = "t", deny_unknown_fields)]
 enum EnumDenyUnknownFields {
@@ -176,7 +176,7 @@ enum EnumDenyUnknownFields {
     Other { my_field: bool, y: u8 },
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError, tag = "t", deny_unknown_fields = unknown_field_error)]
 #[serde(tag = "t", deny_unknown_fields)]
 enum EnumDenyUnknownFieldsCustom {
@@ -196,7 +196,7 @@ fn custom_mising_field(_field_name: &str, location: ValuePointerRef) -> DefaultE
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError)]
 struct StructMissingFieldError {
     #[deserr(missing_field_error = missing_x_field)]
@@ -205,7 +205,7 @@ struct StructMissingFieldError {
     y: bool,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError, tag = "t")]
 enum EnumMissingFieldError {
     A {
@@ -217,7 +217,7 @@ enum EnumMissingFieldError {
     },
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError, tag = "t")]
 #[serde(tag = "t")]
 enum EnumRenamedVariant {
@@ -229,7 +229,7 @@ enum EnumRenamedVariant {
     B,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError, tag = "t")]
 #[serde(tag = "t")]
 enum EnumRenamedField {
@@ -240,7 +240,7 @@ enum EnumRenamedField {
     },
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError, tag = "t")]
 #[serde(tag = "t")]
 enum EnumRenamedAllVariant {
@@ -249,14 +249,14 @@ enum EnumRenamedAllVariant {
     P { water_potential: bool },
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 #[deserr(error = DefaultError)]
 struct Generic<A> {
     some_field: A,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(where_predicate = __Deserr_E: MergeWithError<DefaultError>, where_predicate = A: DeserializeFromValue<DefaultError>)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
+#[deserr(where_predicate = __Deserr_E: MergeWithError<DefaultError>, where_predicate = A: Deserr<DefaultError>)]
 struct Generic2<A> {
     #[deserr(error = DefaultError, default)]
     some_field: Option<A>,
@@ -269,14 +269,14 @@ fn map_option(x: Option<u8>) -> Option<u8> {
         None => Some(1),
     }
 }
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
 struct FieldMap {
     #[deserr(default, map = map_option)]
     some_field: Option<u8>,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
-#[deserr(where_predicate = Option<u8> : DeserializeFromValue<__Deserr_E>)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Deserr)]
+#[deserr(where_predicate = Option<u8> : Deserr<__Deserr_E>)]
 struct FieldConditions {
     #[deserr(default)]
     some_field: Option<u8>,
@@ -307,40 +307,40 @@ fn parse_hello3(b: &str) -> Result<Hello3, DefaultError> {
     }
 }
 
-#[derive(Debug, PartialEq, DeserializeFromValue)]
+#[derive(Debug, PartialEq, Deserr)]
 #[deserr(from(bool) = parse_hello -> NeverError)]
 enum Hello {
     A,
     B,
 }
 
-#[derive(Debug, PartialEq, DeserializeFromValue)]
+#[derive(Debug, PartialEq, Deserr)]
 #[deserr(error = DefaultError, from(bool) = parse_hello2 -> NeverError)]
 enum Hello2 {
     A,
     B,
 }
 
-#[derive(Debug, PartialEq, DeserializeFromValue)]
+#[derive(Debug, PartialEq, Deserr)]
 #[deserr(from(& String) = parse_hello3 -> DefaultError)]
 enum Hello3 {
     A,
     B,
 }
 
-#[derive(Debug, PartialEq, DeserializeFromValue)]
-#[deserr(where_predicate = Hello: DeserializeFromValue<__Deserr_E>)]
+#[derive(Debug, PartialEq, Deserr)]
+#[deserr(where_predicate = Hello: Deserr<__Deserr_E>)]
 struct ContainsHello {
     _x: Hello,
 }
 
-#[derive(Debug, PartialEq, DeserializeFromValue)]
+#[derive(Debug, PartialEq, Deserr)]
 #[deserr(error = DefaultError)]
 struct ContainsHello2 {
     _x: Hello,
 }
 
-#[derive(Debug, PartialEq, DeserializeFromValue)]
+#[derive(Debug, PartialEq, Deserr)]
 struct ContainsHello3 {
     #[deserr(needs_predicate)]
     _x: Hello,
@@ -379,21 +379,21 @@ fn validate_it2(
     }
 }
 
-#[derive(Debug, DeserializeFromValue)]
+#[derive(Debug, Deserr)]
 #[deserr(validate = validate_it -> MyValidationError)]
 struct Validated {
     x: u8,
     y: u16,
 }
 
-#[derive(Debug, DeserializeFromValue)]
+#[derive(Debug, Deserr)]
 #[deserr(error = DefaultError, validate = validate_it2 -> MyValidationError)]
 struct Validated2 {
     x: u8,
     y: u16,
 }
 
-#[derive(Debug, PartialEq, Eq, DeserializeFromValue)]
+#[derive(Debug, PartialEq, Eq, Deserr)]
 pub struct From {
     #[deserr(from(&String) = u8_from_str -> MyParseIntError)]
     x: u8,
@@ -422,7 +422,7 @@ impl MergeWithError<MyParseIntError> for DefaultError {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, DeserializeFromValue)]
+#[derive(Debug, PartialEq, Eq, Deserr)]
 pub struct From2 {
     #[deserr(from(&String) = u8_from_str -> MyParseIntError)]
     x: u8,
@@ -440,7 +440,7 @@ impl MergeWithError<NeverError> for DefaultError {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, DeserializeFromValue)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Deserr)]
 pub struct Skipped1 {
     #[deserr(skip)]
     #[serde(skip)]
@@ -459,7 +459,7 @@ fn default_skipped_y() -> Option<u8> {
     Some(3)
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, DeserializeFromValue)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Deserr)]
 #[deserr(deny_unknown_fields)]
 pub struct Skipped2 {
     #[deserr(default = default_skipped_x(), skip)]
@@ -475,7 +475,7 @@ pub struct Skipped2 {
 #[track_caller]
 fn compare_with_serde_roundtrip<T>(x: T)
 where
-    T: Serialize + DeserializeFromValue<DefaultError> + PartialEq + std::fmt::Debug,
+    T: Serialize + Deserr<DefaultError> + PartialEq + std::fmt::Debug,
 {
     let json = serde_json::to_value(&x).unwrap();
     let result: T = deserr::deserialize(json).unwrap();
@@ -486,7 +486,7 @@ where
 #[track_caller]
 fn compare_with_serde<T>(j: &str)
 where
-    T: DeserializeOwned + DeserializeFromValue<DefaultError> + PartialEq + std::fmt::Debug,
+    T: DeserializeOwned + Deserr<DefaultError> + PartialEq + std::fmt::Debug,
 {
     let json: Value = serde_json::from_str(j).unwrap();
 
@@ -511,7 +511,7 @@ where
 fn assert_error_matches<T, E>(j: &str, expected: E)
 where
     E: DeserializeError + PartialEq + std::fmt::Debug,
-    T: DeserializeFromValue<E> + std::fmt::Debug,
+    T: Deserr<E> + std::fmt::Debug,
 {
     let json: Value = serde_json::from_str(j).unwrap();
     let actual: E = deserr::deserialize::<T, _, _>(json).unwrap_err();
@@ -523,7 +523,7 @@ where
 fn assert_ok_matches<T, E>(j: &str, expected: T)
 where
     E: DeserializeError + PartialEq + std::fmt::Debug,
-    T: DeserializeFromValue<E> + std::fmt::Debug + PartialEq,
+    T: Deserr<E> + std::fmt::Debug + PartialEq,
 {
     let json: Value = serde_json::from_str(j).unwrap();
     let actual: T = deserr::deserialize::<T, _, E>(json).unwrap();

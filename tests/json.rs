@@ -31,7 +31,7 @@ impl DeserializeError for JsonPointer {
 #[test]
 fn test_pointer_as_json() {
     #[allow(dead_code)]
-    #[derive(Debug, deserr::DeserializeFromValue)]
+    #[derive(Debug, deserr::Deserr)]
     #[deserr(deny_unknown_fields)]
     struct Test {
         top: usize,
@@ -55,7 +55,7 @@ fn test_pointer_as_json() {
     insta::assert_display_snapshot!(ret.0, @"");
 
     #[allow(dead_code)]
-    #[derive(Debug, deserr::DeserializeFromValue)]
+    #[derive(Debug, deserr::Deserr)]
     #[deserr(deny_unknown_fields)]
     struct Test2 {
         left: Vec<usize>,
@@ -93,7 +93,7 @@ fn test_pointer_as_json() {
 #[test]
 fn test_default_error_message() {
     #[allow(dead_code)]
-    #[derive(Debug, deserr::DeserializeFromValue, serde::Deserialize)]
+    #[derive(Debug, deserr::Deserr, serde::Deserialize)]
     #[deserr(deny_unknown_fields)]
     #[serde(deny_unknown_fields)]
     struct Test {

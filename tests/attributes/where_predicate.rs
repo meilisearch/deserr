@@ -1,12 +1,12 @@
-use deserr::{deserialize, serde_json::JsonError, DeserializeFromValue};
+use deserr::{deserialize, serde_json::JsonError, Deserr};
 use insta::assert_debug_snapshot;
 use serde_json::json;
 
 #[test]
 fn where_attribute() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
-    #[deserr(where_predicate = T: DeserializeFromValue<__Deserr_E>)]
+    #[derive(Debug, Deserr)]
+    #[deserr(where_predicate = T: Deserr<__Deserr_E>)]
     struct Struct<T> {
         doggo: String,
         catto: T,

@@ -3,11 +3,11 @@ use std::convert::Infallible;
 use actix_web::{web, App, HttpResponse, HttpServer};
 use deserr::{
     actix_web::AwebJson, serde_json::JsonError, take_cf_content, DeserializeError,
-    DeserializeFromValue, ErrorKind, ValuePointerRef,
+    Deserr, ErrorKind, ValuePointerRef,
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Debug, Serialize, Deserialize, Deserr)]
 #[serde(deny_unknown_fields)]
 #[deserr(deny_unknown_fields)]
 struct Query {
@@ -34,7 +34,7 @@ fn default_range() -> Range {
     Range { min: 2, max: 4 }
 }
 
-#[derive(Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Debug, Serialize, Deserialize, Deserr)]
 #[serde(deny_unknown_fields)]
 #[deserr(deny_unknown_fields, validate = validate_range -> __Deserr_E)]
 struct Range {
@@ -64,7 +64,7 @@ fn validate_range<E: DeserializeError>(
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, DeserializeFromValue)]
+#[derive(Debug, Serialize, Deserialize, Deserr)]
 #[serde(rename_all = "camelCase")]
 #[deserr(rename_all = camelCase)]
 enum Return {

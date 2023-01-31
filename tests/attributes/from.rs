@@ -6,7 +6,7 @@ use std::{
 
 use deserr::{
     deserialize, serde_json::JsonError, take_result_content, DeserializeError,
-    DeserializeFromValue, ErrorKind, MergeWithError, ValuePointerRef,
+    Deserr, ErrorKind, MergeWithError, ValuePointerRef,
 };
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
@@ -45,7 +45,7 @@ impl MergeWithError<AsciiStringError> for JsonError {
 #[test]
 fn from_container_attribute() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     #[deserr(from(&String) = FromStr::from_str -> AsciiStringError)]
     struct AsciiString(String);
 
@@ -75,7 +75,7 @@ fn from_container_attribute() {
     assert_display_snapshot!(data, @"Json deserialize error: unknown field `turbo`, expected one of `word` at ``.");
 
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     struct Struct {
         #[deserr(needs_predicate)]
         doggo: AsciiString,
@@ -114,7 +114,7 @@ fn from_field_attribute() {
     }
 
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     struct Struct {
         #[deserr(from(&String) = FromStr::from_str -> AsciiStringError)]
         doggo: AsciiString,

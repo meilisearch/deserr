@@ -3,7 +3,7 @@ use quote::quote;
 
 use crate::parse_type::{CommonDerivedTypeInfo, NamedFieldsInfo};
 
-/// Return a token stream that implements `DeserializeFromValue<E>` for the given derived struct with named fields
+/// Return a token stream that implements `Deserr<E>` for the given derived struct with named fields
 pub fn generate_derive_struct_impl(
     info: CommonDerivedTypeInfo,
     fields: NamedFieldsInfo,

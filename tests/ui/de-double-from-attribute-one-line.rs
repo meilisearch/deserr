@@ -1,6 +1,6 @@
-use deserr::DeserializeFromValue;
+use deserr::Deserr;
 
-#[derive(DeserializeFromValue)]
+#[derive(Deserr)]
 struct UnitStruct {
     #[deserr(from(String) = String::parse -> usize, from(String) = usize::FromStr -> usize)]
     hello: usize,

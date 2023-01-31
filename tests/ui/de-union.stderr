@@ -1,4 +1,4 @@
-error: Unions aren't supported by the DeserializeFromValue derive macro
+error: Unions aren't supported by the Deserr derive macro
  --> tests/ui/de-union.rs:5:1
   |
 5 | union Union {

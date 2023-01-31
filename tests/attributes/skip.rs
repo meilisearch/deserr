@@ -1,11 +1,11 @@
-use deserr::{deserialize, serde_json::JsonError, DeserializeFromValue};
+use deserr::{deserialize, serde_json::JsonError, Deserr};
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
 
 #[test]
 fn skip() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     struct Struct {
         #[deserr(skip)]
         doggo: Option<String>,
@@ -39,7 +39,7 @@ fn skip() {
 #[test]
 fn skip_and_deny_unknown_fields() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     #[deserr(deny_unknown_fields)]
     struct Struct {
         #[deserr(skip)]
@@ -74,7 +74,7 @@ fn skip_and_deny_unknown_fields() {
 #[test]
 fn skip_and_default() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     struct Struct {
         #[deserr(skip, default = Some(String::from("bork")))]
         doggo: Option<String>,
@@ -114,7 +114,7 @@ fn skip_and_default() {
 #[test]
 fn skip_and_default_and_deny_unknown_fields() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     #[deserr(deny_unknown_fields)]
     struct Struct {
         #[deserr(skip, default = Some(String::from("bork")))]

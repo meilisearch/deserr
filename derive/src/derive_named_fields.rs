@@ -84,7 +84,7 @@ pub fn generate_named_fields_impl(
                 #(
                     #key_names => {
                         #field_names = match
-                            <#field_tys as ::deserr::DeserializeFromValue<#field_errs>>::deserialize_from_value(
+                            <#field_tys as ::deserr::Deserr<#field_errs>>::deserialize_from_value(
                                 ::deserr::IntoValue::into_value(deserr_value__),
                                 deserr_location__.push_key(deserr_key__.as_str())
                             ) {

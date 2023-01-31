@@ -1,6 +1,6 @@
-use deserr::DeserializeFromValue;
+use deserr::Deserr;
 
-#[derive(DeserializeFromValue)]
+#[derive(Deserr)]
 #[deserr(error = deserr::Error)]
 union Union {
     x: i32,

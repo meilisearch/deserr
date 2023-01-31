@@ -12,7 +12,7 @@ use syn::spanned::Spanned;
 use syn::{parse_quote, Data, DeriveInput, WherePredicate};
 
 /// Contains all the information needed to generate a
-/// `DeserializeFromValue` implementation for the derived type,
+/// `Deserr` implementation for the derived type,
 /// in a conveniently preprocessed form.
 ///
 /// It is created via `[DerivedTypeInfo::parse]`
@@ -26,10 +26,10 @@ pub struct DerivedTypeInfo {
 /// The subset of [`DerivedTypeInfo`] that contains information
 /// common to both structs and enums.
 pub struct CommonDerivedTypeInfo {
-    /// A token stream representing the `impl<..> DeserializeFromValue for #ident .. where ..` line.
+    /// A token stream representing the `impl<..> Deserr for #ident .. where ..` line.
     pub impl_trait_tokens: TokenStream,
     /// The custom error type `E` that is the generic parameter
-    /// of the derived `DeserializeFromValue<E>` trait implementation.
+    /// of the derived `Deserr<E>` trait implementation.
     ///
     /// It is relevant to the `error` attribute, which is necessary for now.
     pub err_ty: syn::Type,
@@ -109,11 +109,11 @@ impl DerivedTypeInfo {
                     ),
                     syn::Fields::Unnamed(fields) => return Err(syn::Error::new(
                         fields.span(),
-                        "Tuple structs aren't supported by the DeserializeFromValue derive macro",
+                        "Tuple structs aren't supported by the Deserr derive macro",
                     )),
                     syn::Fields::Unit => return Err(syn::Error::new(
                         Span::call_site(),
-                        "Unit structs aren't supported by the DeserializeFromValue derive macro",
+                        "Unit structs aren't supported by the Deserr derive macro",
                     )),
                 },
                 Data::Enum(e) => {
@@ -142,7 +142,7 @@ impl DerivedTypeInfo {
                         }
                         syn::Fields::Unnamed(u) => return Err(syn::Error::new(
                         u.span(),
-                        "Enum variants with unnamed associated data aren't supported by the DeserializeFromValue derive macro.",
+                        "Enum variants with unnamed associated data aren't supported by the Deserr derive macro.",
                     )),
                         syn::Fields::Unit => VariantData::Unit,
                     };
@@ -160,7 +160,7 @@ impl DerivedTypeInfo {
                 Data::Union(u) => {
                     return Err(syn::Error::new(
                         u.union_token.span,
-                        "Unions aren't supported by the DeserializeFromValue derive macro",
+                        "Unions aren't supported by the Deserr derive macro",
                     ))
                 }
             }
@@ -168,11 +168,11 @@ impl DerivedTypeInfo {
 
         // Create the token stream representing the line:
         // ```
-        //  impl<generics: bounds> DeserializeFromValue<err_ty> for MyType<generics>
-        //      where where_clause, generics: DeserializeFromValue<err_ty>
+        //  impl<generics: bounds> Deserr<err_ty> for MyType<generics>
+        //      where where_clause, generics: Deserr<err_ty>
         // ```
         // The generics and where clause are given by the original generics and where clause of the derived type,
-        // with the additional requirement that each generic parameter implements `DeserializeFromValue<err_ty>`
+        // with the additional requirement that each generic parameter implements `Deserr<err_ty>`
         let impl_trait_tokens = {
             // The goal of creating these simple bindings is to be able to reference them in a quote! macro
             let ident = input.ident;
@@ -183,7 +183,7 @@ impl DerivedTypeInfo {
                 .type_params()
                 .map::<WherePredicate, _>(|param| {
                     let param = &param.ident;
-                    parse_quote!(#param : ::deserr::DeserializeFromValue<#err_ty>)
+                    parse_quote!(#param : ::deserr::Deserr<#err_ty>)
                 })
                 .collect::<Vec<_>>();
 
@@ -239,7 +239,7 @@ impl DerivedTypeInfo {
                 ));
             }
 
-            // Add FieldTy: DeserializeFromValue<ErrTy> for each field with the needs_predicate attribute
+            // Add FieldTy: Deserr<ErrTy> for each field with the needs_predicate attribute
             {
                 let collect_needs_pred = |fields: &NamedFieldsInfo| {
                     fields
@@ -264,7 +264,7 @@ impl DerivedTypeInfo {
                 };
                 for field_ty in all_fields_needing_pred {
                     new_predicates.push(parse_quote! {
-                        #field_ty : ::deserr::DeserializeFromValue<#err_ty>
+                        #field_ty : ::deserr::Deserr<#err_ty>
                     });
                 }
             }
@@ -290,7 +290,7 @@ impl DerivedTypeInfo {
                 .extend(attrs.where_predicates.clone());
 
             quote! {
-                impl #impl_generics ::deserr::DeserializeFromValue<#err_ty> for #ident #ty_generics #bounded_where_clause
+                impl #impl_generics ::deserr::Deserr<#err_ty> for #ident #ty_generics #bounded_where_clause
             }
         };
 

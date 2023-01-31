@@ -7,7 +7,7 @@ use std::task::{Context, Poll};
 use actix_web::dev::Payload;
 use actix_web::web::Json;
 use actix_web::{FromRequest, HttpRequest, ResponseError};
-use deserr::{DeserializeError, DeserializeFromValue};
+use deserr::{DeserializeError, Deserr};
 use futures::ready;
 
 use crate::serde_json::JsonError;
@@ -17,7 +17,7 @@ use crate::serde_json::JsonError;
 ///
 /// # Extractor
 /// To extract typed data from a request body, the inner type `T` must implement the
-/// [`deserr::DeserializeFromValue<E>`] trait. The inner type `E` must implement the
+/// [`deserr::Deserr<E>`] trait. The inner type `E` must implement the
 /// [`DeserializeError`] + `ResponseError` traits.
 #[derive(Debug)]
 pub struct AwebJson<T, E>(pub T, PhantomData<*const E>);
@@ -35,7 +35,7 @@ impl<T, E> AwebJson<T, E> {
 impl<T, E> FromRequest for AwebJson<T, E>
 where
     E: DeserializeError + ResponseError + 'static,
-    T: DeserializeFromValue<E>,
+    T: Deserr<E>,
 {
     type Error = actix_web::Error;
     type Future = AwebJsonExtractFut<T, E>;
@@ -56,7 +56,7 @@ pub struct AwebJsonExtractFut<T, E> {
 
 impl<T, E> Future for AwebJsonExtractFut<T, E>
 where
-    T: DeserializeFromValue<E>,
+    T: Deserr<E>,
     E: DeserializeError + ResponseError + 'static,
 {
     type Output = Result<AwebJson<T, E>, actix_web::Error>;

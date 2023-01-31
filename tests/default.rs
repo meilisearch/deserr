@@ -1,11 +1,11 @@
-use deserr::{deserialize, serde_json::JsonError, DeserializeFromValue};
+use deserr::{deserialize, serde_json::JsonError, Deserr};
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
 
 #[test]
 fn option_dont_use_default_by_default() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     struct Struct {
         doggo: Option<String>,
     }
@@ -36,7 +36,7 @@ fn option_dont_use_default_by_default() {
 #[test]
 fn default_without_parameter() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     struct Struct {
         #[deserr(default)]
         doggo: Option<String>,
@@ -72,7 +72,7 @@ fn default_without_parameter() {
 #[test]
 fn default_with_a_parameter() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     struct Struct {
         #[deserr(default = Some(String::from("BORK")))]
         doggo: Option<String>,

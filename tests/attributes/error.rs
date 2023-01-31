@@ -1,11 +1,11 @@
-use deserr::{deserialize, serde_json::JsonError, DeserializeFromValue};
+use deserr::{deserialize, serde_json::JsonError, Deserr};
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
 
 #[test]
 fn error_attribute() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     #[deserr(error = JsonError)]
     struct Struct {
         doggo: String,

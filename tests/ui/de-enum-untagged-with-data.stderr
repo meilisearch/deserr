@@ -1,7 +1,7 @@
 error: Externally tagged enums are not supported yet by deserr. Add #[deserr(tag = "some_tag_key")]
  --> tests/ui/de-enum-untagged-with-data.rs:3:10
   |
-3 | #[derive(DeserializeFromValue)]
-  |          ^^^^^^^^^^^^^^^^^^^^
+3 | #[derive(Deserr)]
+  |          ^^^^^^
   |
-  = note: this error originates in the derive macro `DeserializeFromValue` (in Nightly builds, run with -Z macro-backtrace for more info)
+  = note: this error originates in the derive macro `Deserr` (in Nightly builds, run with -Z macro-backtrace for more info)

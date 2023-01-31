@@ -1,11 +1,11 @@
-use deserr::{deserialize, serde_json::JsonError, DeserializeFromValue};
+use deserr::{deserialize, serde_json::JsonError, Deserr};
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
 
 #[test]
 fn rename_all_camel_case() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     #[deserr(rename_all = camelCase)]
     struct Struct {
         word: String,
@@ -53,7 +53,7 @@ fn rename_all_camel_case() {
 #[test]
 fn rename_all_lowercase() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     #[deserr(rename_all = lowercase)]
     struct Struct {
         word: String,

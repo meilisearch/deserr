@@ -1,17 +1,17 @@
-use deserr::{deserialize, serde_json::JsonError, DeserializeFromValue};
+use deserr::{deserialize, serde_json::JsonError, Deserr};
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
 
 #[test]
 fn tagged_enum() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     struct Struct {
         either: Either,
     }
 
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     #[deserr(tag = "type")]
     enum Either {
         Left { doggo: String },
@@ -60,13 +60,13 @@ fn tagged_enum() {
 #[test]
 fn tagged_enum_plus_rename() {
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     struct Struct {
         either: Either,
     }
 
     #[allow(unused)]
-    #[derive(Debug, DeserializeFromValue)]
+    #[derive(Debug, Deserr)]
     #[deserr(tag = "type", rename_all = lowercase)]
     enum Either {
         Left {
