@@ -1,8 +1,8 @@
 use std::convert::Infallible;
 
 use deserr::{
-    deserialize, serde_json::JsonError, take_result_content, DeserializeError,
-    Deserr, ErrorKind, ValuePointerRef,
+    deserialize, serde_json::JsonError, take_cf_content, DeserializeError, Deserr, ErrorKind,
+    ValuePointerRef,
 };
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
@@ -45,14 +45,14 @@ fn custom_deny_unknown_fields() {
         location: ValuePointerRef,
     ) -> E {
         match field {
-            "doggo" => take_result_content(E::error::<Infallible>(
+            "doggo" => take_cf_content(E::error::<Infallible>(
                 None,
                 ErrorKind::Unexpected {
                     msg: format!("The word is doggo, not the opposite"),
                 },
                 location,
             )),
-            _ => take_result_content(E::error::<Infallible>(
+            _ => take_cf_content(E::error::<Infallible>(
                 None,
                 deserr::ErrorKind::UnknownKey {
                     key: field,

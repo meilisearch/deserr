@@ -1,8 +1,8 @@
 use std::convert::Infallible;
 
 use deserr::{
-    deserialize, serde_json::JsonError, take_result_content, DeserializeError,
-    Deserr, ErrorKind, ValuePointerRef,
+    deserialize, serde_json::JsonError, take_cf_content, DeserializeError, Deserr, ErrorKind,
+    ValuePointerRef,
 };
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
@@ -18,7 +18,7 @@ fn missing_field_error() {
     }
 
     fn custom_function<E: DeserializeError>(_field_name: &str, location: ValuePointerRef) -> E {
-        take_result_content(E::error::<Infallible>(
+        take_cf_content(E::error::<Infallible>(
             None,
             ErrorKind::Unexpected {
                 msg: String::from("I really need the query field, please give it to me uwu"),

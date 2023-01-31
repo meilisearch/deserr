@@ -1,12 +1,13 @@
 use std::{
     convert::Infallible,
     fmt::{self, Display},
+    ops::ControlFlow,
     str::FromStr,
 };
 
 use deserr::{
-    deserialize, serde_json::JsonError, take_result_content, DeserializeError,
-    Deserr, ErrorKind, MergeWithError, ValuePointerRef,
+    deserialize, serde_json::JsonError, take_cf_content, DeserializeError, Deserr, ErrorKind,
+    MergeWithError, ValuePointerRef,
 };
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
@@ -31,8 +32,8 @@ impl MergeWithError<AsciiStringError> for JsonError {
         _self_: Option<Self>,
         other: AsciiStringError,
         merge_location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(take_result_content(JsonError::error::<Infallible>(
+    ) -> ControlFlow<Self, Self> {
+        ControlFlow::Break(take_cf_content(JsonError::error::<Infallible>(
             None,
             ErrorKind::Unexpected {
                 msg: other.to_string(),
@@ -64,15 +65,15 @@ fn from_container_attribute() {
     let data = deserialize::<AsciiString, _, JsonError>(json!("doggo")).unwrap();
 
     assert_debug_snapshot!(data, @r###"
-    Struct {
-        word: "doggo",
-    }
+    AsciiString(
+        "doggo",
+    )
     "###);
 
     let data = deserialize::<AsciiString, _, JsonError>(json!("🥺"))
 .unwrap_err();
 
-    assert_display_snapshot!(data, @"Json deserialize error: unknown field `turbo`, expected one of `word` at ``.");
+    assert_display_snapshot!(data, @"Encountered invalid character: `🥺`, only ascii characters are accepted at ``.");
 
     #[allow(unused)]
     #[derive(Debug, Deserr)]
@@ -85,14 +86,16 @@ fn from_container_attribute() {
 
     assert_debug_snapshot!(data, @r###"
     Struct {
-        word: "doggo",
+        doggo: AsciiString(
+            "BORK",
+        ),
     }
     "###);
 
     let data = deserialize::<Struct, _, JsonError>(json!({ "doggo": "👉 👈"}))
  .unwrap_err();
 
-    assert_display_snapshot!(data, @"Json deserialize error: unknown field `turbo`, expected one of `word` at ``.");
+    assert_display_snapshot!(data, @"Encountered invalid character: `👉`, only ascii characters are accepted at `.doggo`.");
 }
 
 #[test]
@@ -124,12 +127,14 @@ fn from_field_attribute() {
 
     assert_debug_snapshot!(data, @r###"
     Struct {
-        word: "doggo",
+        doggo: AsciiString(
+            "BORK",
+        ),
     }
     "###);
 
     let data = deserialize::<Struct, _, JsonError>(json!({ "doggo": "👉 👈"}))
  .unwrap_err();
 
-    assert_display_snapshot!(data, @"Json deserialize error: unknown field `turbo`, expected one of `word` at ``.");
+    assert_display_snapshot!(data, @"Encountered invalid character: `👉`, only ascii characters are accepted at `.doggo`.");
 }

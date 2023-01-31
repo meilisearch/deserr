@@ -1,8 +1,7 @@
 use std::convert::Infallible;
 
 use deserr::{
-    deserialize, serde_json::JsonError, DeserializeError, Deserr, ErrorKind,
-    ValuePointerRef,
+    deserialize, serde_json::JsonError, DeserializeError, Deserr, ErrorKind, ValuePointerRef,
 };
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
@@ -22,7 +21,7 @@ fn validate() {
         location: ValuePointerRef,
     ) -> Result<Range, E> {
         if range.end < range.start {
-            Err(deserr::take_result_content(E::error::<Infallible>(
+            Err(deserr::take_cf_content(E::error::<Infallible>(
                 None,
                 ErrorKind::Unexpected {
                     msg: format!(
