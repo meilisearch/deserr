@@ -2,7 +2,6 @@
 
 #[cfg(feature = "actix-web")]
 pub mod actix_web;
-mod default_error;
 mod impls;
 mod json;
 mod query_params;
@@ -12,8 +11,6 @@ pub mod serde_cs;
 pub mod serde_json;
 mod value;
 
-pub use default_error::DefaultError;
-pub use default_error::DefaultErrorContent;
 pub use json::JsonError;
 pub use query_params::QueryParamError;
 extern crate self as deserr;
@@ -82,7 +79,6 @@ will parse the following:
 pub use deserr_internal::Deserr;
 pub use value::{IntoValue, Map, Sequence, Value, ValueKind, ValuePointer, ValuePointerRef};
 
-use std::fmt::Debug;
 use std::ops::ControlFlow;
 
 /// A trait for types that can be deserialized from a [`Value`]. The generic type

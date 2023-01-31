@@ -40,12 +40,12 @@ for the type `serde_json::Value`. This allows using Deserr to deserialize from J
 
 ### Implementing deserialize for a custom type
 ```rust
-use deserr::{DeserializeError, Deserr, ErrorKind, DefaultError, Value, ValueKind, IntoValue, take_cf_content, MergeWithError, ValuePointerRef, ValuePointer};
+use deserr::{DeserializeError, Deserr, ErrorKind, JsonError, Value, ValueKind, IntoValue, take_cf_content, MergeWithError, ValuePointerRef, ValuePointer};
 use std::ops::ControlFlow;
 
 enum MyError {
     ForbiddenName,
-    Other(DefaultError)
+    Other(JsonError)
 }
 
 impl DeserializeError for MyError {
@@ -53,12 +53,12 @@ impl DeserializeError for MyError {
     ///
     /// Return `Ok` to continue deserializing or `Err` to fail early.
     fn error<V: IntoValue>(_self_: Option<Self>, error: ErrorKind<V>, location: ValuePointerRef) -> ControlFlow<Self, Self> {
-        ControlFlow::Break(Self::Other(take_cf_content(DefaultError::error(None, error, location))))
+        ControlFlow::Break(Self::Other(take_cf_content(JsonError::error(None, error, location))))
     }
 }
 
-impl From<DefaultError> for MyError {
-    fn from(error: DefaultError) -> Self {
+impl From<JsonError> for MyError {
+    fn from(error: JsonError) -> Self {
         Self::Other(error)
     }
 }
