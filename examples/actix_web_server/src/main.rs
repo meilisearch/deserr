@@ -2,8 +2,8 @@ use std::convert::Infallible;
 
 use actix_web::{web, App, HttpResponse, HttpServer};
 use deserr::{
-    actix_web::AwebJson, serde_json::JsonError, DeserializeError, DeserializeFromValue, ErrorKind,
-    ValuePointerRef,
+    actix_web::AwebJson, serde_json::JsonError, take_cf_content, DeserializeError,
+    DeserializeFromValue, ErrorKind, ValuePointerRef,
 };
 use serde::{Deserialize, Serialize};
 
@@ -49,7 +49,7 @@ fn validate_range<E: DeserializeError>(
     location: ValuePointerRef,
 ) -> Result<Range, E> {
     if range.min > range.max {
-        Err(deserr::take_result_content(E::error::<Infallible>(
+        Err(take_cf_content(E::error::<Infallible>(
             None,
             ErrorKind::Unexpected {
                 msg: format!(
