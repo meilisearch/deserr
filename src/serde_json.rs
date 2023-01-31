@@ -1,8 +1,8 @@
-use std::{convert::Infallible, fmt::Display};
+use std::{convert::Infallible, fmt::Display, ops::ControlFlow};
 
 use crate::{
-    DeserializeError, DeserializeFromValue, ErrorKind, IntoValue, Map, MergeWithError, Sequence,
-    Value, ValueKind, ValuePointerRef,
+    take_cf_content, DeserializeError, DeserializeFromValue, ErrorKind, IntoValue, Map,
+    MergeWithError, Sequence, Value, ValueKind, ValuePointerRef,
 };
 use serde_json::{Map as JMap, Number, Value as JValue};
 
@@ -82,13 +82,13 @@ impl<E: DeserializeError> DeserializeFromValue<E> for JValue {
             Value::Float(f) => match Number::from_f64(f) {
                 Some(n) => JValue::Number(n),
                 None => {
-                    return Err(E::error::<V>(
+                    return Err(take_cf_content(E::error::<V>(
                         error,
                         ErrorKind::Unexpected {
                             msg: format!("the float {f} is not representable in JSON"),
                         },
                         location,
-                    )?);
+                    )));
                 }
             },
             Value::String(s) => JValue::String(s),
@@ -104,7 +104,10 @@ impl<E: DeserializeError> DeserializeFromValue<E> for JValue {
                             jseq.push(value);
                         }
                         Err(e) => {
-                            error = Some(E::merge(error, e, location.push_index(index))?);
+                            error = match E::merge(error, e, location.push_index(index)) {
+                                ControlFlow::Continue(e) => Some(e),
+                                ControlFlow::Break(e) => return Err(e),
+                            };
                         }
                     }
                 }
@@ -124,7 +127,10 @@ impl<E: DeserializeError> DeserializeFromValue<E> for JValue {
                             jmap.insert(key, value);
                         }
                         Err(e) => {
-                            error = Some(E::merge(error, e, location.push_key(&key))?);
+                            error = match E::merge(error, e, location.push_key(&key)) {
+                                ControlFlow::Continue(e) => Some(e),
+                                ControlFlow::Break(e) => return Err(e),
+                            };
                         }
                     }
                 }
@@ -178,13 +184,17 @@ impl MergeWithError<JsonError> for JsonError {
         _self_: Option<Self>,
         other: JsonError,
         _merge_location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(other)
+    ) -> ControlFlow<Self, Self> {
+        ControlFlow::Break(other)
     }
 }
 
 impl<E: std::error::Error> MergeWithError<E> for JsonError {
-    fn merge(self_: Option<Self>, other: E, merge_location: ValuePointerRef) -> Result<Self, Self> {
+    fn merge(
+        self_: Option<Self>,
+        other: E,
+        merge_location: ValuePointerRef,
+    ) -> ControlFlow<Self, Self> {
         JsonError::error::<Infallible>(
             self_,
             ErrorKind::Unexpected {
@@ -200,7 +210,7 @@ impl DeserializeError for JsonError {
         _self_: Option<Self>,
         error: ErrorKind<V>,
         location: ValuePointerRef,
-    ) -> Result<Self, Self> {
+    ) -> ControlFlow<Self, Self> {
         let location = location.as_json();
 
         match error {
@@ -226,13 +236,13 @@ impl DeserializeError for JsonError {
                 };
 
                 let format = format!("invalid type: {kind} {received}{expected} at `{location}`.",);
-                Err(JsonError(format))
+                ControlFlow::Break(JsonError(format))
             }
             ErrorKind::MissingField { field } => {
                 // serde_json original message:
                 // Json deserialize error: missing field `lol` at line 1 column 2
 
-                Err(JsonError(format!(
+                ControlFlow::Break(JsonError(format!(
                     "Json deserialize error: missing field `{field}` at `{location}`"
                 )))
             }
@@ -248,7 +258,7 @@ impl DeserializeError for JsonError {
                     location
                 );
 
-                Err(JsonError(format))
+                ControlFlow::Break(JsonError(format))
             }
             ErrorKind::UnknownValue { value, accepted } => {
                 let format = format!(
@@ -262,12 +272,12 @@ impl DeserializeError for JsonError {
                     location
                 );
 
-                Err(JsonError(format))
+                ControlFlow::Break(JsonError(format))
             }
             ErrorKind::Unexpected { msg } => {
                 // serde_json original message:
                 // The json payload provided is malformed. `trailing characters at line 1 column 19`.
-                Err(JsonError(format!("{msg} at `{location}`.")))
+                ControlFlow::Break(JsonError(format!("{msg} at `{location}`.")))
             }
         }
     }

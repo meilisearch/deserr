@@ -301,7 +301,7 @@ impl DerivedTypeInfo {
             } = validate_func;
             quote! {
                 #validate_func (deserr_final__, deserr_location__) .map_err(|validate_error__|{
-                    ::deserr::take_result_content(
+                    ::deserr::take_cf_content(
                         <#err_ty as ::deserr::MergeWithError<#func_error_type>>::merge(
                             None,
                             validate_error__,

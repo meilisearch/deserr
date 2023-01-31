@@ -32,8 +32,8 @@ impl MergeWithError<DefaultError> for DefaultError {
         _self_: Option<Self>,
         other: DefaultError,
         _merge_location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(other)
+    ) -> ControlFlow<Self, Self> {
+        ControlFlow::Break(other)
     }
 }
 
@@ -42,7 +42,7 @@ impl DeserializeError for DefaultError {
         _self_: Option<Self>,
         error: ErrorKind<V>,
         location: ValuePointerRef,
-    ) -> Result<Self, Self> {
+    ) -> ControlFlow<Self, Self> {
         let content = match error {
             ErrorKind::IncorrectValueKind {
                 actual: _,
@@ -69,7 +69,7 @@ impl DeserializeError for DefaultError {
             },
             ErrorKind::Unexpected { msg } => DefaultErrorContent::Unexpected(msg),
         };
-        Err(Self {
+        ControlFlow::Break(Self {
             location: location.to_owned(),
             content,
         })

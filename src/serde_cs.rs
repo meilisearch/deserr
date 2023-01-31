@@ -3,7 +3,8 @@ use std::str::FromStr;
 use serde_cs::vec::CS;
 
 use crate::{
-    DeserializeError, DeserializeFromValue, ErrorKind, IntoValue, Value, ValueKind, ValuePointerRef,
+    take_cf_content, DeserializeError, DeserializeFromValue, ErrorKind, IntoValue, Value,
+    ValueKind, ValuePointerRef,
 };
 
 impl<R, E, FE> DeserializeFromValue<E> for CS<R>
@@ -19,20 +20,20 @@ where
         match value {
             Value::String(s) => match CS::from_str(&s) {
                 Ok(ret) => Ok(ret),
-                Err(e) => Err(E::error::<V>(
+                Err(e) => Err(take_cf_content(E::error::<V>(
                     None,
                     ErrorKind::Unexpected { msg: e.to_string() },
                     location,
-                )?),
+                ))),
             },
-            value => Err(E::error::<V>(
+            value => Err(take_cf_content(E::error::<V>(
                 None,
                 ErrorKind::IncorrectValueKind {
                     actual: value,
                     accepted: &[ValueKind::String],
                 },
                 location,
-            )?),
+            ))),
         }
     }
 }
