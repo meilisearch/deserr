@@ -237,15 +237,6 @@ impl<T> FieldState<T> {
     }
 }
 
-/// Used by the derive proc macro. Do not use.
-#[doc(hidden)]
-pub fn take_result_content<T>(r: Result<T, T>) -> T {
-    match r {
-        Ok(x) => x,
-        Err(x) => x,
-    }
-}
-
 /// Extract the `ControlFlow` result if it's the same type.
 pub fn take_cf_content<T>(r: ControlFlow<T, T>) -> T {
     match r {
