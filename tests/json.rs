@@ -4,6 +4,7 @@ use deserr::{
     serde_json::JsonError, DeserializeError, ErrorKind, IntoValue, MergeWithError, ValuePointerRef,
 };
 use serde_json::json;
+use std::ops::ControlFlow;
 
 pub struct JsonPointer(String);
 
@@ -12,8 +13,8 @@ impl MergeWithError<JsonPointer> for JsonPointer {
         _self_: Option<Self>,
         other: JsonPointer,
         _merge_location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(other)
+    ) -> ControlFlow<Self, Self> {
+        ControlFlow::Break(other)
     }
 }
 
@@ -22,8 +23,8 @@ impl DeserializeError for JsonPointer {
         _self_: Option<Self>,
         _error: ErrorKind<V>,
         location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(JsonPointer(location.as_json()))
+    ) -> ControlFlow<Self, Self> {
+        ControlFlow::Break(JsonPointer(location.as_json()))
     }
 }
 

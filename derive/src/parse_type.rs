@@ -492,22 +492,32 @@ impl NamedFieldsInfo {
                 Some(error_function) => {
                     quote! {
                         let deserr_e__ = #error_function ( #key_name, deserr_location__ ) ;
-                        deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
+                        deserr_error__ = match <#err_ty as ::deserr::MergeWithError<_>>::merge(
                             deserr_error__,
                             deserr_e__,
                             deserr_location__
-                        )?);
+                        ) {
+                            ::std::ops::ControlFlow::Continue(e) => ::std::option::Option::Some(e),
+                            ::std::ops::ControlFlow::Break(e) => {
+                                return ::std::result::Result::Err(e)
+                            }
+                        };
                     }
                 }
                 None => {
                     quote! {
-                        deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::DeserializeError>::error::<V>(
+                        deserr_error__ = match <#err_ty as ::deserr::DeserializeError>::error::<V>(
                             deserr_error__,
                             ::deserr::ErrorKind::MissingField {
                                 field: #key_name,
                             },
                             deserr_location__
-                        )?);
+                        ) {
+                            ::std::ops::ControlFlow::Continue(e) => ::std::option::Option::Some(e),
+                            ::std::ops::ControlFlow::Break(e) => {
+                                return ::std::result::Result::Err(e)
+                            }
+                        };
                     }
                 }
             };
@@ -529,23 +539,33 @@ impl NamedFieldsInfo {
             Some(DenyUnknownFields::DefaultError) => {
                 // Here we must give as argument the accepted keys
                 quote! {
-                    deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::DeserializeError>::error::<V>(
+                    deserr_error__ = match <#err_ty as ::deserr::DeserializeError>::error::<V>(
                         deserr_error__,
                         ::deserr::ErrorKind::UnknownKey {
                             key: deserr_key__,
                             accepted: &[#(#key_names),*],
                         },
                         deserr_location__
-                    )?);
+                    ) {
+                        ::std::ops::ControlFlow::Continue(e) => ::std::option::Option::Some(e),
+                        ::std::ops::ControlFlow::Break(e) => {
+                            return ::std::result::Result::Err(e)
+                        }
+                    };
                 }
             }
             Some(DenyUnknownFields::Function(func)) => quote! {
                 let deserr_e__ = #func (deserr_key__, &[#(#key_names),*], deserr_location__) ;
-                deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
+                deserr_error__ = match <#err_ty as ::deserr::MergeWithError<_>>::merge(
                     deserr_error__,
                     deserr_e__,
                     deserr_location__,
-                )?);
+                ) {
+                    ::std::ops::ControlFlow::Continue(e) => ::std::option::Option::Some(e),
+                    ::std::ops::ControlFlow::Break(e) => {
+                        return ::std::result::Result::Err(e)
+                    }
+                };
             },
             None => quote! {},
         };

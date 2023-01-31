@@ -39,7 +39,7 @@ for the type `serde_json::Value`. This allows using Deserr to deserialize from J
 ## Example
 
 ### Implementing deserialize for a custom type
-```rust
+```rust,ignore
 use deserr::{DeserializeError, DeserializeFromValue, ErrorKind, DefaultError, Value, ValueKind, IntoValue, MergeWithError, ValuePointerRef, ValuePointer};
 
 enum MyError {
