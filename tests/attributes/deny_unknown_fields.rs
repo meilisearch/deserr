@@ -48,7 +48,7 @@ fn custom_deny_unknown_fields() {
             "doggo" => take_cf_content(E::error::<Infallible>(
                 None,
                 ErrorKind::Unexpected {
-                    msg: format!("The word is doggo, not the opposite"),
+                    msg: "The word is doggo, not the opposite".to_string(),
                 },
                 location,
             )),
