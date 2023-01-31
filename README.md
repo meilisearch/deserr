@@ -40,7 +40,8 @@ for the type `serde_json::Value`. This allows using Deserr to deserialize from J
 
 ### Implementing deserialize for a custom type
 ```rust
-use deserr::{DeserializeError, DeserializeFromValue, ErrorKind, DefaultError, Value, ValueKind, IntoValue, MergeWithError, ValuePointerRef, ValuePointer};
+use deserr::{DeserializeError, DeserializeFromValue, ErrorKind, DefaultError, Value, ValueKind, IntoValue, take_cf_content, MergeWithError, ValuePointerRef, ValuePointer};
+use std::ops::ControlFlow;
 
 enum MyError {
     ForbiddenName,
@@ -51,8 +52,8 @@ impl DeserializeError for MyError {
     /// Create a new error with the custom message.
     ///
     /// Return `Ok` to continue deserializing or `Err` to fail early.
-    fn error<V: IntoValue>(_self_: Option<Self>, error: ErrorKind<V>, location: ValuePointerRef) -> Result<Self, Self> {
-        Err(Self::Other(DefaultError::error(None, error, location)?))
+    fn error<V: IntoValue>(_self_: Option<Self>, error: ErrorKind<V>, location: ValuePointerRef) -> ControlFlow<Self, Self> {
+        ControlFlow::Break(Self::Other(take_cf_content(DefaultError::error(None, error, location))))
     }
 }
 
@@ -63,8 +64,8 @@ impl From<DefaultError> for MyError {
 }
 
 impl MergeWithError<MyError> for MyError {
-    fn merge(self_: Option<Self>, other: MyError, merge_location: ValuePointerRef) -> Result<Self, Self> {
-        Err(other)
+    fn merge(self_: Option<Self>, other: MyError, merge_location: ValuePointerRef) -> ControlFlow<Self, Self> {
+        ControlFlow::Break(other)
     }
 }
 
@@ -82,8 +83,8 @@ impl DeserializeFromValue<MyError> for Name {
             }
             value => {
                 match MyError::error(None, ErrorKind::IncorrectValueKind { actual: value, accepted: &[ValueKind::String] }, location) {
-                    Ok(_) => unreachable!(),
-                    Err(e) => Err(e),
+                    ControlFlow::Continue(_) => unreachable!(),
+                    ControlFlow::Break(e) => Err(e),
                 }
             }
         }

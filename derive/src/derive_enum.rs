@@ -33,7 +33,7 @@ pub fn generate_derive_tagged_enum_impl(
                 let deserr_final__ = match deserr_value__ {
                     ::deserr::Value::Map(mut deserr_map__) => {
                         let tag_value = ::deserr::Map::remove(&mut deserr_map__, #tag).ok_or_else(|| {
-                            ::deserr::take_result_content(<#err_ty as ::deserr::DeserializeError>::error::<V>(
+                            ::deserr::take_cf_content(<#err_ty as ::deserr::DeserializeError>::error::<V>(
                                 None,
                                 ::deserr::ErrorKind::MissingField {
                                     field: #tag,
@@ -45,14 +45,14 @@ pub fn generate_derive_tagged_enum_impl(
                             ::deserr::Value::String(x) => x,
                             v => {
                                 return ::std::result::Result::Err(
-                                    <#err_ty as ::deserr::DeserializeError>::error::<V>(
+                                    ::deserr::take_cf_content(<#err_ty as ::deserr::DeserializeError>::error::<V>(
                                         None,
                                         ::deserr::ErrorKind::IncorrectValueKind {
                                             actual: v,
                                             accepted: &[::deserr::ValueKind::String],
                                         },
                                         deserr_location__.push_key(#tag)
-                                    )?
+                                    ))
                                 );
                             }
                         };
@@ -63,14 +63,14 @@ pub fn generate_derive_tagged_enum_impl(
                             // correspond to any valid enum variant name
                             _ => {
                                 ::std::result::Result::Err(
-                                    <#err_ty as ::deserr::DeserializeError>::error::<V>(
+                                    ::deserr::take_cf_content(<#err_ty as ::deserr::DeserializeError>::error::<V>(
                                         None,
                                         // TODO: expected one of {expected_tags_list}, found {actual_tag} error message
                                         ::deserr::ErrorKind::Unexpected {
                                             msg: "Incorrect tag value".to_string(),
                                         },
                                         deserr_location__
-                                    )?
+                                    ))
                                 )
                             }
                         }
@@ -78,14 +78,14 @@ pub fn generate_derive_tagged_enum_impl(
                     // this is the case where the value is not a map
                     v => {
                         ::std::result::Result::Err(
-                            <#err_ty as ::deserr::DeserializeError>::error::<V>(
+                            ::deserr::take_cf_content(<#err_ty as ::deserr::DeserializeError>::error::<V>(
                                 None,
                                 ::deserr::ErrorKind::IncorrectValueKind {
                                     actual: v,
                                     accepted: &[::deserr::ValueKind::Map],
                                 },
                                 deserr_location__
-                            )?
+                            ))
                         )
                     }
                 }?;
@@ -199,14 +199,14 @@ pub fn generate_derive_untagged_enum_impl(
                             // correspond to any valid enum variant name
                             s => {
                                 ::std::result::Result::Err(
-                                    <#err_ty as ::deserr::DeserializeError>::error::<V>(
+                                    ::deserr::take_cf_content(<#err_ty as ::deserr::DeserializeError>::error::<V>(
                                         None,
                                         ::deserr::ErrorKind::UnknownValue {
                                             value: s,
                                             accepted: #all_variants_as_str,
                                         },
                                         deserr_location__
-                                    )?
+                                    ))
                                 )
                             }
                         }
@@ -214,14 +214,14 @@ pub fn generate_derive_untagged_enum_impl(
                     // this is the case where the value is not a String
                     v => {
                         ::std::result::Result::Err(
-                            <#err_ty as ::deserr::DeserializeError>::error::<V>(
+                            ::deserr::take_cf_content(<#err_ty as ::deserr::DeserializeError>::error::<V>(
                                 None,
                                 ::deserr::ErrorKind::IncorrectValueKind {
                                     actual: v,
                                     accepted: &[::deserr::ValueKind::String],
                                 },
                                 deserr_location__
-                            )?
+                            ))
                         )
                     }
                 }?;

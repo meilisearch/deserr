@@ -4,6 +4,7 @@ use deserr::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
+use std::ops::ControlFlow;
 use std::str::FromStr;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
@@ -26,8 +27,8 @@ where
 {
     match E::error::<serde_json::Value>(None, ErrorKind::UnknownKey { key: k, accepted }, location)
     {
-        Ok(e) => e,
-        Err(e) => e,
+        ControlFlow::Continue(e) => e,
+        ControlFlow::Break(e) => e,
     }
 }
 
@@ -274,13 +275,6 @@ struct FieldMap {
     some_field: Option<u8>,
 }
 
-// For AscDesc, we have __Deserr_E where __Deserr_E: MergeWithError<AscDescError>
-// Then for the struct that contains AscDesc, we don't want to repeat this whole requirement
-// so instead we do: AscDesc: DeserializeFromValue<__Deserr_E>
-// but that's only if it's generic! If it's not, we don't even need to have any requirements
-
-// #[deserr(where_predicates_from_fields)]
-
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, DeserializeFromValue)]
 #[deserr(where_predicate = Option<u8> : DeserializeFromValue<__Deserr_E>)]
 struct FieldConditions {
@@ -358,8 +352,8 @@ impl MergeWithError<MyValidationError> for DefaultError {
         _self_: Option<Self>,
         _other: MyValidationError,
         merge_location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(DefaultError {
+    ) -> ControlFlow<Self, Self> {
+        ControlFlow::Break(DefaultError {
             location: merge_location.to_owned(),
             content: DefaultErrorContent::Validation,
         })
@@ -420,8 +414,8 @@ impl MergeWithError<MyParseIntError> for DefaultError {
         _self_: Option<Self>,
         other: MyParseIntError,
         merge_location: ValuePointerRef,
-    ) -> Result<Self, Self> {
-        Err(DefaultError {
+    ) -> ControlFlow<Self, Self> {
+        ControlFlow::Break(DefaultError {
             location: merge_location.to_owned(),
             content: DefaultErrorContent::Unexpected(other.0.to_string()),
         })
@@ -441,7 +435,7 @@ impl MergeWithError<NeverError> for DefaultError {
         _self_: Option<Self>,
         _other: NeverError,
         _merge_location: ValuePointerRef,
-    ) -> Result<Self, Self> {
+    ) -> ControlFlow<Self, Self> {
         unreachable!()
     }
 }

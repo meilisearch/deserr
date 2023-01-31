@@ -41,7 +41,7 @@ pub fn generate_derive_user_function(
                 // then apply the function to it
                 let deserr_final__ = #function_call.map_err(|e| {
                     // then map the error to the final error type
-                    ::deserr::take_result_content(
+                    ::deserr::take_cf_content(
                         <#err_ty as ::deserr::MergeWithError<#function_error_ty>>::merge(None, e, deserr_location__)
                     )
                 })?;

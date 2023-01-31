@@ -36,22 +36,25 @@ pub fn generate_named_fields_impl(
                             e,
                             deserr_location__.push_key(deserr_key__.as_str())
                         ) {
-                            ::std::result::Result::Ok(e) => e,
-                            ::std::result::Result::Err(e) => {
+                            ::std::ops::ControlFlow::Continue(e) => e,
+                            ::std::ops::ControlFlow::Break(e) => {
                                 return ::std::result::Result::Err(
-                                    <#err_ty as ::deserr::MergeWithError<_>>::merge(
+                                    ::deserr::take_cf_content(<#err_ty as ::deserr::MergeWithError<_>>::merge(
                                         deserr_error__,
                                         e,
                                         deserr_location__.push_key(deserr_key__.as_str())
-                                    )?
+                                    ))
                                 )
                             }
                         };
-                        deserr_error__ = ::std::option::Option::Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
+                        deserr_error__ = match <#err_ty as ::deserr::MergeWithError<_>>::merge(
                             deserr_error__,
                             tmp_deserr_error__,
                             deserr_location__.push_key(deserr_key__.as_str())
-                        )?);
+                        ) {
+                            ::std::ops::ControlFlow::Continue(e) => ::std::option::Option::Some(e),
+                            ::std::ops::ControlFlow::Break(e) => return ::std::result::Result::Err(e),
+                        };
                         ::deserr::FieldState::Err
                     }
                 }
@@ -89,11 +92,14 @@ pub fn generate_named_fields_impl(
                                     #froms
                                 },
                                 ::std::result::Result::Err(e) => {
-                                    deserr_error__ = Some(<#err_ty as ::deserr::MergeWithError<_>>::merge(
+                                    deserr_error__ = match <#err_ty as ::deserr::MergeWithError<_>>::merge(
                                         deserr_error__,
                                         e,
                                         deserr_location__.push_key(deserr_key__.as_str())
-                                    )?);
+                                    ) {
+                                        ::std::ops::ControlFlow::Continue(e) => ::std::option::Option::Some(e),
+                                        ::std::ops::ControlFlow::Break(e) => return ::std::result::Result::Err(e),
+                                    };
                                     ::deserr::FieldState::Err
                                 }
                             };

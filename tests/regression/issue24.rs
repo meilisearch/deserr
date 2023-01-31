@@ -1,4 +1,5 @@
 use deserr::{DeserializeError, DeserializeFromValue, IntoValue, MergeWithError};
+use std::ops::ControlFlow;
 
 #[derive(Debug)]
 pub struct MyError;
@@ -7,7 +8,7 @@ impl DeserializeError for MyError {
         _self_: Option<Self>,
         _error: deserr::ErrorKind<V>,
         _location: deserr::ValuePointerRef,
-    ) -> Result<Self, Self> {
+    ) -> ControlFlow<Self, Self> {
         todo!()
     }
 }
@@ -17,7 +18,7 @@ impl MergeWithError<MyError> for MyError {
         _self_: Option<Self>,
         _other: MyError,
         _merge_location: deserr::ValuePointerRef,
-    ) -> Result<Self, Self> {
+    ) -> ControlFlow<Self, Self> {
         todo!()
     }
 }

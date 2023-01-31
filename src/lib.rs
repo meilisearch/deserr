@@ -74,13 +74,12 @@ will parse the following:
     "goodbye_world": 2
 }
 ```
-
-
 */
 pub use deserr_internal::DeserializeFromValue;
 pub use value::{IntoValue, Map, Sequence, Value, ValueKind, ValuePointer, ValuePointerRef};
 
 use std::fmt::Debug;
+use std::ops::ControlFlow;
 
 /// A trait for types that can be deserialized from a [`Value`]. The generic type
 /// parameter `E` is the custom error that is returned when deserialization fails.
@@ -153,7 +152,11 @@ pub trait MergeWithError<T>: Sized {
     /// ```
     /// Note that even though the suberror originated at `x.y`, the `merge_location` argument was `x`
     /// because that is where the merge happened.
-    fn merge(self_: Option<Self>, other: T, merge_location: ValuePointerRef) -> Result<Self, Self>;
+    fn merge(
+        self_: Option<Self>,
+        other: T,
+        merge_location: ValuePointerRef,
+    ) -> ControlFlow<Self, Self>;
 }
 
 pub enum ErrorKind<'a, V: IntoValue> {
@@ -183,7 +186,7 @@ pub trait DeserializeError: Sized + MergeWithError<Self> {
         self_: Option<Self>,
         error: ErrorKind<V>,
         location: ValuePointerRef,
-    ) -> Result<Self, Self>;
+    ) -> ControlFlow<Self, Self>;
 }
 
 /// Used by the derive proc macro. Do not use.
@@ -234,11 +237,10 @@ impl<T> FieldState<T> {
     }
 }
 
-/// Used by the derive proc macro. Do not use.
-#[doc(hidden)]
-pub fn take_result_content<T>(r: Result<T, T>) -> T {
+/// Extract the `ControlFlow` result if it's the same type.
+pub fn take_cf_content<T>(r: ControlFlow<T, T>) -> T {
     match r {
-        Ok(x) => x,
-        Err(x) => x,
+        ControlFlow::Continue(x) => x,
+        ControlFlow::Break(x) => x,
     }
 }

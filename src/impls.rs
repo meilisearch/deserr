@@ -1,12 +1,13 @@
 use crate::{
-    DeserializeError, DeserializeFromValue, ErrorKind, IntoValue, Map, Sequence, Value, ValueKind,
-    ValuePointerRef,
+    take_cf_content, DeserializeError, DeserializeFromValue, ErrorKind, IntoValue, Map, Sequence,
+    Value, ValueKind, ValuePointerRef,
 };
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     convert::TryFrom,
     hash::Hash,
     marker::PhantomData,
+    ops::ControlFlow,
     str::FromStr,
 };
 
@@ -48,14 +49,14 @@ where
     ) -> Result<Self, E> {
         match value {
             Value::Null => Ok(()),
-            v => Err(E::error(
+            v => Err(take_cf_content(E::error(
                 None,
                 ErrorKind::IncorrectValueKind {
                     actual: v,
                     accepted: &[ValueKind::Null],
                 },
                 location,
-            )?),
+            ))),
         }
     }
 }
@@ -70,14 +71,14 @@ where
     ) -> Result<Self, E> {
         match value {
             Value::Boolean(b) => Ok(b),
-            v => Err(E::error(
+            v => Err(take_cf_content(E::error(
                 None,
                 ErrorKind::IncorrectValueKind {
                     actual: v,
                     accepted: &[ValueKind::Boolean],
                 },
                 location,
-            )?),
+            ))),
         }
     }
 }
@@ -92,7 +93,9 @@ macro_rules! deserialize_impl_integer {
                 value: Value<V>,
                 location: ValuePointerRef,
             ) -> Result<Self, E> {
-                let err = |value: Value<V>| -> Result<E, E> {
+                use $crate::take_cf_content;
+
+                let err = |value: Value<V>| {
                     E::error(
                         None,
                         ErrorKind::IncorrectValueKind {
@@ -105,7 +108,7 @@ macro_rules! deserialize_impl_integer {
 
                 match value {
                     Value::Integer(x) => <$t>::try_from(x).or_else(|_| {
-                        Err(E::error::<V>(
+                        Err(take_cf_content(E::error::<V>(
                             None,
                             ErrorKind::Unexpected {
                                 msg: format!(
@@ -114,9 +117,9 @@ macro_rules! deserialize_impl_integer {
                                 ),
                             },
                             location,
-                        )?)
+                        )))
                     }),
-                    v => Err(err(v)?),
+                    v => Err(take_cf_content(err(v))),
                 }
             }
         }
@@ -138,6 +141,8 @@ macro_rules! deserialize_impl_negative_integer {
                 value: Value<V>,
                 location: ValuePointerRef,
             ) -> Result<Self, E> {
+                use $crate::take_cf_content;
+
                 let err = |value: Value<V>| {
                     E::error(
                         None,
@@ -151,7 +156,7 @@ macro_rules! deserialize_impl_negative_integer {
 
                 match value {
                     Value::Integer(x) => <$t>::try_from(x).or_else(|_| {
-                        Err(E::error::<V>(
+                        Err(take_cf_content(E::error::<V>(
                             None,
                             ErrorKind::Unexpected {
                                 msg: format!(
@@ -160,10 +165,10 @@ macro_rules! deserialize_impl_negative_integer {
                                 ),
                             },
                             location,
-                        )?)
+                        )))
                     }),
                     Value::NegativeInteger(x) => <$t>::try_from(x).or_else(|_| {
-                        Err(E::error::<V>(
+                        Err(take_cf_content(E::error::<V>(
                             None,
                             ErrorKind::Unexpected {
                                 msg: format!(
@@ -172,9 +177,9 @@ macro_rules! deserialize_impl_negative_integer {
                                 ),
                             },
                             location,
-                        )?)
+                        )))
                     }),
-                    v => Err(err(v)?),
+                    v => Err(take_cf_content(err(v))),
                 }
             }
         }
@@ -198,30 +203,22 @@ macro_rules! deserialize_impl_float {
                 location: ValuePointerRef,
             ) -> Result<Self, E> {
                 match value {
-                    Value::Integer(x) => {
-                        return Ok(x as $t);
-                    }
-                    Value::NegativeInteger(x) => {
-                        return Ok(x as $t);
-                    }
-                    Value::Float(x) => {
-                        return Ok(x as $t);
-                    }
-                    v => {
-                        return Err(E::error(
-                            None,
-                            ErrorKind::IncorrectValueKind {
-                                actual: v,
-                                accepted: &[
-                                    ValueKind::Float,
-                                    ValueKind::Integer,
-                                    ValueKind::NegativeInteger,
-                                ],
-                            },
-                            location,
-                        )?)
-                    }
-                };
+                    Value::Integer(x) => Ok(x as $t),
+                    Value::NegativeInteger(x) => Ok(x as $t),
+                    Value::Float(x) => Ok(x as $t),
+                    v => Err($crate::take_cf_content(E::error(
+                        None,
+                        ErrorKind::IncorrectValueKind {
+                            actual: v,
+                            accepted: &[
+                                ValueKind::Float,
+                                ValueKind::Integer,
+                                ValueKind::NegativeInteger,
+                            ],
+                        },
+                        location,
+                    ))),
+                }
             }
         }
     };
@@ -239,14 +236,14 @@ where
     ) -> Result<Self, E> {
         match value {
             Value::String(x) => Ok(x),
-            v => Err(E::error(
+            v => Err(take_cf_content(E::error(
                 None,
                 ErrorKind::IncorrectValueKind {
                     actual: v,
                     accepted: &[ValueKind::String],
                 },
                 location,
-            )?),
+            ))),
         }
     }
 }
@@ -272,7 +269,10 @@ where
                             vec.push(value);
                         }
                         Err(e) => {
-                            error = Some(E::merge(error, e, location.push_index(index))?);
+                            error = match E::merge(error, e, location.push_index(index)) {
+                                ControlFlow::Continue(e) => Some(e),
+                                ControlFlow::Break(e) => return Err(e),
+                            };
                         }
                     }
                 }
@@ -282,14 +282,14 @@ where
                     Ok(vec)
                 }
             }
-            v => Err(E::error(
+            v => Err(take_cf_content(E::error(
                 None,
                 ErrorKind::IncorrectValueKind {
                     actual: v,
                     accepted: &[ValueKind::Sequence],
                 },
                 location,
-            )?),
+            ))),
         }
     }
 }
@@ -348,33 +348,39 @@ where
                                     res.insert(key, value);
                                 }
                                 Err(e) => {
-                                    error =
-                                        Some(E::merge(error, e, location.push_key(&string_key))?);
+                                    error = match E::merge(error, e, location.push_key(&string_key))
+                                    {
+                                        ControlFlow::Continue(e) => Some(e),
+                                        ControlFlow::Break(e) => return Err(e),
+                                    };
                                 }
                             }
                         }
                         Err(_) => {
-                            error = Some(E::error::<V>(
+                            error = match E::error::<V>(
                                 error,
                                 ErrorKind::Unexpected {
                                     msg: format!(
                                     "the key \"{string_key}\" could not be deserialized into the key type `{}`",
                                     std::any::type_name::<Key>())
                                 },
-                                location)?);
+                                location) {
+                                    ControlFlow::Continue(e) => Some(e),
+                                    ControlFlow::Break(e) => return Err(e),
+                                };
                         }
                     }
                 }
                 Ok(res)
             }
-            v => Err(E::error(
+            v => Err(take_cf_content(E::error(
                 None,
                 ErrorKind::IncorrectValueKind {
                     actual: v,
                     accepted: &[ValueKind::Map],
                 },
                 location,
-            )?),
+            ))),
         }
     }
 }
@@ -404,33 +410,39 @@ where
                                     res.insert(key, value);
                                 }
                                 Err(e) => {
-                                    error =
-                                        Some(E::merge(error, e, location.push_key(&string_key))?);
+                                    error = match E::merge(error, e, location.push_key(&string_key))
+                                    {
+                                        ControlFlow::Continue(e) => Some(e),
+                                        ControlFlow::Break(e) => return Err(e),
+                                    };
                                 }
                             }
                         }
                         Err(_) => {
-                            error = Some(E::error::<V>(
+                            error = match E::error::<V>(
                                 error,
                                 ErrorKind::Unexpected {
                                     msg: format!("the key \"{string_key}\" could not be deserialized into the key type `{}`",
                                     std::any::type_name::<Key>())
                                 },
                                 location
-                            )?);
+                            ) {
+                                ControlFlow::Continue(e) => Some(e),
+                                ControlFlow::Break(e) => return Err(e),
+                            };
                         }
                     }
                 }
                 Ok(res)
             }
-            v => Err(E::error(
+            v => Err(take_cf_content(E::error(
                 None,
                 ErrorKind::IncorrectValueKind {
                     actual: v,
                     accepted: &[ValueKind::Map],
                 },
                 location,
-            )?),
+            ))),
         }
     }
 }
@@ -456,7 +468,10 @@ where
                             set.insert(value);
                         }
                         Err(e) => {
-                            error = Some(E::merge(error, e, location.push_index(index))?);
+                            error = match E::merge(error, e, location.push_index(index)) {
+                                ControlFlow::Continue(e) => Some(e),
+                                ControlFlow::Break(e) => return Err(e),
+                            };
                         }
                     }
                 }
@@ -466,14 +481,14 @@ where
                     Ok(set)
                 }
             }
-            v => Err(E::error(
+            v => Err(take_cf_content(E::error(
                 None,
                 ErrorKind::IncorrectValueKind {
                     actual: v,
                     accepted: &[ValueKind::Sequence],
                 },
                 location,
-            )?),
+            ))),
         }
     }
 }
@@ -499,7 +514,10 @@ where
                             set.insert(value);
                         }
                         Err(e) => {
-                            error = Some(E::merge(error, e, location.push_index(index))?);
+                            error = match E::merge(error, e, location.push_index(index)) {
+                                ControlFlow::Continue(e) => Some(e),
+                                ControlFlow::Break(e) => return Err(e),
+                            };
                         }
                     }
                 }
@@ -509,14 +527,14 @@ where
                     Ok(set)
                 }
             }
-            v => Err(E::error(
+            v => Err(take_cf_content(E::error(
                 None,
                 ErrorKind::IncorrectValueKind {
                     actual: v,
                     accepted: &[ValueKind::Sequence],
                 },
                 location,
-            )?),
+            ))),
         }
     }
 }
@@ -535,13 +553,13 @@ where
             Value::Sequence(seq) => {
                 let len = seq.len();
                 if len != 2 {
-                    return Err(E::error::<V>(
+                    return Err(take_cf_content(E::error::<V>(
                         None,
                         ErrorKind::Unexpected {
                             msg: String::from("the sequence should have exactly 2 elements"),
                         },
                         location,
-                    )?);
+                    )));
                 }
                 let mut error = None;
                 let mut iter = seq.into_iter();
@@ -553,7 +571,10 @@ where
                 let a = match a {
                     Ok(a) => Some(a),
                     Err(e) => {
-                        error = Some(E::merge(error, e, location.push_index(0))?);
+                        error = match E::merge(error, e, location.push_index(0)) {
+                            ControlFlow::Continue(e) => Some(e),
+                            ControlFlow::Break(e) => return Err(e),
+                        };
                         None
                     }
                 };
@@ -564,7 +585,10 @@ where
                 let b = match b {
                     Ok(b) => Some(b),
                     Err(e) => {
-                        error = Some(E::merge(error, e, location.push_index(1))?);
+                        error = match E::merge(error, e, location.push_index(1)) {
+                            ControlFlow::Continue(e) => Some(e),
+                            ControlFlow::Break(e) => return Err(e),
+                        };
                         None
                     }
                 };
@@ -575,14 +599,14 @@ where
                     Ok((a.unwrap(), b.unwrap()))
                 }
             }
-            v => Err(E::error(
+            v => Err(take_cf_content(E::error(
                 None,
                 ErrorKind::IncorrectValueKind {
                     actual: v,
                     accepted: &[ValueKind::Sequence],
                 },
                 location,
-            )?),
+            ))),
         }
     }
 }
@@ -602,13 +626,13 @@ where
             Value::Sequence(seq) => {
                 let len = seq.len();
                 if len != 2 {
-                    return Err(E::error::<V>(
+                    return Err(take_cf_content(E::error::<V>(
                         None,
                         ErrorKind::Unexpected {
                             msg: String::from("the sequence should have exactly 2 elements"),
                         },
                         location,
-                    )?);
+                    )));
                 }
                 let mut error = None;
                 let mut iter = seq.into_iter();
@@ -620,7 +644,10 @@ where
                 let a = match a {
                     Ok(a) => Some(a),
                     Err(e) => {
-                        error = Some(E::merge(error, e, location.push_index(0))?);
+                        error = match E::merge(error, e, location.push_index(0)) {
+                            ControlFlow::Continue(e) => Some(e),
+                            ControlFlow::Break(e) => return Err(e),
+                        };
                         None
                     }
                 };
@@ -631,7 +658,10 @@ where
                 let b = match b {
                     Ok(b) => Some(b),
                     Err(e) => {
-                        error = Some(E::merge(error, e, location.push_index(1))?);
+                        error = match E::merge(error, e, location.push_index(1)) {
+                            ControlFlow::Continue(e) => Some(e),
+                            ControlFlow::Break(e) => return Err(e),
+                        };
                         None
                     }
                 };
@@ -642,7 +672,10 @@ where
                 let c = match c {
                     Ok(c) => Some(c),
                     Err(e) => {
-                        error = Some(E::merge(error, e, location.push_index(2))?);
+                        error = match E::merge(error, e, location.push_index(2)) {
+                            ControlFlow::Continue(e) => Some(e),
+                            ControlFlow::Break(e) => return Err(e),
+                        };
                         None
                     }
                 };
@@ -653,14 +686,14 @@ where
                     Ok((a.unwrap(), b.unwrap(), c.unwrap()))
                 }
             }
-            v => Err(E::error(
+            v => Err(take_cf_content(E::error(
                 None,
                 ErrorKind::IncorrectValueKind {
                     actual: v,
                     accepted: &[ValueKind::Sequence],
                 },
                 location,
-            )?),
+            ))),
         }
     }
 }
