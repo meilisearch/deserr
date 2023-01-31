@@ -1,4 +1,4 @@
-use deserr::{deserialize, serde_json::JsonError, Deserr};
+use deserr::{deserialize, Deserr, JsonError};
 use insta::assert_debug_snapshot;
 use serde_json::json;
 
@@ -58,7 +58,7 @@ fn skip_and_deny_unknown_fields() {
 
     assert_debug_snapshot!(data, @r###"
     JsonError(
-        "Json deserialize error: unknown field `doggo`, expected one of  at ``.",
+        "Unknown field `doggo`: expected one of ",
     )
     "###);
 
@@ -66,7 +66,7 @@ fn skip_and_deny_unknown_fields() {
 
     assert_debug_snapshot!(data, @r###"
     JsonError(
-        "Json deserialize error: unknown field `doggo`, expected one of  at ``.",
+        "Unknown field `doggo`: expected one of ",
     )
     "###);
 }
@@ -135,7 +135,7 @@ fn skip_and_default_and_deny_unknown_fields() {
 
     assert_debug_snapshot!(data, @r###"
     JsonError(
-        "Json deserialize error: unknown field `doggo`, expected one of  at ``.",
+        "Unknown field `doggo`: expected one of ",
     )
     "###);
 
@@ -143,7 +143,7 @@ fn skip_and_default_and_deny_unknown_fields() {
 
     assert_debug_snapshot!(data, @r###"
     JsonError(
-        "Json deserialize error: unknown field `doggo`, expected one of  at ``.",
+        "Unknown field `doggo`: expected one of ",
     )
     "###);
 }

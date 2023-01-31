@@ -1,4 +1,4 @@
-use deserr::serde_json::JsonError;
+use deserr::JsonError;
 use serde_json::json;
 
 #[allow(unused)]
@@ -39,13 +39,13 @@ fn positive_integer() {
         deserr::deserialize::<Test, _, JsonError>(json!({ "u8": u8::MAX as u16 + 1 })).unwrap_err();
     insta::assert_debug_snapshot!(ret, @r###"
     JsonError(
-        "value: `256` is too large to be deserialized, maximum value authorized is `255` at `.u8`.",
+        "Invalid value at `.u8`: value: `256` is too large to be deserialized, maximum value authorized is `255`",
     )
     "###);
     let ret = deserr::deserialize::<Test, _, JsonError>(json!({ "u8": -1 })).unwrap_err();
     insta::assert_debug_snapshot!(ret, @r###"
     JsonError(
-        "invalid type: NegativeInteger `-1`, expected a Integer at `.u8`.",
+        "Invalid value type at `.u8`: expected a positive integer, but found a negative integer: `-1`",
     )
     "###);
 
@@ -53,13 +53,13 @@ fn positive_integer() {
         .unwrap_err();
     insta::assert_debug_snapshot!(ret, @r###"
     JsonError(
-        "value: `65536` is too large to be deserialized, maximum value authorized is `65535` at `.u16`.",
+        "Invalid value at `.u16`: value: `65536` is too large to be deserialized, maximum value authorized is `65535`",
     )
     "###);
     let ret = deserr::deserialize::<Test, _, JsonError>(json!({ "u16": -1 })).unwrap_err();
     insta::assert_debug_snapshot!(ret, @r###"
     JsonError(
-        "invalid type: NegativeInteger `-1`, expected a Integer at `.u16`.",
+        "Invalid value type at `.u16`: expected a positive integer, but found a negative integer: `-1`",
     )
     "###);
 
@@ -67,27 +67,27 @@ fn positive_integer() {
         .unwrap_err();
     insta::assert_debug_snapshot!(ret, @r###"
     JsonError(
-        "value: `4294967296` is too large to be deserialized, maximum value authorized is `4294967295` at `.u32`.",
+        "Invalid value at `.u32`: value: `4294967296` is too large to be deserialized, maximum value authorized is `4294967295`",
     )
     "###);
     let ret = deserr::deserialize::<Test, _, JsonError>(json!({ "u32": -1 })).unwrap_err();
     insta::assert_debug_snapshot!(ret, @r###"
     JsonError(
-        "invalid type: NegativeInteger `-1`, expected a Integer at `.u32`.",
+        "Invalid value type at `.u32`: expected a positive integer, but found a negative integer: `-1`",
     )
     "###);
 
     let ret = deserr::deserialize::<Test, _, JsonError>(json!({ "u64": -1 })).unwrap_err();
     insta::assert_debug_snapshot!(ret, @r###"
     JsonError(
-        "invalid type: NegativeInteger `-1`, expected a Integer at `.u64`.",
+        "Invalid value type at `.u64`: expected a positive integer, but found a negative integer: `-1`",
     )
     "###);
 
     let ret = deserr::deserialize::<Test, _, JsonError>(json!({ "usize": -1 })).unwrap_err();
     insta::assert_debug_snapshot!(ret, @r###"
     JsonError(
-        "invalid type: NegativeInteger `-1`, expected a Integer at `.usize`.",
+        "Invalid value type at `.usize`: expected a positive integer, but found a negative integer: `-1`",
     )
     "###);
 
@@ -114,14 +114,14 @@ fn negative_integer() {
         deserr::deserialize::<Test, _, JsonError>(json!({ "i8": i8::MAX as i16 + 1 })).unwrap_err();
     insta::assert_debug_snapshot!(ret, @r###"
     JsonError(
-        "value: `128` is too large to be deserialized, maximum value authorized is `127` at `.i8`.",
+        "Invalid value at `.i8`: value: `128` is too large to be deserialized, maximum value authorized is `127`",
     )
     "###);
     let ret =
         deserr::deserialize::<Test, _, JsonError>(json!({ "i8": i8::MIN as i16 - 1 })).unwrap_err();
     insta::assert_debug_snapshot!(ret, @r###"
     JsonError(
-        "value: `-129` is too small to be deserialized, minimum value authorized is `-128` at `.i8`.",
+        "Invalid value at `.i8`: value: `-129` is too small to be deserialized, minimum value authorized is `-128`",
     )
     "###);
 
@@ -129,14 +129,14 @@ fn negative_integer() {
         .unwrap_err();
     insta::assert_debug_snapshot!(ret, @r###"
     JsonError(
-        "value: `32768` is too large to be deserialized, maximum value authorized is `32767` at `.i16`.",
+        "Invalid value at `.i16`: value: `32768` is too large to be deserialized, maximum value authorized is `32767`",
     )
     "###);
     let ret = deserr::deserialize::<Test, _, JsonError>(json!({ "i16": i16::MIN as i32 - 1 }))
         .unwrap_err();
     insta::assert_debug_snapshot!(ret, @r###"
     JsonError(
-        "value: `-32769` is too small to be deserialized, minimum value authorized is `-32768` at `.i16`.",
+        "Invalid value at `.i16`: value: `-32769` is too small to be deserialized, minimum value authorized is `-32768`",
     )
     "###);
 
@@ -144,14 +144,14 @@ fn negative_integer() {
         .unwrap_err();
     insta::assert_debug_snapshot!(ret, @r###"
     JsonError(
-        "value: `2147483648` is too large to be deserialized, maximum value authorized is `2147483647` at `.i32`.",
+        "Invalid value at `.i32`: value: `2147483648` is too large to be deserialized, maximum value authorized is `2147483647`",
     )
     "###);
     let ret = deserr::deserialize::<Test, _, JsonError>(json!({ "i32": i32::MIN as i64 - 1 }))
         .unwrap_err();
     insta::assert_debug_snapshot!(ret, @r###"
     JsonError(
-        "value: `-2147483649` is too small to be deserialized, minimum value authorized is `-2147483648` at `.i32`.",
+        "Invalid value at `.i32`: value: `-2147483649` is too small to be deserialized, minimum value authorized is `-2147483648`",
     )
     "###);
 

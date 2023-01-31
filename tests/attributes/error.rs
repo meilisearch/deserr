@@ -1,4 +1,4 @@
-use deserr::{deserialize, serde_json::JsonError, Deserr};
+use deserr::{deserialize, Deserr, JsonError};
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
 
@@ -23,8 +23,8 @@ fn error_attribute() {
     "###);
 
     let data = deserialize::<Struct, _, _>(json!({ "catto": "jorts" })).unwrap_err();
-    assert_display_snapshot!(data, @"Json deserialize error: missing field `doggo` at ``");
+    assert_display_snapshot!(data, @"Missing field `doggo`");
 
     let data = deserialize::<Struct, _, _>(json!({ "doggo": "bork" })).unwrap_err();
-    assert_display_snapshot!(data, @"Json deserialize error: missing field `catto` at ``");
+    assert_display_snapshot!(data, @"Missing field `catto`");
 }

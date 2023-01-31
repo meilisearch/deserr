@@ -1,4 +1,4 @@
-use deserr::{deserialize, serde_json::JsonError, Deserr};
+use deserr::{deserialize, Deserr, JsonError};
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
 
@@ -48,14 +48,14 @@ fn tagged_enum() {
     let data =
         deserialize::<Struct, _, JsonError>(json!({ "either": { "doggo": "bork" } })).unwrap_err();
 
-    assert_display_snapshot!(data, @"Json deserialize error: missing field `type` at `.either`");
+    assert_display_snapshot!(data, @"Missing field `type` inside `.either`");
 
     let data = deserialize::<Struct, _, JsonError>(
         json!({ "either": { "doggo": false, "catto": "jorts" } }),
     )
     .unwrap_err();
 
-    assert_display_snapshot!(data, @"Json deserialize error: missing field `type` at `.either`");
+    assert_display_snapshot!(data, @"Missing field `type` inside `.either`");
 }
 #[test]
 fn tagged_enum_plus_rename() {
@@ -113,7 +113,7 @@ fn tagged_enum_plus_rename() {
 
     assert_debug_snapshot!(data, @r###"
     JsonError(
-        "Incorrect tag value at `.either`.",
+        "Invalid value at `.either`: Incorrect tag value",
     )
     "###);
 
@@ -124,7 +124,7 @@ fn tagged_enum_plus_rename() {
 
     assert_debug_snapshot!(data, @r###"
     JsonError(
-        "Incorrect tag value at `.either`.",
+        "Invalid value at `.either`: Incorrect tag value",
     )
     "###);
 }
