@@ -1,6 +1,6 @@
 use deserr::{
-    DefaultError, DefaultErrorContent, DeserializeError, Deserr, ErrorKind,
-    MergeWithError, ValueKind, ValuePointerRef,
+    DefaultError, DefaultErrorContent, DeserializeError, Deserr, ErrorKind, MergeWithError,
+    ValueKind, ValuePointerRef,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
@@ -308,21 +308,21 @@ fn parse_hello3(b: &str) -> Result<Hello3, DefaultError> {
 }
 
 #[derive(Debug, PartialEq, Deserr)]
-#[deserr(from(bool) = parse_hello -> NeverError)]
+#[deserr(try_from(bool) = parse_hello -> NeverError)]
 enum Hello {
     A,
     B,
 }
 
 #[derive(Debug, PartialEq, Deserr)]
-#[deserr(error = DefaultError, from(bool) = parse_hello2 -> NeverError)]
+#[deserr(error = DefaultError, try_from(bool) = parse_hello2 -> NeverError)]
 enum Hello2 {
     A,
     B,
 }
 
 #[derive(Debug, PartialEq, Deserr)]
-#[deserr(from(& String) = parse_hello3 -> DefaultError)]
+#[deserr(try_from(& String) = parse_hello3 -> DefaultError)]
 enum Hello3 {
     A,
     B,
@@ -395,7 +395,7 @@ struct Validated2 {
 
 #[derive(Debug, PartialEq, Eq, Deserr)]
 pub struct From {
-    #[deserr(from(&String) = u8_from_str -> MyParseIntError)]
+    #[deserr(try_from(&String) = u8_from_str -> MyParseIntError)]
     x: u8,
     y: u16,
 }
@@ -424,9 +424,9 @@ impl MergeWithError<MyParseIntError> for DefaultError {
 
 #[derive(Debug, PartialEq, Eq, Deserr)]
 pub struct From2 {
-    #[deserr(from(&String) = u8_from_str -> MyParseIntError)]
+    #[deserr(try_from(&String) = u8_from_str -> MyParseIntError)]
     x: u8,
-    #[deserr(default = 3, from(&String) = usize_from_str -> MyParseIntError)]
+    #[deserr(default = 3, try_from(&String) = usize_from_str -> MyParseIntError)]
     y: usize,
 }
 

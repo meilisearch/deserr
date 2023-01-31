@@ -47,7 +47,7 @@ impl MergeWithError<AsciiStringError> for JsonError {
 fn from_container_attribute() {
     #[allow(unused)]
     #[derive(Debug, Deserr)]
-    #[deserr(from(&String) = FromStr::from_str -> AsciiStringError)]
+    #[deserr(try_from(&String) = FromStr::from_str -> AsciiStringError)]
     struct AsciiString(String);
 
     impl FromStr for AsciiString {
@@ -119,7 +119,7 @@ fn from_field_attribute() {
     #[allow(unused)]
     #[derive(Debug, Deserr)]
     struct Struct {
-        #[deserr(from(&String) = FromStr::from_str -> AsciiStringError)]
+        #[deserr(try_from(&String) = FromStr::from_str -> AsciiStringError)]
         doggo: AsciiString,
     }
 

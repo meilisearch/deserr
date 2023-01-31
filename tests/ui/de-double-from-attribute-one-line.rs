@@ -2,7 +2,7 @@ use deserr::Deserr;
 
 #[derive(Deserr)]
 struct UnitStruct {
-    #[deserr(from(String) = String::parse -> usize, from(String) = usize::FromStr -> usize)]
+    #[deserr(try_from(String) = String::parse -> usize, try_from(String) = usize::FromStr -> usize)]
     hello: usize,
 }
 

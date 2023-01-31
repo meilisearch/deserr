@@ -1,5 +1,5 @@
 use crate::{
-    attribute_parser::{AttributeFrom, FunctionReturningError},
+    attribute_parser::{AttributeTryFrom, FunctionReturningError},
     parse_type::CommonDerivedTypeInfo,
 };
 use proc_macro2::TokenStream;
@@ -8,7 +8,7 @@ use quote::quote;
 /// Return a token stream that implements `Deserr<E>` by calling the user-provided function
 pub fn generate_derive_user_function(
     info: CommonDerivedTypeInfo,
-    from_attr: AttributeFrom,
+    from_attr: AttributeTryFrom,
 ) -> TokenStream {
     let CommonDerivedTypeInfo {
         impl_trait_tokens,
@@ -16,9 +16,9 @@ pub fn generate_derive_user_function(
         validate,
     } = info;
 
-    let AttributeFrom {
+    let AttributeTryFrom {
         is_ref,
-        from_ty,
+        try_from_ty: from_ty,
         function:
             FunctionReturningError {
                 function,

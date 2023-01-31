@@ -1,5 +1,5 @@
 error: The `from` field attribute is defined twice.
- --> tests/ui/de-double-from-attribute-one-line.rs:5:53
+ --> tests/ui/de-double-from-attribute-one-line.rs:5:57
   |
-5 |     #[deserr(from(String) = String::parse -> usize, from(String) = usize::FromStr -> usize)]
-  |                                                     ^^^^
+5 |     #[deserr(try_from(String) = String::parse -> usize, try_from(String) = usize::FromStr -> usize)]
+  |                                                         ^^^^^^^^

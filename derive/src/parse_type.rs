@@ -1,7 +1,7 @@
 use crate::attribute_parser::{
     read_deserr_container_attributes, read_deserr_field_attributes, read_deserr_variant_attributes,
-    validate_container_attributes, AttributeFrom, ContainerAttributesInfo, DefaultFieldAttribute,
-    DenyUnknownFields, FunctionReturningError, RenameAll, TagType,
+    validate_container_attributes, AttributeTryFrom, ContainerAttributesInfo,
+    DefaultFieldAttribute, DenyUnknownFields, FunctionReturningError, RenameAll, TagType,
 };
 
 use convert_case::{Case, Casing};
@@ -47,7 +47,7 @@ pub enum TraitImplementationInfo {
         variants: Vec<VariantInfo>,
     },
     UserProvidedFunction {
-        from_attr: AttributeFrom,
+        from_attr: AttributeTryFrom,
     },
 }
 
@@ -94,11 +94,11 @@ impl DerivedTypeInfo {
 
         // Now we build the TraitImplementationInfo structure
 
-        let data = if let Some(from) = &attrs.from {
+        let data = if let Some(try_from) = &attrs.try_from {
             // if there was a container `from` attribute, then it doesn't matter what the derived input
             // is, we just call the provided function to deserialise it
             TraitImplementationInfo::UserProvidedFunction {
-                from_attr: from.clone(),
+                from_attr: try_from.clone(),
             }
         } else {
             // Otherwise, we parse derive information specific to structs or enums
@@ -107,14 +107,18 @@ impl DerivedTypeInfo {
                     syn::Fields::Named(fields) => TraitImplementationInfo::Struct(
                         NamedFieldsInfo::parse(fields, &attrs, &err_ty)?,
                     ),
-                    syn::Fields::Unnamed(fields) => return Err(syn::Error::new(
-                        fields.span(),
-                        "Tuple structs aren't supported by the Deserr derive macro",
-                    )),
-                    syn::Fields::Unit => return Err(syn::Error::new(
-                        Span::call_site(),
-                        "Unit structs aren't supported by the Deserr derive macro",
-                    )),
+                    syn::Fields::Unnamed(fields) => {
+                        return Err(syn::Error::new(
+                            fields.span(),
+                            "Tuple structs aren't supported by the Deserr derive macro",
+                        ))
+                    }
+                    syn::Fields::Unit => {
+                        return Err(syn::Error::new(
+                            Span::call_site(),
+                            "Unit structs aren't supported by the Deserr derive macro",
+                        ))
+                    }
                 },
                 Data::Enum(e) => {
                     // parse a VariantInfo for each variant in the enum
@@ -225,8 +229,8 @@ impl DerivedTypeInfo {
             }
 
             // Add MergeWithError<FromFunctionError> requirement
-            if let Some(from) = &attrs.from {
-                let from_error = &from.function.error_ty;
+            if let Some(try_from) = &attrs.try_from {
+                let from_error = &try_from.function.error_ty;
                 new_predicates.push(parse_quote!(
                     #err_ty : ::deserr::MergeWithError<#from_error>
                 ));
@@ -425,8 +429,8 @@ impl NamedFieldsInfo {
                 quote! { ::deserr::FieldState::Missing }
             };
 
-            let field_ty = match attrs.from {
-                Some(ref from) => from.from_ty.clone(),
+            let field_ty = match attrs.try_from {
+                Some(ref from) => from.try_from_ty.clone(),
                 None => field_ty.clone(),
             };
 
@@ -466,12 +470,12 @@ impl NamedFieldsInfo {
                     .unwrap_or_else(|| parse_quote!(__Deserr_E)),
             };
 
-            let field_ty = match attrs.from {
-                Some(ref from) => from.from_ty.clone(),
+            let field_ty = match attrs.try_from {
+                Some(ref from) => from.try_from_ty.clone(),
                 None => field_ty.clone(),
             };
 
-            let field_from_fn = match attrs.from {
+            let field_from_fn = match attrs.try_from {
                 Some(ref from) => {
                     let fun = &from.function.function;
                     if from.is_ref {
@@ -484,7 +488,7 @@ impl NamedFieldsInfo {
             };
 
             let field_from_error = attrs
-                .from
+                .try_from
                 .as_ref()
                 .map(|from| from.function.error_ty.clone());
 
