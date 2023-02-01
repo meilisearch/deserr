@@ -166,59 +166,158 @@ used to locate the origin of an error.
 
 ## Example
 
-### Implementing deserialize for a custom type
-```rust
-use deserr::{DeserializeError, Deserr, ErrorKind, JsonError, Value, ValueKind, IntoValue, take_cf_content, MergeWithError, ValuePointerRef, ValuePointer};
-use std::ops::ControlFlow;
+### Implementing deserialize for a custom type with a custom error
 
-enum MyError {
-    ForbiddenName,
-    Other(JsonError)
-}
+In the following example, we're going to deserialize a structure containing a bunch of fields and 
+uses a custom error type that accumulates all the errors encountered while deserializing the structure.
+
+```rust
+use deserr::{deserialize, DeserializeError, Deserr, ErrorKind, JsonError, Value, ValueKind, IntoValue, take_cf_content, MergeWithError, ValuePointerRef, ValuePointer};
+use serde_json::json;
+use std::str::FromStr;
+use std::ops::ControlFlow;
+use std::fmt;
+use std::convert::Infallible;
+
+/// This is our custom error type. It'll accumulate multiple `JsonError`.
+#[derive(Debug)]
+struct MyError(Vec<JsonError>);
 
 impl DeserializeError for MyError {
     /// Create a new error with the custom message.
     ///
-    /// Return `ControlFlow::Continue` to continue deserializing or `ControlFlow::Break` to fail early.
-    /// The `take_cf_content` return the inner error in a `ControlFlow<E, E>`.
-    fn error<V: IntoValue>(_self_: Option<Self>, error: ErrorKind<V>, location: ValuePointerRef) -> ControlFlow<Self, Self> {
-        ControlFlow::Break(Self::Other(take_cf_content(JsonError::error(None, error, location))))
+    /// Return `ControlFlow::Continue` to continue deserializing even though an error was encountered.
+    /// We could return `ControlFlow::Break` as well to stop right here.
+    fn error<V: IntoValue>(self_: Option<Self>, error: ErrorKind<V>, location: ValuePointerRef) -> ControlFlow<Self, Self> {
+        /// The `take_cf_content` return the inner error in a `ControlFlow<E, E>`.
+        let error = take_cf_content(JsonError::error(None, error, location));
+
+        let errors = if let Some(MyError(mut errors)) = self_ {
+            errors.push(error);
+            errors
+        } else {
+            vec![error]
+        };
+        ControlFlow::Continue(MyError(errors))
     }
 }
 
-impl From<JsonError> for MyError {
-    fn from(error: JsonError) -> Self {
-        Self::Other(error)
-    }
-}
-
+/// We have to implements `MergeWithError` between our error type _aaand_ our error type.
 impl MergeWithError<MyError> for MyError {
-    fn merge(self_: Option<Self>, other: MyError, merge_location: ValuePointerRef) -> ControlFlow<Self, Self> {
-        ControlFlow::Break(other)
+    fn merge(self_: Option<Self>, mut other: MyError, _merge_location: ValuePointerRef) -> ControlFlow<Self, Self> {
+        if let Some(MyError(mut errors)) = self_ {
+                other.0.append(&mut errors);
+        }
+        ControlFlow::Continue(other)
     }
 }
 
-struct Name(String);
+#[derive(Debug, Deserr, PartialEq, Eq)]
+#[deserr(deny_unknown_fields)]
+struct Search {
+    #[deserr(default = String::new())]
+    query: String,
+    #[deserr(try_from(&String) = FromStr::from_str -> IndexUidError)]
+    index: IndexUid,
+    #[deserr(from(String) = From::from)]
+    field: Wildcard,
+    #[deserr(default)]
+    filter: Option<serde_json::Value>,
+    // Even though this field is an `Option` it IS mandatory.
+    limit: Option<usize>,
+    #[deserr(default)]
+    offset: usize,
+}
 
-impl Deserr<MyError> for Name {
-    fn deserialize_from_value<V: IntoValue>(value: Value<V>, location: ValuePointerRef) -> Result<Self, MyError> {
-        match value {
-            Value::String(s) => {
-                if s == "Robert '); DROP TABLE Students; --" {
-                    Err(MyError::ForbiddenName)
-                } else {
-                    Ok(Name(s))
-                }
-            }
-            value => {
-                match MyError::error(None, ErrorKind::IncorrectValueKind { actual: value, accepted: &[ValueKind::String] }, location) {
-                    ControlFlow::Continue(_) => unreachable!(),
-                    ControlFlow::Break(e) => Err(e),
-                }
-            }
+/// An `IndexUid` can only be composed of ascii characters.
+#[derive(Debug, PartialEq, Eq)]
+struct IndexUid(String);
+/// If we encounter a non-ascii character this is the error type we're going to throw.
+struct IndexUidError(char);
+
+impl FromStr for IndexUid {
+    type Err = IndexUidError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some(c) = s.chars().find(|c| !c.is_ascii()) {
+            Err(IndexUidError(c))
+        } else {
+            Ok(Self(s.to_string()))
         }
     }
 }
+
+impl fmt::Display for IndexUidError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Encountered invalid character: `{}`, only ascii characters are accepted in the index",
+            self.0
+        )
+    }
+}
+
+/// We need to define how the `IndexUidError` error is going to be merged with our
+/// custom error type.
+impl MergeWithError<IndexUidError> for MyError {
+    fn merge(self_: Option<Self>, other: IndexUidError, merge_location: ValuePointerRef) -> ControlFlow<Self, Self> {
+            // To be consistent with the other error and automatically get the position of the error we re-use the `JsonError`
+            // type and simply define ourself as an `Unexpected` error.
+        let error = take_cf_content(JsonError::error::<Infallible>(None, ErrorKind::Unexpected { msg: other.to_string() }, merge_location));
+        let errors = if let Some(MyError(mut errors)) = self_ {
+            errors.push(error);
+            errors
+        } else {
+            vec![error]
+        };
+        ControlFlow::Continue(MyError(errors))
+    }
+}
+
+/// A `Wildcard` can either contains a normal value or be a unit wildcard.
+#[derive(Deserr, Debug, PartialEq, Eq)]
+#[deserr(from(String) = From::from)]
+enum Wildcard {
+    Wildcard,
+    Value(String),
+}
+
+impl From<String> for Wildcard {
+    fn from(s: String) -> Self {
+        if s == "*" {
+            Wildcard::Wildcard
+        } else {
+            Wildcard::Value(s)
+        }
+    }
+}
+
+// Here is an example of a typical payload we could deserialize:
+let data = deserialize::<Search, _, MyError>(
+    json!({ "index": "mieli", "field": "doggo", "filter": ["id = 1", ["catto = jorts"]], "limit": null }),
+).unwrap();
+assert_eq!(data, Search {
+    query: String::new(),
+    index: IndexUid(String::from("mieli")),
+    field: Wildcard::Value(String::from("doggo")),
+    filter: Some(json!(["id = 1", ["catto = jorts"]])),
+    limit: None,
+    offset: 0,
+});
+
+// And here is what happens when everything goes wrong at the same time:
+let error = deserialize::<Search, _, MyError>(
+    json!({ "query": 12, "index": "mieli 🍯", "field": true, "offset": "🔢"  }),
+).unwrap_err();
+// We're going to stringify all the error so it's easier to read
+assert_eq!(error.0.into_iter().map(|error| error.to_string()).collect::<Vec<String>>().join("\n"),
+"\
+Invalid value type at `.query`: expected a string, but found a positive integer: `12`
+Invalid value type at `.offset`: expected a positive integer, but found a string: `\"🔢\"`
+Invalid value at `.index`: Encountered invalid character: `🍯`, only ascii characters are accepted in the index
+Invalid value type at `.field`: expected a string, but found a boolean: `true`
+Missing field `limit`\
+");
 ```
 
 ### Supported features
@@ -244,7 +343,6 @@ let data = deserialize::<Search, _, JsonError>(
     json!({ "query": "doggo", "attributesToRetrieve": ["age", "name"] }),
 )
 .unwrap();
-
 assert_eq!(data, Search {
     query: String::from("doggo"),
     attributes_to_retrieve: vec![String::from("age"), String::from("name")],
