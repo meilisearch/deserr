@@ -154,7 +154,7 @@ a user needs to have to fix an invalid payload.
 -----------
 
 The main parts of deserr are:
-1. `Deserr<E>` is the main trait for deserialization, unlike Serde, it's very easy to deserialize this trait manually, see our examples directory.
+1. `Deserr<E>` is the main trait for deserialization, unlike Serde, it's very easy to deserialize this trait manually, see the `implements_deserr_manually.rs` file in our examples directory.
 2. `IntoValue` and `Value` describes the shape that the parsed serialized data must have
 3. `DeserializeError` is the trait that all deserialization errors must conform to
 4. `MergeWithError<E>` describe how to combine multiple errors together. It allows deserr
