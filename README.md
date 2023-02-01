@@ -154,14 +154,18 @@ a user needs to have to fix an invalid payload.
 -----------
 
 The main parts of deserr are:
-1. `Deserr<E>` is the main trait for deserialization
+1. `Deserr<E>` is the main trait for deserialization, unlike Serde, it's very easy to deserialize this trait manually, see our examples directory.
 2. `IntoValue` and `Value` describes the shape that the parsed serialized data must have
 3. `DeserializeError` is the trait that all deserialization errors must conform to
 4. `MergeWithError<E>` describe how to combine multiple errors together. It allows deserr
 to return multiple deserialization errors at once.
 5. `ValuePointerRef` and `ValuePointer` point to locations within the value. They are
 used to locate the origin of an error.
-6. `deserialize` is the main function to use to deserialize a value
+6. `deserialize<Ret, Val, E>` is the main function to use to deserialize a value.
+    - `Ret` is the returned value or the structure you want to deserialize.
+    - `Val` is the value type you want to deserialize from. Currently, only an implementation for `serde_json::Value` is provided
+        in this crate, but you could add your own! Feel free to look into our `serde_json` module.
+    - `E` is the error type that should be used if an error happens during the deserialization.
 7. The `Deserr` derive proc macro
 
 ## Example
