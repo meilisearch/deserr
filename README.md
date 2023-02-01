@@ -432,6 +432,9 @@ assert_eq!(err.to_string(), "Unknown field `catto`: expected one of `query`");
 #### `tag`
 
 Externally tag an enum.
+Deserr does not support internally tagging your enum yet, which means you'll always
+need to use this attribute if you're deserializing an enum.
+For complete unit enums, deserr can deserialize their value from a string, though.
 
 ```rust
 use deserr::{Deserr, deserialize, JsonError};
