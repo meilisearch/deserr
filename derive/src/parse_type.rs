@@ -1,6 +1,6 @@
 use crate::attribute_parser::{
     read_deserr_container_attributes, read_deserr_field_attributes, read_deserr_variant_attributes,
-    validate_container_attributes, AttributeTryFrom, ContainerAttributesInfo,
+    validate_container_attributes, AttributeFrom, AttributeTryFrom, ContainerAttributesInfo,
     DefaultFieldAttribute, DenyUnknownFields, FunctionReturningError, RenameAll, TagType,
 };
 
@@ -46,8 +46,11 @@ pub enum TraitImplementationInfo {
         tag: TagType,
         variants: Vec<VariantInfo>,
     },
-    UserProvidedFunction {
-        from_attr: AttributeTryFrom,
+    FallibleUserProvidedFunction {
+        try_from_attr: AttributeTryFrom,
+    },
+    UnfallibleUserProvidedFunction {
+        from_attr: AttributeFrom,
     },
 }
 
@@ -95,10 +98,16 @@ impl DerivedTypeInfo {
         // Now we build the TraitImplementationInfo structure
 
         let data = if let Some(try_from) = &attrs.try_from {
+            // if there was a container `try_from` attribute, then it doesn't matter what the derived input
+            // is, we just call the provided function to deserialise it
+            TraitImplementationInfo::FallibleUserProvidedFunction {
+                try_from_attr: try_from.clone(),
+            }
+        } else if let Some(from) = &attrs.from {
             // if there was a container `from` attribute, then it doesn't matter what the derived input
             // is, we just call the provided function to deserialise it
-            TraitImplementationInfo::UserProvidedFunction {
-                from_attr: try_from.clone(),
+            TraitImplementationInfo::UnfallibleUserProvidedFunction {
+                from_attr: from.clone(),
             }
         } else {
             // Otherwise, we parse derive information specific to structs or enums
@@ -145,11 +154,11 @@ impl DerivedTypeInfo {
                             VariantData::Named(NamedFieldsInfo::parse(fields, &effective_container_attrs, &err_ty)?)
                         }
                         syn::Fields::Unnamed(u) => return Err(syn::Error::new(
-                        u.span(),
-                        "Enum variants with unnamed associated data aren't supported by the Deserr derive macro.",
-                    )),
+                            u.span(),
+                            "Enum variants with unnamed associated data aren't supported by the Deserr derive macro.",
+                        )),
                         syn::Fields::Unit => VariantData::Unit,
-                    };
+                        };
                         parsed_variants.push(VariantInfo {
                             ident: variant.ident,
                             key_name,
@@ -225,7 +234,8 @@ impl DerivedTypeInfo {
                         }
                     }
                 }
-                TraitImplementationInfo::UserProvidedFunction { .. } => {}
+                TraitImplementationInfo::FallibleUserProvidedFunction { .. } => {}
+                TraitImplementationInfo::UnfallibleUserProvidedFunction { .. } => {}
             }
 
             // Add MergeWithError<FromFunctionError> requirement
@@ -262,7 +272,10 @@ impl DerivedTypeInfo {
                             _ => vec![],
                         })
                         .collect(),
-                    TraitImplementationInfo::UserProvidedFunction { .. } => {
+                    TraitImplementationInfo::FallibleUserProvidedFunction { .. } => {
+                        vec![]
+                    }
+                    TraitImplementationInfo::UnfallibleUserProvidedFunction { .. } => {
                         vec![]
                     }
                 };
@@ -351,7 +364,7 @@ pub struct NamedFieldsInfo {
     pub field_defaults: Vec<TokenStream>,
     pub field_errs: Vec<syn::Type>,
 
-    pub field_from_fns: Vec<Option<TokenStream>>,
+    pub field_from_fns: Vec<TokenStream>,
     pub field_from_errors: Vec<Option<syn::Type>>,
 
     pub field_maps: Vec<TokenStream>,
@@ -429,9 +442,12 @@ impl NamedFieldsInfo {
                 quote! { ::deserr::FieldState::Missing }
             };
 
-            let field_ty = match attrs.try_from {
-                Some(ref from) => from.try_from_ty.clone(),
-                None => field_ty.clone(),
+            let field_ty = match (&attrs.try_from, &attrs.from) {
+                // this was checked before
+                (Some(_), Some(_)) => unreachable!("Can't use a try_for + a for together."),
+                (Some(try_from), _) => try_from.try_from_ty.clone(),
+                (_, Some(from)) => from.from_ty.clone(),
+                (None, None) => field_ty.clone(),
             };
 
             let field_map = match &attrs.map {
@@ -470,21 +486,71 @@ impl NamedFieldsInfo {
                     .unwrap_or_else(|| parse_quote!(__Deserr_E)),
             };
 
-            let field_ty = match attrs.try_from {
-                Some(ref from) => from.try_from_ty.clone(),
-                None => field_ty.clone(),
+            let field_ty = match (&attrs.try_from, &attrs.from) {
+                (Some(_), Some(_)) => unreachable!("Can't use a try_for + a for together."),
+                (Some(try_from), _) => try_from.try_from_ty.clone(),
+                (_, Some(from)) => from.from_ty.clone(),
+                (None, None) => field_ty.clone(),
             };
 
-            let field_from_fn = match attrs.try_from {
-                Some(ref from) => {
-                    let fun = &from.function.function;
-                    if from.is_ref {
-                        Some(quote! { |val: #field_ty | #fun(&val) })
+            let field_from_fn = match (&attrs.try_from, &attrs.from) {
+                (Some(_), Some(_)) => unreachable!("Can't use a try_for + a for together."),
+                (Some(try_from), _) => {
+                    let fun = &try_from.function.function;
+                    let fun_call = if try_from.is_ref {
+                        quote! { |val: #field_ty | #fun(&val) }
                     } else {
-                        Some(quote! { #fun })
-                    }
+                        quote! { #fun }
+                    };
+
+                    quote!(
+                        match (#fun_call)(x) {
+                            ::std::result::Result::Ok(x) => {
+                                ::deserr::FieldState::Some(x)
+                            }
+                            ::std::result::Result::Err(e) => {
+                                let tmp_deserr_error__ = match <#error as ::deserr::MergeWithError<_>>::merge(
+                                    None,
+                                    e,
+                                    deserr_location__.push_key(deserr_key__.as_str())
+                                ) {
+                                    ::std::ops::ControlFlow::Continue(e) => e,
+                                    ::std::ops::ControlFlow::Break(e) => {
+                                        return ::std::result::Result::Err(
+                                            ::deserr::take_cf_content(<#err_ty as ::deserr::MergeWithError<_>>::merge(
+                                                deserr_error__,
+                                                e,
+                                                deserr_location__.push_key(deserr_key__.as_str())
+                                            ))
+                                        )
+                                    }
+                                };
+                                deserr_error__ = match <#err_ty as ::deserr::MergeWithError<_>>::merge(
+                                    deserr_error__,
+                                    tmp_deserr_error__,
+                                    deserr_location__.push_key(deserr_key__.as_str())
+                                ) {
+                                    ::std::ops::ControlFlow::Continue(e) => ::std::option::Option::Some(e),
+                                    ::std::ops::ControlFlow::Break(e) => return ::std::result::Result::Err(e),
+                                };
+                                ::deserr::FieldState::Err
+                            }
+                        }
+                    )
                 }
-                None => None,
+                (_, Some(from)) => {
+                    let fun = &from.function;
+                    let fun_call = if from.is_ref {
+                        quote! { |val: #field_ty | #fun(&val) }
+                    } else {
+                        quote! { #fun }
+                    };
+
+                    quote!(::deserr::FieldState::Some((#fun_call)(x)))
+                }
+                (None, None) => quote! {
+                    ::deserr::FieldState::Some(x)
+                },
             };
 
             let field_from_error = attrs

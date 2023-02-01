@@ -1,5 +1,6 @@
 mod deny_unknown_fields;
 mod error;
+mod from;
 mod map;
 mod missing_field_error;
 mod rename_all;

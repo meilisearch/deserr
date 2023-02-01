@@ -1,0 +1,5 @@
+error: The `try_from` and `from` attributes can't be used together.
+ --> tests/ui/de-field-attr-from-and-try-from-on-single-line.rs:5:14
+  |
+5 |     #[deserr(from(String) = usize::FromStr, try_from(String) = String::parse -> usize)]
+  |              ^^^^

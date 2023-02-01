@@ -25,6 +25,8 @@ pub struct FieldAttributesInfo {
     /// The function to apply to the result after it has been deserialised successfully
     pub map: Option<syn::ExprPath>,
     /// The function used to deserialize the whole type
+    pub from: Option<AttributeFrom>,
+    /// The function used to deserialize the whole type
     pub try_from: Option<AttributeTryFrom>,
     /// Whether an additional where clause should be added to deserialize this field
     pub needs_predicate: bool,
@@ -108,14 +110,33 @@ impl FieldAttributesInfo {
             }
             self.map = Some(map)
         }
-        if let Some(from) = other.try_from {
-            if let Some(_self_from) = &self.try_from {
+        if let Some(from) = other.from {
+            if let Some(_self_from) = &self.from {
                 return Err(syn::Error::new(
                     from.span,
                     "The `from` field attribute is defined twice.",
                 ));
+            } else if let Some(self_try_from) = &self.try_from {
+                return Err(syn::Error::new(
+                    self_try_from.span,
+                    "The `from` and `try_from` attributes can't be used together.",
+                ));
             }
-            self.try_from = Some(from)
+            self.from = Some(from)
+        }
+        if let Some(try_from) = other.try_from {
+            if let Some(_self_from) = &self.try_from {
+                return Err(syn::Error::new(
+                    try_from.span,
+                    "The `try_from` field attribute is defined twice.",
+                ));
+            } else if let Some(self_from) = &self.from {
+                return Err(syn::Error::new(
+                    self_from.span,
+                    "The `try_from` and `from` attributes can't be used together.",
+                ));
+            }
+            self.try_from = Some(try_from)
         }
         self.needs_predicate |= other.needs_predicate;
         self.skipped |= other.skipped;
@@ -178,6 +199,11 @@ impl syn::parse::Parse for FieldAttributesInfo {
                     let func = input.parse::<syn::ExprPath>()?;
                     // #[deserr( ... map = func )]
                     other.map = Some(func);
+                }
+                "from" => {
+                    let from_attr = parse_attribute_from(attr_name.span(), &input)?;
+                    // #[deserr( .. from(from_ty) = function::path::<_>)]
+                    other.from = Some(from_attr);
                 }
                 "try_from" => {
                     let try_from_attr = parse_attribute_try_from(attr_name.span(), &input)?;
@@ -277,6 +303,14 @@ pub struct AttributeTryFrom {
 }
 
 #[derive(Debug, Clone)]
+pub struct AttributeFrom {
+    pub is_ref: bool,
+    pub from_ty: syn::Type,
+    pub function: ExprPath,
+    span: Span,
+}
+
+#[derive(Debug, Clone)]
 pub struct FunctionReturningError {
     pub function: ExprPath,
     pub error_ty: syn::Type,
@@ -295,6 +329,8 @@ pub struct ContainerAttributesInfo {
     pub generic_params: Vec<GenericParam>,
     pub where_predicates: Vec<WherePredicate>,
 
+    /// The function used to deserialize the whole container
+    pub from: Option<AttributeFrom>,
     /// The function used to deserialize the whole container
     pub try_from: Option<AttributeTryFrom>,
 
@@ -358,11 +394,30 @@ impl ContainerAttributesInfo {
             }
             self.deny_unknown_fields = Some(x);
         }
-        if let Some(x) = other.try_from {
-            if let Some(self_from) = &self.try_from {
+        if let Some(x) = other.from {
+            if let Some(self_from) = &self.from {
                 return Err(syn::Error::new(
                     self_from.span,
                     "The `from` attribute is defined twice.",
+                ));
+            } else if let Some(self_try_from) = &self.try_from {
+                return Err(syn::Error::new(
+                    self_try_from.span,
+                    "The `from` and `try_from` attributes can't be used together.",
+                ));
+            }
+            self.from = Some(x);
+        }
+        if let Some(x) = other.try_from {
+            if let Some(try_self_from) = &self.try_from {
+                return Err(syn::Error::new(
+                    try_self_from.span,
+                    "The `try_from` attribute is defined twice.",
+                ));
+            } else if let Some(self_from) = &self.from {
+                return Err(syn::Error::new(
+                    self_from.span,
+                    "The `try_from` and `from` attributes can't be used together.",
                 ));
             }
             self.try_from = Some(x);
@@ -418,10 +473,7 @@ fn parse_function_returning_error(
     Ok(FunctionReturningError { function, error_ty })
 }
 
-fn parse_attribute_try_from(
-    span: Span,
-    input: &ParseBuffer,
-) -> Result<AttributeTryFrom, syn::Error> {
+fn parse_attribute_from(span: Span, input: &ParseBuffer) -> Result<AttributeFrom, syn::Error> {
     let content;
     let _ = parenthesized!(content in input);
     // #[deserr( .. from(..) ..)]
@@ -431,6 +483,29 @@ fn parse_attribute_try_from(
     // #[deserr( .. from(from_ty) ..)]
     let _eq = input.parse::<Token![=]>()?;
     // #[deserr( .. from(from_ty) = ..)]
+    let function = input.parse::<ExprPath>()?;
+
+    Ok(AttributeFrom {
+        is_ref,
+        from_ty,
+        function,
+        span,
+    })
+}
+
+fn parse_attribute_try_from(
+    span: Span,
+    input: &ParseBuffer,
+) -> Result<AttributeTryFrom, syn::Error> {
+    let content;
+    let _ = parenthesized!(content in input);
+    // #[deserr( .. try_from(..) ..)]
+    let is_ref = content.parse::<Token![&]>().is_ok();
+
+    let from_ty = content.parse::<syn::Type>()?;
+    // #[deserr( .. try_from(from_ty) ..)]
+    let _eq = input.parse::<Token![=]>()?;
+    // #[deserr( .. try_from(from_ty) = ..)]
     let function = parse_function_returning_error(input)?;
 
     Ok(AttributeTryFrom {
@@ -484,6 +559,11 @@ impl syn::parse::Parse for ContainerAttributesInfo {
                         this.deny_unknown_fields = Some(DenyUnknownFields::DefaultError);
                     }
                     this.deny_unknown_fields_span = Some(attr_name.span());
+                }
+                "from" => {
+                    let from_attr = parse_attribute_from(attr_name.span(), &input)?;
+                    // #[deserr( .. from(from_ty) = function::path::<_>)]
+                    this.from = Some(from_attr);
                 }
                 "try_from" => {
                     let try_from_attr = parse_attribute_try_from(attr_name.span(), &input)?;
