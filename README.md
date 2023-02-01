@@ -30,7 +30,7 @@ the quality of your error messages.
 Here is a little preview of what you can do with deserr:
 
 
-Let's say I sent this payload to update my [meilisearch](https://docs.meilisearch.com/reference/api/settings.html#settings) settings:
+Let's say I sent this payload to update my [Meilisearch](https://docs.meilisearch.com/reference/api/settings.html#settings) settings:
 ```json
 {
   "filterableAttributes": ["doggo.age", "catto.age"],
@@ -72,7 +72,7 @@ With serde, we don't have much customization; this is the typical kind of messag
 Since serde returned this error, we cannot know what happened or on which field it happened. Thus, the best we
 can do is generate a code `bad_request` that is common for our whole API. We then use this code to generate
 a link to our documentation to help our users. But such a generic link does not help our users because it
-can be thrown by every single route of meilisearch.
+can be thrown by every single route of Meilisearch.
 
 #### With deserr
 
@@ -101,7 +101,7 @@ our user to the documentation specific to this feature and this field.
 
 ##### Adding constraints on multiples fields
 
-In meilisearch, there is another constraint on this `minWordSizeForTypos`, the `twoTypo` field **must be** greater than
+In Meilisearch, there is another constraint on this `minWordSizeForTypos`, the `twoTypo` field **must be** greater than
 the `oneType` field.
 
 Serde doesn't provide any feature to do that. You could write your own implementation of `Deserialize` for the
@@ -121,7 +121,7 @@ pub fn missing_field<E: DeserializeError>(field: &str, location: ValuePointerRef
 }
 ```
 
-At meilisearch, we use this function to specify a custom error code, but we keep the default error message which is pretty accurate.
+At Meilisearch, we use this function to specify a custom error code, but we keep the default error message which is pretty accurate.
 
 ##### When an unknown field is encountered
 
@@ -137,7 +137,7 @@ fn unknown_field<E: DeserializeError>(
 }
 ```
 
-Here is a few ideas we have or would like to implement at meilisearch;
+Here is a few ideas we have or would like to implement at Meilisearch;
 - In the case of a resource you can `PUT` with some fields, but can't `PATCH` all its fields. We can throw a special `immutable field x` error instead of an `unknown field x`.
 - Detecting when you use the field name of an alternative; for example, we use `q` to make a `query` while some Meilisearch alternatives use `query`.
   We could help our users with a `did you mean` message.
@@ -741,7 +741,7 @@ struct Search<A> {
 Since deserr needs to first deserialize the payload into a generic `Value` that allocates
 a lot of memory before creating your structure, it's a lot slower than serde.
 
-For example, at meilisearch for our search route, in case of a valid payload, we observed a 400% slowdown (4 times slower).
+For example, at Meilisearch for our search route, in case of a valid payload, we observed a 400% slowdown (4 times slower).
 That made our search request deserialize in 2us instead of 500ns.
 This is fast enough for most use cases but could be an issue if most of your time is spent deserializing.
 
@@ -816,18 +816,18 @@ Import [`actix-web`](https://crates.io/crates/actix-web) and [`futures`](https:/
 ### FAQ
 
 #### But why?
-At meilisearch, we wanted to customize the error code we return when we fail
+At Meilisearch, we wanted to customize the error code we return when we fail
 the deserialization of a specific field.
 Some error messages were also not clear at all and impossible to edit.
 
 #### What about the maintenance?
-At meilisearch we're already using deserr in production; thus, it's well maintained.
+At Meilisearch we're already using deserr in production; thus, it's well maintained.
 
 #### Where can I see more examples of usage of this crate?
 Currently, you can read our examples in the `examples` directory of this repository.
 You can also look at our integration test; each attribute has a simple-to-read test.
 
-And obviously, you can read the code of meilisearch where deserr is used on all our
+And obviously, you can read the code of Meilisearch where deserr is used on all our
 routes.
 
 #### My question is not listed
