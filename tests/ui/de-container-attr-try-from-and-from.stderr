@@ -1,0 +1,5 @@
+error: The `from` and `try_from` attributes can't be used together.
+ --> tests/ui/de-container-attr-try-from-and-from.rs:4:10
+  |
+4 | #[deserr(try_from(String) = String::parse -> usize)]
+  |          ^^^^^^^^

@@ -20,51 +20,6 @@ pub fn generate_named_fields_impl(
         unknown_key,
         needs_predicate: _,
     } = fields;
-
-    let froms = field_from_fns
-        .iter()
-        .zip(field_errs.iter())
-        .map(|(from_func, field_err)| match from_func {
-            Some(from_func) => quote!(
-                match (#from_func)(x) {
-                    ::std::result::Result::Ok(x) => {
-                        ::deserr::FieldState::Some(x)
-                    }
-                    ::std::result::Result::Err(e) => {
-                        let tmp_deserr_error__ = match <#field_err as ::deserr::MergeWithError<_>>::merge(
-                            None,
-                            e,
-                            deserr_location__.push_key(deserr_key__.as_str())
-                        ) {
-                            ::std::ops::ControlFlow::Continue(e) => e,
-                            ::std::ops::ControlFlow::Break(e) => {
-                                return ::std::result::Result::Err(
-                                    ::deserr::take_cf_content(<#err_ty as ::deserr::MergeWithError<_>>::merge(
-                                        deserr_error__,
-                                        e,
-                                        deserr_location__.push_key(deserr_key__.as_str())
-                                    ))
-                                )
-                            }
-                        };
-                        deserr_error__ = match <#err_ty as ::deserr::MergeWithError<_>>::merge(
-                            deserr_error__,
-                            tmp_deserr_error__,
-                            deserr_location__.push_key(deserr_key__.as_str())
-                        ) {
-                            ::std::ops::ControlFlow::Continue(e) => ::std::option::Option::Some(e),
-                            ::std::ops::ControlFlow::Break(e) => return ::std::result::Result::Err(e),
-                        };
-                        ::deserr::FieldState::Err
-                    }
-                }
-            ),
-            None => quote! {
-                ::deserr::FieldState::Some(x)
-            },
-        })
-        .collect::<Vec<_>>();
-
     quote! {
         // Start by declaring all the fields as mutable optionals
         // Their initial value is given by the precomputed `#field_defaults`,
@@ -89,7 +44,7 @@ pub fn generate_named_fields_impl(
                                 deserr_location__.push_key(deserr_key__.as_str())
                             ) {
                                 ::std::result::Result::Ok(x) => {
-                                    #froms
+                                    #field_from_fns
                                 },
                                 ::std::result::Result::Err(e) => {
                                     deserr_error__ = match <#err_ty as ::deserr::MergeWithError<_>>::merge(

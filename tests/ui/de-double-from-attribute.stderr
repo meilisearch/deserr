@@ -1,4 +1,4 @@
-error: The `from` field attribute is defined twice.
+error: The `try_from` field attribute is defined twice.
  --> tests/ui/de-double-from-attribute.rs:6:14
   |
 6 |     #[deserr(try_from(String) = usize::FromStr -> usize)]
