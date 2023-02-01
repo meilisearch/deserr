@@ -471,38 +471,51 @@ function and accumulate the specified error against the error type of the caller
 ```rust
 use deserr::{Deserr, deserialize, JsonError};
 use serde_json::json;
-use std::convert::Infallible;
 use std::str::FromStr;
+use std::fmt;
 
+// Notice how the `try_from` allows us to leverage the deserr limitation on tuple struct.
 #[derive(Deserr, Debug, PartialEq, Eq)]
-#[deserr(try_from(&String) = FromStr::from_str -> Infallible)]
-enum Wildcard {
-    Wildcard,
-    Value(String),
-}
+#[deserr(try_from(&String) = FromStr::from_str -> AsciiStringError)]
+struct AsciiString(String);
 
-impl FromStr for Wildcard {
-    type Err = Infallible;
+#[derive(Debug)]
+struct AsciiStringError(char);
+
+impl fmt::Display for AsciiStringError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Encountered invalid character: `{}`, only ascii characters are accepted",
+            self.0
+        )
+    }
+}
+impl std::error::Error for AsciiStringError {}
+
+impl FromStr for AsciiString {
+    type Err = AsciiStringError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "*" => Wildcard::Wildcard,
-            s => Wildcard::Value(s.to_string()),
-        })
+        if let Some(c) = s.chars().find(|c| !c.is_ascii()) {
+            Err(AsciiStringError(c))
+        } else {
+            Ok(Self(s.to_string()))
+        }
     }
 }
 
-let data = deserialize::<Wildcard, _, JsonError>(
+let data = deserialize::<AsciiString, _, JsonError>(
     json!("doggo"),
 )
 .unwrap();
-assert_eq!(data, Wildcard::Value(String::from("doggo")));
+assert_eq!(data, AsciiString(String::from("doggo")));
 
-let data = deserialize::<Wildcard, _, JsonError>(
-    json!("*"),
+let error = deserialize::<AsciiString, _, JsonError>(
+    json!("👉👈"),
 )
-.unwrap();
-assert_eq!(data, Wildcard::Wildcard);
+.unwrap_err();
+assert_eq!(error.to_string(), "Invalid value: Encountered invalid character: `👉`, only ascii characters are accepted");
 ```
 
 ##### Or as a field attribute
