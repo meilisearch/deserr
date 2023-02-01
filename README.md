@@ -105,7 +105,8 @@ In Meilisearch, there is another constraint on this `minWordSizeForTypos`, the `
 the `oneType` field.
 
 Serde doesn't provide any feature to do that. You could write your own implementation of `Deserialize` for the
-entire sub-object `minWordSizeForTypos`, but that's generally hard, and we tend to avoid doing it.
+entire sub-object `minWordSizeForTypos`, but that's generally hard and wouldn't even let you customize the
+error type.
 Thus, that's the kind of thing you're going to check by hand in your code later on. This is error-prone and
 may bring inconsistencies between most of the deserialization error messages and your error message.
 
@@ -140,9 +141,9 @@ fn unknown_field<E: DeserializeError>(
 Here is a few ideas we have or would like to implement at Meilisearch;
 - In the case of a resource you can `PUT` with some fields, but can't `PATCH` all its fields. We can throw a special `immutable field x` error instead of an `unknown field x`.
 - Detecting when you use the field name of an alternative; for example, we use `q` to make a `query` while some Meilisearch alternatives use `query`.
-  We could help our users with a `did you mean` message.
+  We could help our users with a `did you mean?` message that corrects the field to its proper name in Meilisearch.
 - Trying to guess what the user was trying to say by computing the [levenstein distance](https://en.wikipedia.org/wiki/Levenshtein_distance)
-  between what the user typed and what is accepted to provide a `did you mean` message. That's a convenient utility against typos.
+  between what the user typed and what is accepted to provide a `did you mean?` message that attempts to correct typos.
 
 ##### When multiple errors are encountered
 
@@ -178,7 +179,8 @@ enum MyError {
 impl DeserializeError for MyError {
     /// Create a new error with the custom message.
     ///
-    /// Return `Ok` to continue deserializing or `Err` to fail early.
+    /// Return `ControlFlow::Continue` to continue deserializing or `ControlFlow::Break` to fail early.
+    /// The `take_cf_content` return the inner error in a `ControlFlow<E, E>`.
     fn error<V: IntoValue>(_self_: Option<Self>, error: ErrorKind<V>, location: ValuePointerRef) -> ControlFlow<Self, Self> {
         ControlFlow::Break(Self::Other(take_cf_content(JsonError::error(None, error, location))))
     }
@@ -290,6 +292,9 @@ fn unknown_fields_search<E: DeserializeError>(
     accepted: &[&str],
     location: ValuePointerRef,
 ) -> E {
+    // `E::error` returns a `ControlFlow<E, E>`, which returns the error and indicates
+    // whether we should keep accumulating errors or not. However, here we simply
+    // want to retrieve the error's value. This is what `take_cf_content` does.
     match field {
         "doggo" => take_cf_content(E::error::<Infallible>(
                 None,
@@ -364,6 +369,10 @@ You need to provide the following information;
 1. The input type of the function (here `&String`)
 2. The path of the function (here, we're simply using the std `FromStr` implementation)
 3. The error type that this function can return (here `Infallible`)
+
+deserr will first try to deserialize the given type using its `Deserr<E>` implementation.
+That means the input type of the `try_from` can be complex. Then deserr will call your
+function and accumulate the specified error against the error type of the caller.
 
 ##### It can be used as a container attribute
 
@@ -612,7 +621,7 @@ assert_eq!(data, Search2 { query: String::from("doggo"), limit: 1 });
 #### `missing_field_error`
 
 Gives you the opportunity to customize the error message if this specific field
-if missing.
+is missing.
 
 ```rust
 use deserr::{Deserr, DeserializeError, ValuePointerRef, ErrorKind, deserialize, JsonError};
@@ -742,7 +751,7 @@ Since deserr needs to first deserialize the payload into a generic `Value` that 
 a lot of memory before creating your structure, it's a lot slower than serde.
 
 For example, at Meilisearch for our search route, in case of a valid payload, we observed a 400% slowdown (4 times slower).
-That made our search request deserialize in 2us instead of 500ns.
+That made our search request deserialize in 2µs instead of 500ns.
 This is fast enough for most use cases but could be an issue if most of your time is spent deserializing.
 
 #### Datastructure support
@@ -786,9 +795,9 @@ This is fast enough for most use cases but could be an issue if most of your tim
 | default             |  yes  |  yes   |      |
 | flatten             |  yes  |  no    | serde doesn't support flattening + denying unknown field |
 | skip                |  yes  |  yes   |      |
-| deserialize_with    |  yes  |  no    | But it's kinda emulated with `from` |
+| deserialize_with    |  yes  |  no    | But it's kinda emulated with `try_from` |
 | with                |  yes  |  no    |      |
-| borrow              |  yes  |  no    |      |
+| borrow              |  yes  |  no    | deserr does not support types with references |
 | bound               |  yes  |  no    |      |
 | map                 |  no   |  yes   | Allows you to map the value **after** it was deserialized |
 | try_from            |  no   |  yes   | Deserialize this field from a function |
