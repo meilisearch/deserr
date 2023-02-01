@@ -362,6 +362,98 @@ assert_eq!(data, Search {
 });
 ```
 
+#### `from`
+
+Deserializing a type from a function instead of a `Value`.
+You need to provide the following information;
+1. The input type of the function (here `&String`)
+2. The path of the function (here, we're simply using the std `FromStr` implementation)
+
+deserr will first try to deserialize the given type using its `Deserr<E>` implementation.
+That means the input type of the `from` can be complex. Then deserr will call your
+function.
+
+See also `try_from` if your function can fail.
+
+##### It can be used as a container attribute
+
+```rust
+use deserr::{Deserr, deserialize, JsonError};
+use serde_json::json;
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+#[deserr(from(String) = From::from)]
+enum Wildcard {
+    Wildcard,
+    Value(String),
+}
+
+impl From<String> for Wildcard {
+    fn from(s: String) -> Self {
+        if s == "*" {
+            Wildcard::Wildcard
+        } else {
+            Wildcard::Value(s)
+        }
+    }
+}
+
+let data = deserialize::<Wildcard, _, JsonError>(
+    json!("doggo"),
+)
+.unwrap();
+assert_eq!(data, Wildcard::Value(String::from("doggo")));
+
+let data = deserialize::<Wildcard, _, JsonError>(
+    json!("*"),
+)
+.unwrap();
+assert_eq!(data, Wildcard::Wildcard);
+```
+
+##### Or as a field attribute
+
+```rust
+use deserr::{Deserr, deserialize, JsonError};
+use serde_json::json;
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+#[deserr(from(String) = From::from)]
+enum Wildcard {
+    Wildcard,
+    Value(String),
+}
+
+impl From<String> for Wildcard {
+    fn from(s: String) -> Self {
+        if s == "*" {
+            Wildcard::Wildcard
+        } else {
+            Wildcard::Value(s)
+        }
+    }
+}
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+struct Search {
+    query: String,
+    #[deserr(from(String) = From::from)]
+    field: Wildcard,
+}
+
+let data = deserialize::<Search, _, JsonError>(
+    json!({ "query": "doggo", "field": "catto" }),
+)
+.unwrap();
+assert_eq!(data, Search { query: String::from("doggo"), field: Wildcard::Value(String::from("catto")) });
+
+let data = deserialize::<Search, _, JsonError>(
+    json!({ "query": "doggo", "field": "*" }),
+)
+.unwrap();
+assert_eq!(data, Search { query: String::from("doggo"), field: Wildcard::Wildcard });
+```
+
 #### `try_from`
 
 Try deserializing a type from a function instead of a `Value`.
@@ -778,7 +870,7 @@ This is fast enough for most use cases but could be an issue if most of your tim
 | default             |  yes  |  no    |      |
 | remote              |  yes  |  no    |      |
 | transparent         |  yes  |  no    |      |
-| from                |  yes  |  no    |      |
+| from                |  yes  |  yes   |      |
 | try_from            |  yes  |  yes   |      |
 | into                |  yes  |  no    |      |
 | crate               |  yes  |  no    |      |
@@ -795,12 +887,13 @@ This is fast enough for most use cases but could be an issue if most of your tim
 | default             |  yes  |  yes   |      |
 | flatten             |  yes  |  no    | serde doesn't support flattening + denying unknown field |
 | skip                |  yes  |  yes   |      |
-| deserialize_with    |  yes  |  no    | But it's kinda emulated with `try_from` |
+| deserialize_with    |  yes  |  no    | But it's kinda emulated with `from` and `try_from` |
 | with                |  yes  |  no    |      |
 | borrow              |  yes  |  no    | deserr does not support types with references |
 | bound               |  yes  |  no    |      |
 | map                 |  no   |  yes   | Allows you to map the value **after** it was deserialized |
-| try_from            |  no   |  yes   | Deserialize this field from a function |
+| from                |  no   |  yes   | Deserialize this field from an infallible function |
+| try_from            |  no   |  yes   | Deserialize this field from a fallible function |
 | missing_field_error |  no   |  yes   | Allows you to return a custom error if this field is missing |
 | error               |  no   |  yes   | Specify the error type that should be used while deserializing this field |
 
