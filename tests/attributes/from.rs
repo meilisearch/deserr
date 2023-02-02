@@ -30,8 +30,7 @@ fn from_container_attribute() {
     )
     "###);
 
-    let data = deserialize::<AsciiString, _, JsonError>(json!("🥺"))
-.unwrap();
+    let data = deserialize::<AsciiString, _, JsonError>(json!("🥺")).unwrap();
 
     assert_debug_snapshot!(data, @r###"
     Invalid(
@@ -56,8 +55,7 @@ fn from_container_attribute() {
     }
     "###);
 
-    let data = deserialize::<Struct, _, JsonError>(json!({ "doggo": "👉 👈"}))
- .unwrap();
+    let data = deserialize::<Struct, _, JsonError>(json!({ "doggo": "👉 👈"})).unwrap();
 
     assert_debug_snapshot!(data, @r###"
     Struct {
@@ -104,8 +102,7 @@ fn from_field_attribute() {
     }
     "###);
 
-    let data = deserialize::<Struct, _, JsonError>(json!({ "doggo": "👉 👈"}))
- .unwrap();
+    let data = deserialize::<Struct, _, JsonError>(json!({ "doggo": "👉 👈"})).unwrap();
 
     assert_debug_snapshot!(data, @r###"
     Struct {
