@@ -2,6 +2,8 @@
 
 #[cfg(feature = "actix-web")]
 pub mod actix_web;
+// #[cfg(feature = "axum")]
+pub mod axum;
 mod impls;
 mod json;
 mod query_params;

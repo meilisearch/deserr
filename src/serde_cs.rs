@@ -3,8 +3,8 @@ use std::str::FromStr;
 use serde_cs::vec::CS;
 
 use crate::{
-    take_cf_content, DeserializeError, Deserr, ErrorKind, IntoValue, Value,
-    ValueKind, ValuePointerRef,
+    take_cf_content, DeserializeError, Deserr, ErrorKind, IntoValue, Value, ValueKind,
+    ValuePointerRef,
 };
 
 impl<R, E, FE> Deserr<E> for CS<R>

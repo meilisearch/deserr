@@ -1,4 +1,6 @@
 # Deserr
+![Crates.io](https://img.shields.io/crates/v/deserr)
+![docs.rs](https://img.shields.io/docsrs/deserr)
 
 ## Introduction
 
