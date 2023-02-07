@@ -5,7 +5,7 @@ use std::{convert::Infallible, fmt::Display, ops::ControlFlow};
 
 use deserr::{ErrorKind, IntoValue, ValueKind, ValuePointerRef};
 
-use crate::{DeserializeError, MergeWithError};
+use crate::{did_you_mean, DeserializeError, MergeWithError};
 
 #[derive(Debug, Clone)]
 pub struct JsonError(String);
@@ -158,9 +158,11 @@ impl DeserializeError for JsonError {
             }
             ErrorKind::UnknownKey { key, accepted } => {
                 let location = location_json_description(location, " inside");
+
                 format!(
-                    "Unknown field `{}`{location}: expected one of {}",
+                    "Unknown field `{}`{location}: {}expected one of {}",
                     key,
+                    did_you_mean(key, accepted),
                     accepted
                         .iter()
                         .map(|accepted| format!("`{}`", accepted))
@@ -171,8 +173,9 @@ impl DeserializeError for JsonError {
             ErrorKind::UnknownValue { value, accepted } => {
                 let location = location_json_description(location, " at");
                 format!(
-                    "Unknown value `{}`{location}: expected one of {}",
+                    "Unknown value `{}`{location}: {}expected one of {}",
                     value,
+                    did_you_mean(value, accepted),
                     accepted
                         .iter()
                         .map(|accepted| format!("`{}`", accepted))
@@ -341,5 +344,97 @@ mod tests {
         let value = json!({ "me": [2, 3, 4] });
         let err = deserr::deserialize::<UnexpectedTuple, _, JsonError>(value).unwrap_err();
         insta::assert_display_snapshot!(err, @"Invalid value at `.me`: the sequence should have exactly 2 elements");
+    }
+
+    #[test]
+    fn error_did_you_mean() {
+        #[allow(dead_code)]
+        #[derive(deserr::Deserr, Debug)]
+        #[deserr(deny_unknown_fields, rename_all = camelCase)]
+        struct DidYouMean {
+            q: Values,
+            filter: String,
+            sort: String,
+            attributes_to_highlight: String,
+        }
+
+        #[derive(deserr::Deserr, Debug)]
+        #[deserr(rename_all = camelCase)]
+        enum Values {
+            Q,
+            Filter,
+            Sort,
+            AttributesToHighLight,
+        }
+
+        let value = json!({ "filler": "doggo" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown field `filler`: did you mean `filter`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+
+        let value = json!({ "sart": "doggo" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown field `sart`: did you mean `sort`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+
+        let value = json!({ "attributes_to_highlight": "doggo" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown field `attributes_to_highlight`: did you mean `attributesToHighlight`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+
+        let value = json!({ "attributesToHighloght": "doggo" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown field `attributesToHighloght`: did you mean `attributesToHighlight`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+
+        // doesn't match anything
+
+        let value = json!({ "a": "doggo" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown field `a`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+
+        let value = json!({ "query": "doggo" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown field `query`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+
+        let value = json!({ "filterable": "doggo" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown field `filterable`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+
+        let value = json!({ "sortable": "doggo" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown field `sortable`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+
+        // did you mean triggered by an unknown value
+
+        let value = json!({ "q": "filler" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown value `filler` at `.q`: did you mean `filter`? expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+
+        let value = json!({ "q": "sart" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown value `sart` at `.q`: did you mean `sort`? expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+
+        let value = json!({ "q": "attributes_to_highlight" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown value `attributes_to_highlight` at `.q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+
+        let value = json!({ "q": "attributesToHighloght" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown value `attributesToHighloght` at `.q`: did you mean `attributesToHighLight`? expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+
+        // doesn't match anything
+
+        let value = json!({ "q": "a" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown value `a` at `.q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+
+        let value = json!({ "q": "query" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown value `query` at `.q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+
+        let value = json!({ "q": "filterable" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown value `filterable` at `.q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+
+        let value = json!({ "q": "sortable" });
+        let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
+        insta::assert_display_snapshot!(err, @"Unknown value `sortable` at `.q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
     }
 }
