@@ -16,7 +16,7 @@ fn bench_deserialize_deserr(b: &mut Bencher) {
     let j = input_json();
     b.iter(|| {
         let json = serde_json::from_str::<serde_json::Value>(&j).unwrap();
-        let _t: Twitter = deserr::deserialize::<_, _, deserr::JsonError>(json).unwrap();
+        let _t: Twitter = deserr::deserialize::<_, _, deserr::errors::JsonError>(json).unwrap();
     });
 }
 

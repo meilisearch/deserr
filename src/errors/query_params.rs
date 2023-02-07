@@ -1,9 +1,14 @@
 //! This module implements the error messages of query parameters deserialization errors.
 //! We try to generate the best possible human-readable description of the error.
+//!
+//! We also provides some helpers if you need to reuse some component for your error
+//! messages.
 
-use crate::{did_you_mean, DeserializeError, MergeWithError};
+use crate::{DeserializeError, MergeWithError};
 use deserr::{ErrorKind, IntoValue, ValueKind, ValuePointerRef};
 use std::{convert::Infallible, fmt::Display, ops::ControlFlow};
+
+use super::helpers::did_you_mean;
 
 #[derive(Debug, Clone)]
 pub struct QueryParamError(String);
@@ -80,7 +85,7 @@ impl deserr::DeserializeError for QueryParamError {
 /// Return a description of the list of value kinds for query parameters
 /// Since query parameters are always treated as strings, we always return
 /// "a string" for now.
-fn value_kinds_description_query_param(_accepted: &[ValueKind]) -> String {
+pub fn value_kinds_description_query_param(_accepted: &[ValueKind]) -> String {
     "a string".to_owned()
 }
 

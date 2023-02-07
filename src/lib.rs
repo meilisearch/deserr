@@ -2,17 +2,14 @@
 
 #[cfg(feature = "actix-web")]
 pub mod actix_web;
+pub mod errors;
 mod impls;
-mod json;
-mod query_params;
 #[cfg(feature = "serde-cs")]
 pub mod serde_cs;
 #[cfg(feature = "serde-json")]
 pub mod serde_json;
 mod value;
 
-pub use json::JsonError;
-pub use query_params::QueryParamError;
 extern crate self as deserr;
 
 /**
@@ -77,7 +74,6 @@ will parse the following:
 ```
 */
 pub use deserr_internal::Deserr;
-use strsim::damerau_levenshtein;
 pub use value::{IntoValue, Map, Sequence, Value, ValueKind, ValuePointer, ValuePointerRef};
 
 use std::ops::ControlFlow;
@@ -243,27 +239,5 @@ pub fn take_cf_content<T>(r: ControlFlow<T, T>) -> T {
     match r {
         ControlFlow::Continue(x) => x,
         ControlFlow::Break(x) => x,
-    }
-}
-
-/// Compute a did you mean message.
-pub fn did_you_mean(received: &str, accepted: &[&str]) -> String {
-    let typo_allowed = match received.len() {
-        // no typos are allowed, we can early return
-        0..=3 => return String::new(),
-        4..=7 => 1,
-        8..=12 => 2,
-        13..=17 => 3,
-        18..=24 => 4,
-        _ => 5,
-    };
-    match accepted
-        .iter()
-        .map(|accepted| (accepted, damerau_levenshtein(received, accepted)))
-        .filter(|(_, distance)| distance <= &typo_allowed)
-        .min_by(|(_, d1), (_, d2)| d1.cmp(d2))
-    {
-        None => String::new(),
-        Some((accepted, _)) => format!("did you mean `{}`? ", accepted),
     }
 }

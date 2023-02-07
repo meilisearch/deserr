@@ -1,4 +1,4 @@
-use deserr::{deserialize, Deserr, JsonError};
+use deserr::{deserialize, errors::JsonError, Deserr};
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
 

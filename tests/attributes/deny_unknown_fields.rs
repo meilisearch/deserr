@@ -1,7 +1,8 @@
 use std::convert::Infallible;
 
 use deserr::{
-    deserialize, take_cf_content, DeserializeError, Deserr, ErrorKind, JsonError, ValuePointerRef,
+    deserialize, errors::JsonError, take_cf_content, DeserializeError, Deserr, ErrorKind,
+    ValuePointerRef,
 };
 use insta::{assert_debug_snapshot, assert_display_snapshot};
 use serde_json::json;
