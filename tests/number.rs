@@ -1,4 +1,4 @@
-use deserr::JsonError;
+use deserr::errors::JsonError;
 use serde_json::json;
 
 #[allow(unused)]

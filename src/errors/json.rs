@@ -1,11 +1,16 @@
 //! This module implements the error messages of json deserialization errors.
 //! We try to generate the best possible human-readable description of the error.
+//!
+//! We also provides some helpers if you need to reuse some component for your error
+//! messages.
 
 use std::{convert::Infallible, fmt::Display, ops::ControlFlow};
 
 use deserr::{ErrorKind, IntoValue, ValueKind, ValuePointerRef};
 
-use crate::{did_you_mean, DeserializeError, MergeWithError};
+use crate::{DeserializeError, MergeWithError};
+
+use super::helpers::did_you_mean;
 
 #[derive(Debug, Clone)]
 pub struct JsonError(String);
@@ -42,7 +47,7 @@ pub fn location_json_description(location: ValuePointerRef, article: &str) -> St
 }
 
 /// Return a description of the list of value kinds for a Json payload.
-fn value_kinds_description_json(kinds: &[ValueKind]) -> String {
+pub fn value_kinds_description_json(kinds: &[ValueKind]) -> String {
     // Rank each value kind so that they can be sorted (and deduplicated)
     // Having a predictable order helps with pattern matching
     fn order(kind: &ValueKind) -> u8 {
@@ -122,7 +127,7 @@ fn value_kinds_description_json(kinds: &[ValueKind]) -> String {
 }
 
 /// Return the JSON string of the value preceded by a description of its kind
-fn value_description_with_kind_json(v: &serde_json::Value) -> String {
+pub fn value_description_with_kind_json(v: &serde_json::Value) -> String {
     match v.kind() {
         ValueKind::Null => "null".to_owned(),
         kind => {

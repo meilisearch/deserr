@@ -2,7 +2,7 @@ use std::convert::Infallible;
 
 use actix_web::{web, App, HttpResponse, HttpServer};
 use deserr::{
-    actix_web::AwebJson, take_cf_content, DeserializeError, Deserr, ErrorKind, JsonError,
+    actix_web::AwebJson, errors::JsonError, take_cf_content, DeserializeError, Deserr, ErrorKind,
     ValuePointerRef,
 };
 use serde::{Deserialize, Serialize};
