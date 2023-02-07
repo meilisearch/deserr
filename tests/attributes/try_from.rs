@@ -70,8 +70,7 @@ fn from_container_attribute() {
     )
     "###);
 
-    let data = deserialize::<AsciiString, _, JsonError>(json!("🥺"))
-.unwrap_err();
+    let data = deserialize::<AsciiString, _, JsonError>(json!("🥺")).unwrap_err();
 
     assert_display_snapshot!(data, @"Invalid value: Encountered invalid character: `🥺`, only ascii characters are accepted");
 
@@ -92,8 +91,7 @@ fn from_container_attribute() {
     }
     "###);
 
-    let data = deserialize::<Struct, _, JsonError>(json!({ "doggo": "👉 👈"}))
- .unwrap_err();
+    let data = deserialize::<Struct, _, JsonError>(json!({ "doggo": "👉 👈"})).unwrap_err();
 
     assert_display_snapshot!(data, @"Invalid value at `.doggo`: Encountered invalid character: `👉`, only ascii characters are accepted");
 }
@@ -133,8 +131,7 @@ fn from_field_attribute() {
     }
     "###);
 
-    let data = deserialize::<Struct, _, JsonError>(json!({ "doggo": "👉 👈"}))
- .unwrap_err();
+    let data = deserialize::<Struct, _, JsonError>(json!({ "doggo": "👉 👈"})).unwrap_err();
 
     assert_display_snapshot!(data, @"Invalid value at `.doggo`: Encountered invalid character: `👉`, only ascii characters are accepted");
 }

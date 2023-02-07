@@ -1,6 +1,6 @@
 use crate::{
-    take_cf_content, DeserializeError, Deserr, ErrorKind, IntoValue, Map, Sequence,
-    Value, ValueKind, ValuePointerRef,
+    take_cf_content, DeserializeError, Deserr, ErrorKind, IntoValue, Map, Sequence, Value,
+    ValueKind, ValuePointerRef,
 };
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
