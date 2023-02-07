@@ -258,7 +258,7 @@ pub fn did_you_mean(received: &str, accepted: &[&str]) -> String {
         _ => 5,
     };
     match accepted
-        .into_iter()
+        .iter()
         .map(|accepted| (accepted, damerau_levenshtein(received, accepted)))
         .filter(|(_, distance)| distance <= &typo_allowed)
         .min_by(|(_, d1), (_, d2)| d1.cmp(d2))
