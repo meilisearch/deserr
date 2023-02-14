@@ -247,6 +247,7 @@ impl Sequence for Infallible {
         unreachable!()
     }
 }
+
 impl Map for Infallible {
     type Value = Self;
     type Iter = std::iter::Empty<(String, Infallible)>;
