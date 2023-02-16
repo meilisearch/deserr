@@ -4,7 +4,7 @@ use crate::{
 };
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
-    convert::TryFrom,
+    convert::{Infallible, TryFrom},
     hash::Hash,
     marker::PhantomData,
     ops::ControlFlow,
@@ -32,6 +32,22 @@ where
 
     fn len(&self) -> usize {
         self.len()
+    }
+
+    fn into_iter(self) -> Self::Iter {
+        <Self as IntoIterator>::into_iter(self)
+    }
+}
+
+impl<T, const N: usize> Sequence for [T; N]
+where
+    T: IntoValue,
+{
+    type Value = T;
+    type Iter = <Self as IntoIterator>::IntoIter;
+
+    fn len(&self) -> usize {
+        N
     }
 
     fn into_iter(self) -> Self::Iter {
@@ -129,6 +145,7 @@ deserialize_impl_integer!(u8);
 deserialize_impl_integer!(u16);
 deserialize_impl_integer!(u32);
 deserialize_impl_integer!(u64);
+deserialize_impl_integer!(u128);
 deserialize_impl_integer!(usize);
 
 macro_rules! deserialize_impl_negative_integer {
@@ -190,6 +207,7 @@ deserialize_impl_negative_integer!(i8);
 deserialize_impl_negative_integer!(i16);
 deserialize_impl_negative_integer!(i32);
 deserialize_impl_negative_integer!(i64);
+deserialize_impl_negative_integer!(i128);
 deserialize_impl_negative_integer!(isize);
 
 macro_rules! deserialize_impl_float {
@@ -225,6 +243,55 @@ macro_rules! deserialize_impl_float {
 }
 deserialize_impl_float!(f32);
 deserialize_impl_float!(f64);
+
+impl<E> Deserr<E> for char
+where
+    E: DeserializeError,
+{
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        location: ValuePointerRef,
+    ) -> Result<Self, E> {
+        match value {
+            Value::String(s) => {
+                let mut iter = s.chars();
+
+                if let Some(value) = iter.next() {
+                    if iter.next() == None {
+                        Ok(value)
+                    } else {
+                        let len = 2 + iter.count();
+                        Err(take_cf_content(E::error::<Infallible>(
+                            None,
+                            ErrorKind::Unexpected {
+                                msg: format!("expected a string of one character, but found the following string of {} characters: `{}`", len, s),
+                            },
+                            location,
+                        )))
+                    }
+                } else {
+                    Err(take_cf_content(E::error::<Infallible>(
+                        None,
+                        ErrorKind::Unexpected {
+                            msg: String::from(
+                                "expected a string of one character, but found an empty string",
+                            ),
+                        },
+                        location,
+                    )))
+                }
+            }
+            v => Err(take_cf_content(E::error(
+                None,
+                ErrorKind::IncorrectValueKind {
+                    actual: v,
+                    accepted: &[ValueKind::String],
+                },
+                location,
+            ))),
+        }
+    }
+}
 
 impl<E> Deserr<E> for String
 where
@@ -539,6 +606,65 @@ where
     }
 }
 
+impl<T, E, const N: usize> Deserr<E> for [T; N]
+where
+    T: Deserr<E>,
+    E: DeserializeError,
+{
+    fn deserialize_from_value<V: IntoValue>(
+        value: Value<V>,
+        location: ValuePointerRef,
+    ) -> Result<Self, E> {
+        match value {
+            Value::Sequence(seq) => {
+                let len = seq.len();
+                if len != N {
+                    return Err(take_cf_content(E::error::<V>(
+                        None,
+                        ErrorKind::Unexpected {
+                            msg: format!("expected a sequence of {} elements but instead found a sequence of {} elements", N, len),
+                        },
+                        location,
+                    )));
+                }
+                let mut error = None;
+                let iter = seq.into_iter();
+
+                let mut ret = Vec::with_capacity(N);
+
+                for elem in iter {
+                    let a = T::deserialize_from_value(elem.into_value(), location.push_index(0));
+                    match a {
+                        Ok(a) => ret.push(a),
+                        Err(e) => {
+                            error = match E::merge(error, e, location.push_index(0)) {
+                                ControlFlow::Continue(e) => Some(e),
+                                ControlFlow::Break(e) => return Err(e),
+                            };
+                        }
+                    }
+                }
+
+                if let Some(error) = error {
+                    Err(error)
+                } else if let Ok(ret) = ret.try_into() {
+                    Ok(ret)
+                } else {
+                    panic!("Could not convert Vec<T> into [T; N]")
+                }
+            }
+            v => Err(take_cf_content(E::error(
+                None,
+                ErrorKind::IncorrectValueKind {
+                    actual: v,
+                    accepted: &[ValueKind::Sequence],
+                },
+                location,
+            ))),
+        }
+    }
+}
+
 impl<A, B, E> Deserr<E> for (A, B)
 where
     A: Deserr<E>,
@@ -625,11 +751,11 @@ where
         match value {
             Value::Sequence(seq) => {
                 let len = seq.len();
-                if len != 2 {
+                if len != 3 {
                     return Err(take_cf_content(E::error::<V>(
                         None,
                         ErrorKind::Unexpected {
-                            msg: String::from("the sequence should have exactly 2 elements"),
+                            msg: String::from("the sequence should have exactly 3 elements"),
                         },
                         location,
                     )));
