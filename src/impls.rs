@@ -257,7 +257,7 @@ where
                 let mut iter = s.chars();
 
                 if let Some(value) = iter.next() {
-                    if iter.next() == None {
+                    if iter.next().is_none() {
                         Ok(value)
                     } else {
                         let len = 2 + iter.count();
