@@ -22,7 +22,7 @@ actix-utils = { version = "3.0.1", optional = true }
 serde_urlencoded = "0.7.1"
 
 [features]
-default = ["serde-json", "serde-cs", "actix-web"]
+default = ["serde-json", "serde-cs"]
 serde-json = ["serde_json"]
 serde-cs = ["dep:serde-cs"]
 actix-web = ["dep:actix-web", "futures", "actix-http", "actix-utils"]
