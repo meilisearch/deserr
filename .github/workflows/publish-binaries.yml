@@ -18,6 +18,10 @@ jobs:
         with:
           registry-token: ${{ secrets.CRATES_TOKEN }}
           path: "derive"
+      - uses: What is happening
+        with:
+          run: echo $PATH
       - uses: katyo/publish-crates@v1
         with:
           registry-token: ${{ secrets.CRATES_TOKEN }}
+          path: ".."
