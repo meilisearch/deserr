@@ -18,9 +18,6 @@ jobs:
         with:
           registry-token: ${{ secrets.CRATES_TOKEN }}
           path: "derive"
-      - uses: ubuntu-latest
-        with:
-          run: echo $PATH
       - uses: katyo/publish-crates@v1
         with:
           registry-token: ${{ secrets.CRATES_TOKEN }}
