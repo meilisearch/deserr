@@ -14,11 +14,11 @@ jobs:
         with:
           toolchain: stable
           override: true
-      - uses: katyo/publish-crates@v1
-        with:
-          registry-token: ${{ secrets.CRATES_TOKEN }}
-          path: "derive"
-      - uses: katyo/publish-crates@v1
-        with:
-          registry-token: ${{ secrets.CRATES_TOKEN }}
-          path: ".."
+      - name: Login
+        run: cargo login ${{ secrets.CRATES_TOKEN }}
+      - name: Publish the internal derive crate
+        run: |-
+          cd derive
+          cargo publish
+      - name: Publish deserr to crates.io
+        run: cargo publish
