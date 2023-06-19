@@ -7,6 +7,10 @@ use std::{
     convert::{Infallible, TryFrom},
     hash::Hash,
     marker::PhantomData,
+    num::{
+        NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize, NonZeroU128,
+        NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize,
+    },
     ops::ControlFlow,
     str::FromStr,
 };
@@ -141,12 +145,75 @@ macro_rules! deserialize_impl_integer {
         }
     };
 }
+
 deserialize_impl_integer!(u8);
 deserialize_impl_integer!(u16);
 deserialize_impl_integer!(u32);
 deserialize_impl_integer!(u64);
 deserialize_impl_integer!(u128);
 deserialize_impl_integer!(usize);
+
+macro_rules! deserialize_impl_non_zero_integer {
+    ($t:ty) => {
+        impl<E> Deserr<E> for $t
+        where
+            E: DeserializeError,
+        {
+            fn deserialize_from_value<V: IntoValue>(
+                value: Value<V>,
+                location: ValuePointerRef,
+            ) -> Result<Self, E> {
+                use $crate::take_cf_content;
+
+                let err = |value: Value<V>| {
+                    E::error(
+                        None,
+                        ErrorKind::IncorrectValueKind {
+                            actual: value,
+                            accepted: &[ValueKind::Integer],
+                        },
+                        location,
+                    )
+                };
+
+                match value {
+                    Value::Integer(x) if x == 0 => {
+                      Err(take_cf_content(E::error::<V>(
+                          None,
+                          ErrorKind::Unexpected {
+                              msg: format!(
+                                  "a non-zero integer value lower than `{}` was expected, but found a zero",
+                                  <$t>::MAX
+                              ),
+                          },
+                          location,
+                      )))
+                    },
+                    Value::Integer(x) => NonZeroU64::try_from(x).map_err(|_| ()).and_then(|res| <$t>::try_from(res).map_err(|_| ())).or_else(|_| {
+                        Err(take_cf_content(E::error::<V>(
+                            None,
+                            ErrorKind::Unexpected {
+                                msg: format!(
+                                    "value: `{x}` is too large to be deserialized, maximum value authorized is `{}`",
+                                    <$t>::MAX
+                                ),
+                            },
+                            location,
+                        )))
+                    }),
+                    v => Err(take_cf_content(err(v))),
+                }
+            }
+        }
+    };
+}
+
+deserialize_impl_non_zero_integer!(NonZeroU8);
+deserialize_impl_non_zero_integer!(NonZeroU16);
+deserialize_impl_non_zero_integer!(NonZeroU32);
+deserialize_impl_non_zero_integer!(NonZeroU64);
+deserialize_impl_non_zero_integer!(NonZeroU128);
+deserialize_impl_non_zero_integer!(NonZeroUsize);
 
 macro_rules! deserialize_impl_negative_integer {
     ($t:ty) => {
@@ -209,6 +276,92 @@ deserialize_impl_negative_integer!(i32);
 deserialize_impl_negative_integer!(i64);
 deserialize_impl_negative_integer!(i128);
 deserialize_impl_negative_integer!(isize);
+
+macro_rules! deserialize_impl_non_zero_negative_integer {
+    ($t:ty) => {
+        impl<E> Deserr<E> for $t
+        where
+            E: DeserializeError,
+        {
+            fn deserialize_from_value<V: IntoValue>(
+                value: Value<V>,
+                location: ValuePointerRef,
+            ) -> Result<Self, E> {
+                use $crate::take_cf_content;
+
+                let err = |value: Value<V>| {
+                    E::error(
+                        None,
+                        ErrorKind::IncorrectValueKind {
+                            actual: value,
+                            accepted: &[ValueKind::Integer, ValueKind::NegativeInteger],
+                        },
+                        location,
+                    )
+                };
+
+                match value {
+                    Value::Integer(x) if x == 0 => {
+                      Err(take_cf_content(E::error::<V>(
+                          None,
+                          ErrorKind::Unexpected {
+                              msg: format!(
+                                  "a non-zero integer value higher than `{}` was expected, but found a zero",
+                                  <$t>::MIN
+                              ),
+                          },
+                          location,
+                      )))
+                    },
+                    Value::NegativeInteger(x) if x == 0 => {
+                      Err(take_cf_content(E::error::<V>(
+                          None,
+                          ErrorKind::Unexpected {
+                              msg: format!(
+                                  "a non-zero integer value higher than `{}` was expected, but found a zero",
+                                  <$t>::MIN
+                              ),
+                          },
+                          location,
+                      )))
+                    },
+                    Value::Integer(x) => NonZeroU64::try_from(x).map_err(|_| ()).and_then(|res| <$t>::try_from(res).map_err(|_| ())).or_else(|_| {
+                        Err(take_cf_content(E::error::<V>(
+                            None,
+                            ErrorKind::Unexpected {
+                                msg: format!(
+                                    "value: `{x}` is too large to be deserialized, maximum value authorized is `{}`",
+                                    <$t>::MAX
+                                ),
+                            },
+                            location,
+                        )))
+                    }),
+                    Value::NegativeInteger(x) => NonZeroI64::try_from(x).map_err(|_| ()).and_then(|res| <$t>::try_from(res).map_err(|_| ())).or_else(|_| {
+                        Err(take_cf_content(E::error::<V>(
+                            None,
+                            ErrorKind::Unexpected {
+                                msg: format!(
+                                    "value: `{x}` is too small to be deserialized, minimum value authorized is `{}`",
+                                    <$t>::MIN
+                                ),
+                            },
+                            location,
+                        )))
+                    }),
+                    v => Err(take_cf_content(err(v))),
+                }
+            }
+        }
+    };
+}
+
+deserialize_impl_non_zero_negative_integer!(NonZeroI8);
+deserialize_impl_non_zero_negative_integer!(NonZeroI16);
+deserialize_impl_non_zero_negative_integer!(NonZeroI32);
+deserialize_impl_non_zero_negative_integer!(NonZeroI64);
+deserialize_impl_non_zero_negative_integer!(NonZeroI128);
+deserialize_impl_non_zero_negative_integer!(NonZeroIsize);
 
 macro_rules! deserialize_impl_float {
     ($t:ty) => {
