@@ -44,7 +44,7 @@ pub fn derive_deserialize(input: TokenStream) -> TokenStream {
                 TagType::External =>
                     syn::Error::new(
                         Span::call_site(),
-                        r##"Externally tagged enums are not supported yet by deserr. Add #[deserr(tag = "some_tag_key")]"##,
+                        r#"Externally tagged enums are not supported yet by deserr. Add #[deserr(tag = "some_tag_key")]"#,
                 ).to_compile_error().into()
             },
             TraitImplementationInfo::UnfallibleUserProvidedFunction { from_attr } => {
