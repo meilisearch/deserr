@@ -2,13 +2,8 @@ use proc_macro2::{Ident, Span};
 use syn::{
     parenthesized,
     parse::{ParseBuffer, ParseStream},
-    parse2, Attribute, DeriveInput, Expr, ExprPath, GenericParam, LitStr, Token, WherePredicate,
+    Attribute, DeriveInput, Expr, ExprPath, GenericParam, LitStr, Token, WherePredicate,
 };
-
-// pub struct MapFieldAttribute {
-//     // from_ty: Option<syn::Type>,
-//     map_func: syn::ExprPath,
-// }
 
 /// Attributes that are applied to fields.
 #[derive(Default, Debug, Clone)]
@@ -154,12 +149,7 @@ fn parse_rename(input: &ParseBuffer) -> Result<LitStr, syn::Error> {
 impl syn::parse::Parse for FieldAttributesInfo {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut this = FieldAttributesInfo::default();
-        // parse starting right after #[deserr .... ]
-        // so first get the content inside the parentheses
 
-        let content;
-        let _ = parenthesized!(content in input);
-        let input = content;
         // consumed input: #[deserr( .... )]
 
         loop {
@@ -243,11 +233,11 @@ pub fn read_deserr_field_attributes(
 ) -> Result<FieldAttributesInfo, syn::Error> {
     let mut this = FieldAttributesInfo::default();
     for attribute in attributes {
-        if let Some(ident) = attribute.path.get_ident() {
+        if let Some(ident) = attribute.path().get_ident() {
             if ident != "deserr" {
                 continue;
             }
-            let other = parse2::<FieldAttributesInfo>(attribute.tokens.clone())?;
+            let other: FieldAttributesInfo = attribute.parse_args()?;
             this.merge(other)?;
         } else {
             continue;
@@ -519,12 +509,7 @@ fn parse_attribute_try_from(
 impl syn::parse::Parse for ContainerAttributesInfo {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut this = ContainerAttributesInfo::default();
-        // parse starting right after #[deserr .... ]
-        // so first get the content inside the parentheses
 
-        let content;
-        let _ = parenthesized!(content in input);
-        let input = content;
         // consumed input: #[deserr( .... )]
 
         loop {
@@ -655,11 +640,11 @@ pub fn read_deserr_container_attributes(
 ) -> Result<ContainerAttributesInfo, syn::Error> {
     let mut this = ContainerAttributesInfo::default();
     for attribute in attributes {
-        if let Some(ident) = attribute.path.get_ident() {
+        if let Some(ident) = attribute.path().get_ident() {
             if ident != "deserr" {
                 continue;
             }
-            let other = parse2::<ContainerAttributesInfo>(attribute.tokens.clone())?;
+            let other: ContainerAttributesInfo = attribute.parse_args()?;
             this.merge(other)?;
         } else {
             continue;
@@ -726,12 +711,7 @@ impl VariantAttributesInfo {
 impl syn::parse::Parse for VariantAttributesInfo {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut this = VariantAttributesInfo::default();
-        // parse starting right after #[deserr .... ]
-        // so first get the content inside the parentheses
 
-        let content;
-        let _ = parenthesized!(content in input);
-        let input = content;
         // consumed input: #[deserr( .... )]
 
         loop {
@@ -774,11 +754,11 @@ pub fn read_deserr_variant_attributes(
 ) -> Result<VariantAttributesInfo, syn::Error> {
     let mut this = VariantAttributesInfo::default();
     for attribute in attributes {
-        if let Some(ident) = attribute.path.get_ident() {
+        if let Some(ident) = attribute.path().get_ident() {
             if ident != "deserr" {
                 continue;
             }
-            let other = parse2::<VariantAttributesInfo>(attribute.tokens.clone())?;
+            let other: VariantAttributesInfo = attribute.parse_args()?;
             this.merge(other)?;
         } else {
             continue;
