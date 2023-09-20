@@ -9,7 +9,7 @@ edition = "2021"
 actix-http = { version = "3.2.2", default-features = false, features = ["compress-brotli", "compress-gzip", "rustls"] }
 actix-web = { version = "4.2.1", default-features = false, features = ["macros", "compress-brotli", "compress-gzip", "cookies", "rustls"] }
 anyhow = "1.0.68"
-deserr = { path = "../../" }
+deserr = { path = "../../", features = ["actix-web"] }
 env_logger = "0.10.0"
 futures = "0.3.25"
 futures-util = "0.3.25"

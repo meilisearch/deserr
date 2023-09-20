@@ -158,7 +158,7 @@ impl syn::parse::Parse for FieldAttributesInfo {
             // consumed input: #[deserr( ... attr_name ... )]
             match attr_name.to_string().as_str() {
                 "rename" => {
-                    other.rename = Some(parse_rename(&input)?);
+                    other.rename = Some(parse_rename(input)?);
                 }
                 "default" => {
                     if input.peek(Token![=]) {
@@ -191,12 +191,12 @@ impl syn::parse::Parse for FieldAttributesInfo {
                     other.map = Some(func);
                 }
                 "from" => {
-                    let from_attr = parse_attribute_from(attr_name.span(), &input)?;
+                    let from_attr = parse_attribute_from(attr_name.span(), input)?;
                     // #[deserr( .. from(from_ty) = function::path::<_>)]
                     other.from = Some(from_attr);
                 }
                 "try_from" => {
-                    let try_from_attr = parse_attribute_try_from(attr_name.span(), &input)?;
+                    let try_from_attr = parse_attribute_try_from(attr_name.span(), input)?;
                     // #[deserr( .. try_from(from_ty) = function::path::<_> -> to_ty )]
                     other.try_from = Some(try_from_attr);
                 }
@@ -517,7 +517,7 @@ impl syn::parse::Parse for ContainerAttributesInfo {
             // consumed input: #[deserr( ... attr_name ... )]
             match attr_name.to_string().as_str() {
                 "rename_all" => {
-                    let rename_all = parse_rename_all(&input)?;
+                    let rename_all = parse_rename_all(input)?;
                     this.rename_all = Some(rename_all);
                     this.rename_all_span = Some(attr_name.span());
                 }
@@ -546,12 +546,12 @@ impl syn::parse::Parse for ContainerAttributesInfo {
                     this.deny_unknown_fields_span = Some(attr_name.span());
                 }
                 "from" => {
-                    let from_attr = parse_attribute_from(attr_name.span(), &input)?;
+                    let from_attr = parse_attribute_from(attr_name.span(), input)?;
                     // #[deserr( .. from(from_ty) = function::path::<_>)]
                     this.from = Some(from_attr);
                 }
                 "try_from" => {
-                    let try_from_attr = parse_attribute_try_from(attr_name.span(), &input)?;
+                    let try_from_attr = parse_attribute_try_from(attr_name.span(), input)?;
                     // #[deserr( .. try_from(from_ty) = function::path::<_> -> to_ty )]
                     this.try_from = Some(try_from_attr);
                 }
@@ -559,7 +559,7 @@ impl syn::parse::Parse for ContainerAttributesInfo {
                     // #[deserr( ... validate .. )]
                     let _eq = input.parse::<Token![=]>()?;
                     // #[deserr( ... validate = .. )]
-                    let validate_func = parse_function_returning_error(&input)?;
+                    let validate_func = parse_function_returning_error(input)?;
                     // #[deserr( ... validate = some::func<T> )]
                     this.validate = Some(validate_func);
                 }
@@ -719,10 +719,10 @@ impl syn::parse::Parse for VariantAttributesInfo {
             // consumed input: #[deserr( ... attr_name ... )]
             match attr_name.to_string().as_str() {
                 "rename" => {
-                    this.rename = Some(parse_rename(&input)?);
+                    this.rename = Some(parse_rename(input)?);
                 }
                 "rename_all" => {
-                    this.rename_all = Some(parse_rename_all(&input)?);
+                    this.rename_all = Some(parse_rename_all(input)?);
                     this.rename_all_span = Some(attr_name.span());
                 }
                 _ => {
