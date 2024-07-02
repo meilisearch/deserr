@@ -12,7 +12,7 @@ proc-macro = true
 
 [dependencies]
 proc-macro2 = "1.0"
-quote = "1.0.2"
+quote = "1.0.36"
 syn = { version = "2.0", features=["extra-traits", "parsing"]}
 convert_case = "0.6.0"
 
