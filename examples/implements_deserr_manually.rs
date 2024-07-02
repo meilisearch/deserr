@@ -17,6 +17,7 @@ struct Query {
 /// - `"jorts"`
 /// - `["jorts", "jean"]`
 /// - `["jorts", ["bilbo", "bob"], "jean"]`
+#[allow(dead_code)]
 #[derive(Debug)]
 enum Filter {
     Array(Vec<Filter>),
