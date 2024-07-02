@@ -1,5 +1,5 @@
 use deserr::{deserialize, errors::JsonError, Deserr};
-use insta::{assert_debug_snapshot, assert_display_snapshot};
+use insta::{assert_debug_snapshot, assert_snapshot};
 use serde_json::json;
 
 #[test]
@@ -48,14 +48,14 @@ fn tagged_enum() {
     let data =
         deserialize::<Struct, _, JsonError>(json!({ "either": { "doggo": "bork" } })).unwrap_err();
 
-    assert_display_snapshot!(data, @"Missing field `type` inside `.either`");
+    assert_snapshot!(data, @"Missing field `type` inside `.either`");
 
     let data = deserialize::<Struct, _, JsonError>(
         json!({ "either": { "doggo": false, "catto": "jorts" } }),
     )
     .unwrap_err();
 
-    assert_display_snapshot!(data, @"Missing field `type` inside `.either`");
+    assert_snapshot!(data, @"Missing field `type` inside `.either`");
 }
 #[test]
 fn tagged_enum_plus_rename() {

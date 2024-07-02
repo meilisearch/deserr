@@ -1,5 +1,5 @@
 use deserr::{deserialize, Deserr, JsonError};
-use insta::{assert_debug_snapshot, assert_display_snapshot};
+use insta::{assert_debug_snapshot, assert_snapshot};
 use serde_json::json;
 
 #[test]
@@ -30,7 +30,7 @@ fn option_dont_use_default_by_default() {
 
     let data = deserialize::<Struct, _, JsonError>(json!({})).unwrap_err();
 
-    assert_display_snapshot!(data, @"Json deserialize error: missing field `doggo` at ``");
+    assert_snapshot!(data, @"Json deserialize error: missing field `doggo` at ``");
 }
 
 #[test]

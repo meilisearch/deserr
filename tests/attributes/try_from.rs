@@ -9,7 +9,7 @@ use deserr::{
     deserialize, errors::JsonError, take_cf_content, DeserializeError, Deserr, ErrorKind,
     MergeWithError, ValuePointerRef,
 };
-use insta::{assert_debug_snapshot, assert_display_snapshot};
+use insta::{assert_debug_snapshot, assert_snapshot};
 use serde_json::json;
 
 // For the next tests we're going to deserialize a string that can't contains any non-ascii char
@@ -72,7 +72,7 @@ fn from_container_attribute() {
 
     let data = deserialize::<AsciiString, _, JsonError>(json!("🥺")).unwrap_err();
 
-    assert_display_snapshot!(data, @"Invalid value: Encountered invalid character: `🥺`, only ascii characters are accepted");
+    assert_snapshot!(data, @"Invalid value: Encountered invalid character: `🥺`, only ascii characters are accepted");
 
     #[allow(unused)]
     #[derive(Debug, Deserr)]
@@ -93,7 +93,7 @@ fn from_container_attribute() {
 
     let data = deserialize::<Struct, _, JsonError>(json!({ "doggo": "👉 👈"})).unwrap_err();
 
-    assert_display_snapshot!(data, @"Invalid value at `.doggo`: Encountered invalid character: `👉`, only ascii characters are accepted");
+    assert_snapshot!(data, @"Invalid value at `.doggo`: Encountered invalid character: `👉`, only ascii characters are accepted");
 }
 
 #[test]
@@ -133,5 +133,5 @@ fn from_field_attribute() {
 
     let data = deserialize::<Struct, _, JsonError>(json!({ "doggo": "👉 👈"})).unwrap_err();
 
-    assert_display_snapshot!(data, @"Invalid value at `.doggo`: Encountered invalid character: `👉`, only ascii characters are accepted");
+    assert_snapshot!(data, @"Invalid value at `.doggo`: Encountered invalid character: `👉`, only ascii characters are accepted");
 }

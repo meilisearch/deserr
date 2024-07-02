@@ -10,7 +10,7 @@ actix-http = { version = "3.8.0", default-features = false, features = ["compres
 actix-web = { version = "4.8.0", default-features = false, features = ["macros", "compress-brotli", "compress-gzip", "cookies", "rustls"] }
 anyhow = "1.0.86"
 deserr = { path = "../../", features = ["actix-web"] }
-env_logger = "0.10.2"
+env_logger = "0.11.3"
 futures = "0.3.30"
 futures-util = "0.3.30"
 log = "0.4.22"

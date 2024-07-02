@@ -4,7 +4,7 @@ use deserr::{
     deserialize, errors::JsonError, take_cf_content, DeserializeError, Deserr, ErrorKind,
     ValuePointerRef,
 };
-use insta::{assert_debug_snapshot, assert_display_snapshot};
+use insta::{assert_debug_snapshot, assert_snapshot};
 use serde_json::json;
 
 #[test]
@@ -27,7 +27,7 @@ fn default_deny_unknown_fields() {
     let data = deserialize::<Struct, _, JsonError>(json!({ "word": "doggo", "turbo": "doggo" }))
         .unwrap_err();
 
-    assert_display_snapshot!(data, @"Unknown field `turbo`: expected one of `word`");
+    assert_snapshot!(data, @"Unknown field `turbo`: expected one of `word`");
 }
 
 #[test]
@@ -74,10 +74,10 @@ fn custom_deny_unknown_fields() {
     let data = deserialize::<Struct, _, JsonError>(json!({ "word": "doggo", "turbo": "doggo" }))
         .unwrap_err();
 
-    assert_display_snapshot!(data, @"Unknown field `turbo`: expected one of `word`");
+    assert_snapshot!(data, @"Unknown field `turbo`: expected one of `word`");
 
     let data = deserialize::<Struct, _, JsonError>(json!({ "word": "doggo", "doggo": "word" }))
         .unwrap_err();
 
-    assert_display_snapshot!(data, @"Invalid value: The word is doggo, not the opposite");
+    assert_snapshot!(data, @"Invalid value: The word is doggo, not the opposite");
 }

@@ -111,12 +111,12 @@ fn main() {
 
     // And when an error arise, we get the nice error from the json error handler.
     let error = deserialize::<Filter, _, JsonError>(json!(["jorts", "is", ["a", 10]])).unwrap_err();
-    insta::assert_display_snapshot!(error, @"Invalid value type at `[2][1]`: expected a string or an array, but found a positive integer: `10`");
+    insta::assert_snapshot!(error, @"Invalid value type at `[2][1]`: expected a string or an array, but found a positive integer: `10`");
 
     // But since we're generic over the error type we can as well switch to query parameter error!
     let error =
         deserialize::<Filter, _, QueryParamError>(json!(["jorts", "is", "a", 10])).unwrap_err();
-    insta::assert_display_snapshot!(error, @"Invalid value type for parameter `[3]`: expected a string, but found an integer: `10`");
+    insta::assert_snapshot!(error, @"Invalid value type for parameter `[3]`: expected a string, but found an integer: `10`");
 
     // And as expected, using this `Filter` type from another struct that got its `Deserr` implementation from the derive macro just works.
     let filter =
