@@ -4,7 +4,7 @@ use deserr::{
     deserialize, errors::JsonError, take_cf_content, DeserializeError, Deserr, ErrorKind,
     ValuePointerRef,
 };
-use insta::{assert_debug_snapshot, assert_display_snapshot};
+use insta::{assert_debug_snapshot, assert_snapshot};
 use serde_json::json;
 
 #[test]
@@ -37,8 +37,8 @@ fn missing_field_error() {
     "###);
 
     let data = deserialize::<Struct, _, JsonError>(json!({ "catto": "jorts" })).unwrap_err();
-    assert_display_snapshot!(data, @"Missing field `doggo`");
+    assert_snapshot!(data, @"Missing field `doggo`");
 
     let data = deserialize::<Struct, _, JsonError>(json!({ "doggo": "bork" })).unwrap_err();
-    assert_display_snapshot!(data, @"Invalid value: I really need the query field, please give it to me uwu");
+    assert_snapshot!(data, @"Invalid value: I really need the query field, please give it to me uwu");
 }

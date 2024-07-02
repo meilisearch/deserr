@@ -232,24 +232,24 @@ mod tests {
 
     #[test]
     fn test_value_kinds_description_json() {
-        insta::assert_display_snapshot!(value_kinds_description_json(&[]), @"a different value");
+        insta::assert_snapshot!(value_kinds_description_json(&[]), @"a different value");
 
-        insta::assert_display_snapshot!(value_kinds_description_json(&[ValueKind::Boolean]), @"a boolean");
-        insta::assert_display_snapshot!(value_kinds_description_json(&[ValueKind::Integer]), @"a positive integer");
-        insta::assert_display_snapshot!(value_kinds_description_json(&[ValueKind::NegativeInteger]), @"a negative integer");
-        insta::assert_display_snapshot!(value_kinds_description_json(&[ValueKind::Integer]), @"a positive integer");
-        insta::assert_display_snapshot!(value_kinds_description_json(&[ValueKind::String]), @"a string");
-        insta::assert_display_snapshot!(value_kinds_description_json(&[ValueKind::Sequence]), @"an array");
-        insta::assert_display_snapshot!(value_kinds_description_json(&[ValueKind::Map]), @"an object");
+        insta::assert_snapshot!(value_kinds_description_json(&[ValueKind::Boolean]), @"a boolean");
+        insta::assert_snapshot!(value_kinds_description_json(&[ValueKind::Integer]), @"a positive integer");
+        insta::assert_snapshot!(value_kinds_description_json(&[ValueKind::NegativeInteger]), @"a negative integer");
+        insta::assert_snapshot!(value_kinds_description_json(&[ValueKind::Integer]), @"a positive integer");
+        insta::assert_snapshot!(value_kinds_description_json(&[ValueKind::String]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_json(&[ValueKind::Sequence]), @"an array");
+        insta::assert_snapshot!(value_kinds_description_json(&[ValueKind::Map]), @"an object");
 
-        insta::assert_display_snapshot!(value_kinds_description_json(&[ValueKind::Integer, ValueKind::Boolean]), @"a boolean or a positive integer");
-        insta::assert_display_snapshot!(value_kinds_description_json(&[ValueKind::Null, ValueKind::Integer]), @"null or a positive integer");
-        insta::assert_display_snapshot!(value_kinds_description_json(&[ValueKind::Sequence, ValueKind::NegativeInteger]), @"a negative integer or an array");
-        insta::assert_display_snapshot!(value_kinds_description_json(&[ValueKind::Integer, ValueKind::Float]), @"a number");
-        insta::assert_display_snapshot!(value_kinds_description_json(&[ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger]), @"a number");
-        insta::assert_display_snapshot!(value_kinds_description_json(&[ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger, ValueKind::Null]), @"null or a number");
-        insta::assert_display_snapshot!(value_kinds_description_json(&[ValueKind::Boolean, ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger, ValueKind::Null]), @"null, a boolean, or a number");
-        insta::assert_display_snapshot!(value_kinds_description_json(&[ValueKind::Null, ValueKind::Boolean, ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger, ValueKind::Null]), @"null, a boolean, or a number");
+        insta::assert_snapshot!(value_kinds_description_json(&[ValueKind::Integer, ValueKind::Boolean]), @"a boolean or a positive integer");
+        insta::assert_snapshot!(value_kinds_description_json(&[ValueKind::Null, ValueKind::Integer]), @"null or a positive integer");
+        insta::assert_snapshot!(value_kinds_description_json(&[ValueKind::Sequence, ValueKind::NegativeInteger]), @"a negative integer or an array");
+        insta::assert_snapshot!(value_kinds_description_json(&[ValueKind::Integer, ValueKind::Float]), @"a number");
+        insta::assert_snapshot!(value_kinds_description_json(&[ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger]), @"a number");
+        insta::assert_snapshot!(value_kinds_description_json(&[ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger, ValueKind::Null]), @"null or a number");
+        insta::assert_snapshot!(value_kinds_description_json(&[ValueKind::Boolean, ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger, ValueKind::Null]), @"null, a boolean, or a number");
+        insta::assert_snapshot!(value_kinds_description_json(&[ValueKind::Null, ValueKind::Boolean, ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger, ValueKind::Null]), @"null, a boolean, or a number");
     }
 
     #[test]
@@ -261,7 +261,7 @@ mod tests {
         }
         let value = json!({ "toto": 2 });
         let err = deserr::deserialize::<Missing, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Missing field `me`");
+        insta::assert_snapshot!(err, @"Missing field `me`");
     }
 
     #[test]
@@ -273,7 +273,7 @@ mod tests {
         }
         let value = json!({ "me": [2] });
         let err = deserr::deserialize::<Incorrect, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Invalid value type at `.me`: expected a positive integer, but found an array: `[2]`");
+        insta::assert_snapshot!(err, @"Invalid value type at `.me`: expected a positive integer, but found an array: `[2]`");
 
         #[allow(dead_code)]
         #[derive(deserr::Deserr, Debug)]
@@ -290,7 +290,7 @@ mod tests {
         }
         let value = json!({ "me": "la" });
         let err = deserr::deserialize::<MultiIncorrect, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `la` at `.me`: expected one of `One`, `Two`, `Three`");
+        insta::assert_snapshot!(err, @"Unknown value `la` at `.me`: expected one of `One`, `Two`, `Three`");
 
         #[allow(dead_code)]
         #[derive(deserr::Deserr, Debug)]
@@ -307,7 +307,7 @@ mod tests {
         }
         let value = json!({ "me": "la" });
         let err = deserr::deserialize::<MultiIncorrectWithRename, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `la` at `.me`: expected one of `theobjectivecamelisnoice`, `bloup`");
+        insta::assert_snapshot!(err, @"Unknown value `la` at `.me`: expected one of `theobjectivecamelisnoice`, `bloup`");
     }
 
     #[test]
@@ -320,7 +320,7 @@ mod tests {
         }
         let value = json!({ "me": 2, "u": "uwu" });
         let err = deserr::deserialize::<SingleUnknownField, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown field `u`: expected one of `me`");
+        insta::assert_snapshot!(err, @"Unknown field `u`: expected one of `me`");
 
         #[allow(dead_code)]
         #[derive(deserr::Deserr, Debug)]
@@ -331,7 +331,7 @@ mod tests {
         }
         let value = json!({ "me": 2, "and": "u", "uwu": "OwO" });
         let err = deserr::deserialize::<MultiUnknownField, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown field `uwu`: expected one of `me`, `and`");
+        insta::assert_snapshot!(err, @"Unknown field `uwu`: expected one of `me`, `and`");
     }
 
     #[test]
@@ -344,11 +344,11 @@ mod tests {
         }
         let value = json!({ "me": [2] });
         let err = deserr::deserialize::<UnexpectedTuple, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Invalid value at `.me`: the sequence should have exactly 2 elements");
+        insta::assert_snapshot!(err, @"Invalid value at `.me`: the sequence should have exactly 2 elements");
 
         let value = json!({ "me": [2, 3, 4] });
         let err = deserr::deserialize::<UnexpectedTuple, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Invalid value at `.me`: the sequence should have exactly 2 elements");
+        insta::assert_snapshot!(err, @"Invalid value at `.me`: the sequence should have exactly 2 elements");
     }
 
     #[test]
@@ -374,72 +374,72 @@ mod tests {
 
         let value = json!({ "filler": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown field `filler`: did you mean `filter`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown field `filler`: did you mean `filter`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         let value = json!({ "sart": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown field `sart`: did you mean `sort`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown field `sart`: did you mean `sort`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         let value = json!({ "attributes_to_highlight": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown field `attributes_to_highlight`: did you mean `attributesToHighlight`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown field `attributes_to_highlight`: did you mean `attributesToHighlight`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         let value = json!({ "attributesToHighloght": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown field `attributesToHighloght`: did you mean `attributesToHighlight`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown field `attributesToHighloght`: did you mean `attributesToHighlight`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         // doesn't match anything
 
         let value = json!({ "a": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown field `a`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown field `a`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         let value = json!({ "query": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown field `query`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown field `query`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         let value = json!({ "filterable": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown field `filterable`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown field `filterable`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         let value = json!({ "sortable": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown field `sortable`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown field `sortable`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         // did you mean triggered by an unknown value
 
         let value = json!({ "q": "filler" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `filler` at `.q`: did you mean `filter`? expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `filler` at `.q`: did you mean `filter`? expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
 
         let value = json!({ "q": "sart" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `sart` at `.q`: did you mean `sort`? expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `sart` at `.q`: did you mean `sort`? expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
 
         let value = json!({ "q": "attributes_to_highlight" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `attributes_to_highlight` at `.q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `attributes_to_highlight` at `.q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
 
         let value = json!({ "q": "attributesToHighloght" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `attributesToHighloght` at `.q`: did you mean `attributesToHighLight`? expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `attributesToHighloght` at `.q`: did you mean `attributesToHighLight`? expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
 
         // doesn't match anything
 
         let value = json!({ "q": "a" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `a` at `.q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `a` at `.q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
 
         let value = json!({ "q": "query" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `query` at `.q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `query` at `.q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
 
         let value = json!({ "q": "filterable" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `filterable` at `.q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `filterable` at `.q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
 
         let value = json!({ "q": "sortable" });
         let err = deserr::deserialize::<DidYouMean, _, JsonError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `sortable` at `.q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `sortable` at `.q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
     }
 }

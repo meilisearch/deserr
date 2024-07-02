@@ -167,24 +167,24 @@ mod tests {
 
     #[test]
     fn test_value_kinds_description_query_param() {
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[]), @"a string");
 
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[ValueKind::Boolean]), @"a string");
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[ValueKind::Integer]), @"a string");
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[ValueKind::NegativeInteger]), @"a string");
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[ValueKind::Integer]), @"a string");
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[ValueKind::String]), @"a string");
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[ValueKind::Sequence]), @"a string");
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[ValueKind::Map]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[ValueKind::Boolean]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[ValueKind::Integer]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[ValueKind::NegativeInteger]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[ValueKind::Integer]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[ValueKind::String]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[ValueKind::Sequence]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[ValueKind::Map]), @"a string");
 
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[ValueKind::Integer, ValueKind::Boolean]), @"a string");
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[ValueKind::Null, ValueKind::Integer]), @"a string");
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[ValueKind::Sequence, ValueKind::NegativeInteger]), @"a string");
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[ValueKind::Integer, ValueKind::Float]), @"a string");
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger]), @"a string");
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger, ValueKind::Null]), @"a string");
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[ValueKind::Boolean, ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger, ValueKind::Null]), @"a string");
-        insta::assert_display_snapshot!(value_kinds_description_query_param(&[ValueKind::Null, ValueKind::Boolean, ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger, ValueKind::Null]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[ValueKind::Integer, ValueKind::Boolean]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[ValueKind::Null, ValueKind::Integer]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[ValueKind::Sequence, ValueKind::NegativeInteger]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[ValueKind::Integer, ValueKind::Float]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger, ValueKind::Null]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[ValueKind::Boolean, ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger, ValueKind::Null]), @"a string");
+        insta::assert_snapshot!(value_kinds_description_query_param(&[ValueKind::Null, ValueKind::Boolean, ValueKind::Integer, ValueKind::Float, ValueKind::NegativeInteger, ValueKind::Null]), @"a string");
     }
 
     #[test]
@@ -196,7 +196,7 @@ mod tests {
         }
         let value = json!({ "toto": 2 });
         let err = deserr::deserialize::<Missing, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Missing parameter `me`");
+        insta::assert_snapshot!(err, @"Missing parameter `me`");
     }
 
     #[test]
@@ -208,7 +208,7 @@ mod tests {
         }
         let value = json!({ "me": [2] });
         let err = deserr::deserialize::<Incorrect, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Invalid value type for parameter `me`: expected a string, but found multiple values");
+        insta::assert_snapshot!(err, @"Invalid value type for parameter `me`: expected a string, but found multiple values");
 
         #[allow(dead_code)]
         #[derive(deserr::Deserr, Debug)]
@@ -225,7 +225,7 @@ mod tests {
         }
         let value = json!({ "me": "la" });
         let err = deserr::deserialize::<MultiIncorrect, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `la` for parameter `me`: expected one of `One`, `Two`, `Three`");
+        insta::assert_snapshot!(err, @"Unknown value `la` for parameter `me`: expected one of `One`, `Two`, `Three`");
 
         #[allow(dead_code)]
         #[derive(deserr::Deserr, Debug)]
@@ -243,7 +243,7 @@ mod tests {
         let value = json!({ "me": "la" });
         let err =
             deserr::deserialize::<MultiIncorrectWithRename, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `la` for parameter `me`: expected one of `theobjectivecamelisnoice`, `bloup`");
+        insta::assert_snapshot!(err, @"Unknown value `la` for parameter `me`: expected one of `theobjectivecamelisnoice`, `bloup`");
     }
 
     #[test]
@@ -256,7 +256,7 @@ mod tests {
         }
         let value = json!({ "me": 2, "u": "uwu" });
         let err = deserr::deserialize::<SingleUnknownField, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown parameter `u`: expected one of `me`");
+        insta::assert_snapshot!(err, @"Unknown parameter `u`: expected one of `me`");
 
         #[allow(dead_code)]
         #[derive(deserr::Deserr, Debug)]
@@ -267,7 +267,7 @@ mod tests {
         }
         let value = json!({ "me": 2, "and": "u", "uwu": "OwO" });
         let err = deserr::deserialize::<MultiUnknownField, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown parameter `uwu`: expected one of `me`, `and`");
+        insta::assert_snapshot!(err, @"Unknown parameter `uwu`: expected one of `me`, `and`");
     }
 
     #[test]
@@ -280,11 +280,11 @@ mod tests {
         }
         let value = json!({ "me": [2] });
         let err = deserr::deserialize::<UnexpectedTuple, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Invalid value in parameter `me`: the sequence should have exactly 2 elements");
+        insta::assert_snapshot!(err, @"Invalid value in parameter `me`: the sequence should have exactly 2 elements");
 
         let value = json!({ "me": [2, 3, 4] });
         let err = deserr::deserialize::<UnexpectedTuple, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Invalid value in parameter `me`: the sequence should have exactly 2 elements");
+        insta::assert_snapshot!(err, @"Invalid value in parameter `me`: the sequence should have exactly 2 elements");
     }
 
     #[test]
@@ -312,72 +312,72 @@ mod tests {
 
         let value = json!({ "filler": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown parameter `filler`: did you mean `filter`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown parameter `filler`: did you mean `filter`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         let value = json!({ "sart": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown parameter `sart`: did you mean `sort`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown parameter `sart`: did you mean `sort`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         let value = json!({ "attributes_to_highlight": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown parameter `attributes_to_highlight`: did you mean `attributesToHighlight`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown parameter `attributes_to_highlight`: did you mean `attributesToHighlight`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         let value = json!({ "attributesToHighloght": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown parameter `attributesToHighloght`: did you mean `attributesToHighlight`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown parameter `attributesToHighloght`: did you mean `attributesToHighlight`? expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         // doesn't match anything
 
         let value = json!({ "a": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown parameter `a`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown parameter `a`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         let value = json!({ "query": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown parameter `query`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown parameter `query`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         let value = json!({ "filterable": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown parameter `filterable`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown parameter `filterable`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         let value = json!({ "sortable": "doggo" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown parameter `sortable`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
+        insta::assert_snapshot!(err, @"Unknown parameter `sortable`: expected one of `q`, `filter`, `sort`, `attributesToHighlight`");
 
         // did you mean triggered by an unknown value
 
         let value = json!({ "q": "filler" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `filler` for parameter `q`: did you mean `filter`? expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `filler` for parameter `q`: did you mean `filter`? expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
 
         let value = json!({ "q": "sart" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `sart` for parameter `q`: did you mean `sort`? expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `sart` for parameter `q`: did you mean `sort`? expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
 
         let value = json!({ "q": "attributes_to_highlight" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `attributes_to_highlight` for parameter `q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `attributes_to_highlight` for parameter `q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
 
         let value = json!({ "q": "attributesToHighloght" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `attributesToHighloght` for parameter `q`: did you mean `attributesToHighLight`? expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `attributesToHighloght` for parameter `q`: did you mean `attributesToHighLight`? expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
 
         // doesn't match anything
 
         let value = json!({ "q": "a" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `a` for parameter `q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `a` for parameter `q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
 
         let value = json!({ "q": "query" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `query` for parameter `q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `query` for parameter `q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
 
         let value = json!({ "q": "filterable" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `filterable` for parameter `q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `filterable` for parameter `q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
 
         let value = json!({ "q": "sortable" });
         let err = deserr::deserialize::<DidYouMean, _, QueryParamError>(value).unwrap_err();
-        insta::assert_display_snapshot!(err, @"Unknown value `sortable` for parameter `q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
+        insta::assert_snapshot!(err, @"Unknown value `sortable` for parameter `q`: expected one of `q`, `filter`, `sort`, `attributesToHighLight`");
     }
 }

@@ -1,5 +1,5 @@
 use deserr::{deserialize, errors::JsonError, Deserr};
-use insta::{assert_debug_snapshot, assert_display_snapshot};
+use insta::{assert_debug_snapshot, assert_snapshot};
 use serde_json::json;
 
 #[test]
@@ -23,8 +23,8 @@ fn error_attribute() {
     "###);
 
     let data = deserialize::<Struct, _, _>(json!({ "catto": "jorts" })).unwrap_err();
-    assert_display_snapshot!(data, @"Missing field `doggo`");
+    assert_snapshot!(data, @"Missing field `doggo`");
 
     let data = deserialize::<Struct, _, _>(json!({ "doggo": "bork" })).unwrap_err();
-    assert_display_snapshot!(data, @"Missing field `catto`");
+    assert_snapshot!(data, @"Missing field `catto`");
 }
