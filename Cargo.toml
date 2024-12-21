@@ -1,6 +1,6 @@
 [package]
 name = "deserr"
-version = "0.6.2"
+version = "0.6.3"
 authors = ["Lo <loic@meilisearch.com>", "Tamo <tamo@meilisearch.com>"]
 license = "MIT OR Apache-2.0"
 description = "Deserialization library with focus on error handling"

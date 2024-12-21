@@ -1065,6 +1065,10 @@ open an issue or a discussion.
 If you would like to chat more directly with us, you can join us on discord
 at https://discord.com/invite/meilisearch
 
+#### The logo
+The logo was graciously offered and crafted by @irevoire 's sister after a lot of back and forth.
+Many thanks to her.
+
 #### License
 
 <sup>
