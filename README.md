@@ -1,5 +1,5 @@
 <p align="center"><img width="280px" title="The deserr logo is a crab similar to Ferris with an ice cream all in place of his body" src="https://raw.githubusercontent.com/meilisearch/deserr/main/assets/deserr.png"></a>
-<h1 align="center">arroy</h1>
+<h1 align="center">deserr</h1>
 
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE-MIT)
 [![License](https://img.shields.io/badge/license-apache-green)](LICENSE-APACHE)
