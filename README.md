@@ -7,10 +7,6 @@
 [![Docs](https://docs.rs/deserr/badge.svg)](https://docs.rs/deserr)
 [![dependency status](https://deps.rs/repo/github/meilisearch/deserr/status.svg)](https://deps.rs/repo/github/meilisearch/deserr)
 
-# Deserr
-
-## Introduction
-
 Deserr is a crate for deserializing data, with the ability to return
 custom, type-specific errors upon failure. It was also designed with
 user-facing APIs in mind and thus provides better defaults than serde for
