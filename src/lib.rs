@@ -3,7 +3,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/meilisearch/deserr/main/assets/deserr.ico?raw=true"
 )]
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/meilisearch/deserr/main/assets/deserr.png?raw=true"
+    html_logo_url = "https://raw.githubusercontent.com/meilisearch/deserr/main/assets/deserr_squared.png?raw=true"
 )]
 
 #[cfg(feature = "actix-web")]
