@@ -1,0 +1,336 @@
+# Field attributes
+
+### `#[deserr(rename = "...")]`
+
+Deserialize this field with the given name instead of its Rust name.
+
+```rust
+use deserr::{Deserr, deserialize, errors::JsonError};
+use serde_json::json;
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+struct Search {
+    query: String,
+    #[deserr(rename = "atr")]
+    attributes_to_retrieve: Vec<String>,
+}
+
+let data = deserialize::<Search, _, JsonError>(
+    json!({ "query": "doggo", "atr": ["age", "name"] }),
+)
+.unwrap();
+assert_eq!(data, Search {
+    query: String::from("doggo"),
+    attributes_to_retrieve: vec![String::from("age"), String::from("name")],
+});
+```
+
+[Also available as a variant attribute.](variant.md#deserrrename)
+
+### `#[deserr(from)]`
+
+Deserializing a type from a function instead of a `Value`.
+You need to provide the following information;
+1. The input type of the function (here `&String`)
+2. The path of the function (here, we're simply using the std `FromStr` implementation)
+
+deserr will first try to deserialize the given type using its `Deserr<E>` implementation.
+That means the input type of the `from` can be complex. Then deserr will call your
+function.
+
+- [If your function can fail, consider using `try_from` instead](#deserrtryfrom)
+- [The container attribute may interests you as well](container.md#deserrfrom)
+
+```rust
+use deserr::{Deserr, deserialize, errors::JsonError};
+use serde_json::json;
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+#[deserr(from(String) = From::from)]
+enum Wildcard {
+    Wildcard,
+    Value(String),
+}
+
+impl From<String> for Wildcard {
+    fn from(s: String) -> Self {
+        if s == "*" {
+            Wildcard::Wildcard
+        } else {
+            Wildcard::Value(s)
+        }
+    }
+}
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+struct Search {
+    query: String,
+    #[deserr(from(String) = From::from)]
+    field: Wildcard,
+}
+
+let data = deserialize::<Search, _, JsonError>(
+    json!({ "query": "doggo", "field": "catto" }),
+)
+.unwrap();
+assert_eq!(data, Search { query: String::from("doggo"), field: Wildcard::Value(String::from("catto")) });
+
+let data = deserialize::<Search, _, JsonError>(
+    json!({ "query": "doggo", "field": "*" }),
+)
+.unwrap();
+assert_eq!(data, Search { query: String::from("doggo"), field: Wildcard::Wildcard });
+```
+
+### `#[deserr(try_from)]`
+
+Try deserializing a type from a function instead of a `Value`.
+You need to provide the following information;
+1. The input type of the function (here `&String`)
+2. The path of the function (here, we're simply using the std `FromStr` implementation)
+3. The error type that this function can return (here `ParseIntError`)
+
+deserr will first try to deserialize the given type using its `Deserr<E>` implementation.
+That means the input type of the `try_from` can be complex. Then deserr will call your
+function and accumulate the specified error against the error type of the caller.
+
+- [If your function cannot fail, consider using `from` instead](#deserrfrom)
+- [The container attribute may interests you as well](container.md#deserrtryfrom)
+
+```rust
+use deserr::{Deserr, deserialize, errors::JsonError};
+use serde_json::json;
+use std::convert::Infallible;
+use std::str::FromStr;
+use std::num::ParseIntError;
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+struct Search {
+    query: String,
+    #[deserr(try_from(&String) = FromStr::from_str -> ParseIntError)]
+    limit: usize,
+
+}
+
+let data = deserialize::<Search, _, JsonError>(
+    json!({ "query": "doggo", "limit": "12" }),
+)
+.unwrap();
+assert_eq!(data, Search { query: String::from("doggo"), limit: 12 });
+
+let error = deserialize::<Search, _, JsonError>(
+    json!({ "query": "doggo", "limit": 12 }),
+)
+.unwrap_err();
+assert_eq!(error.to_string(), "Invalid value type at `.limit`: expected a string, but found a positive integer: `12`");
+```
+
+### `#[deserr(default)]`
+
+Allows you to specify a default value for a field.
+
+Note that, unlike serde, by default, `Option` doesn't automatically use this attribute.
+Here you need to explicitly define whether your type can get a default value.
+This makes it less error-prone and easier to make an optional field mandatory.
+
+```rust
+use deserr::{Deserr, deserialize, errors::JsonError};
+use serde_json::json;
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+struct Search {
+    #[deserr(default)]
+    query: Option<String>,
+    #[deserr(default = 20)]
+    limit: usize,
+}
+
+let data = deserialize::<Search, _, JsonError>(
+    json!({ "query": "doggo", "limit": 4 }),
+)
+.unwrap();
+assert_eq!(data, Search { query: Some(String::from("doggo")), limit: 4 });
+
+let data = deserialize::<Search, _, JsonError>(
+    json!({ "query": "doggo" }),
+)
+.unwrap();
+assert_eq!(data, Search { query: Some(String::from("doggo")), limit: 20 });
+```
+
+### `#[deserr(skip)]`
+
+Allows you to skip the deserialization of a field.
+It won't show up in the list of fields generated by `deny_unknown_fields` or in the
+`UnknownKey` variant of the `ErrorKind` type.
+
+```rust
+use deserr::{Deserr, deserialize, errors::JsonError};
+use serde_json::json;
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+struct Search {
+    query: String,
+    // A field can be skipped if it implements `Default` or if the `default` attribute is specified.
+    #[deserr(skip)]
+    hidden: usize,
+}
+
+let data = deserialize::<Search, _, JsonError>(
+    json!({ "query": "doggo" }),
+)
+.unwrap();
+assert_eq!(data, Search { query: String::from("doggo"), hidden: 0 });
+
+// if you try to specify the field, it is ignored
+let data = deserialize::<Search, _, JsonError>(
+    json!({ "query": "doggo", "hidden": 2 }),
+)
+.unwrap();
+assert_eq!(data, Search { query: String::from("doggo"), hidden: 0 });
+
+// Here, we're going to see how skip interacts with `deny_unknown_fields`
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+#[deserr(deny_unknown_fields)]
+struct Search2 {
+    query: String,
+    // A field can be skipped if it implements `Default`.
+    #[deserr(skip)]
+    hidden: usize,
+}
+
+let error = deserialize::<Search2, _, JsonError>(
+    json!({ "query": "doggo", "hidden": 1 }),
+)
+.unwrap_err();
+// NOTE: `hidden` isn't in the list of expected fields + `hidden` is effectively considered as a non-existing field.
+assert_eq!(error.to_string(), "Unknown field `hidden`: expected one of `query`");
+```
+
+### `#[deserr(map)]`
+
+Map a field **after** it has been deserialized.
+
+```rust
+use deserr::{Deserr, deserialize, errors::JsonError};
+use serde_json::json;
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+struct Search {
+    query: String,
+    #[deserr(map = add_one)]
+    limit: usize,
+}
+
+fn add_one(n: usize) -> usize {
+    n.saturating_add(1)
+}
+
+let data = deserialize::<Search, _, JsonError>(
+    json!({ "query": "doggo", "limit": 0 }),
+)
+.unwrap();
+assert_eq!(data, Search { query: String::from("doggo"), limit: 1 });
+
+// Let's see how `map` interacts with the `default` attributes.
+#[derive(Deserr, Debug, PartialEq, Eq)]
+struct Search2 {
+    query: String,
+    #[deserr(default, map = add_one)]
+    limit: usize,
+}
+
+let data = deserialize::<Search2, _, JsonError>(
+    json!({ "query": "doggo" }),
+)
+.unwrap();
+// As we can see, the `map` attribute is applied AFTER the `default`.
+assert_eq!(data, Search2 { query: String::from("doggo"), limit: 1 });
+```
+
+### `#[deserr(missing_field_error)]`
+
+Gives you the opportunity to customize the error message if this specific field
+is missing.
+
+```rust
+use deserr::{Deserr, DeserializeError, ValuePointerRef, ErrorKind, deserialize, errors::JsonError};
+use serde_json::json;
+use std::convert::Infallible;
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+struct Search {
+    #[deserr(missing_field_error = missing_query_field)]
+    query: String,
+    limit: usize,
+}
+
+fn missing_query_field<E: DeserializeError>(_field_name: &str, location: ValuePointerRef) -> E {
+    deserr::take_cf_content(E::error::<Infallible>(
+        None,
+        ErrorKind::Unexpected {
+            msg: String::from("I really need the query field, please give it to me uwu"),
+        },
+        location,
+    ))
+}
+
+let error = deserialize::<Search, _, JsonError>(
+    json!({ "limit": 0 }),
+)
+.unwrap_err();
+assert_eq!(error.to_string(), "Invalid value: I really need the query field, please give it to me uwu");
+```
+
+### `#[deserr(error)]`
+
+Customize the error type that can be returned when deserializing this structure
+instead of keeping it generic.
+
+```rust
+use deserr::{Deserr, DeserializeError, ValuePointerRef, ErrorKind, deserialize, errors::JsonError};
+use serde_json::json;
+
+// Since the error returned by the `Search` structure needs to implements `MergeWithError<JsonError>`
+// we also need to specify the `error` attribute as a `JsonError`. But as you will see later there are
+// other solutions.
+#[derive(Deserr, Debug, PartialEq, Eq)]
+#[deserr(error = JsonError)]
+struct Search<A> {
+    #[deserr(error = JsonError)]
+    query: A,
+    limit: usize,
+}
+```
+
+### `#[deserr(needs_predicate)]`
+
+Automatically adds `where_predicate = FieldType: Deserr<ErrType>` for each field with this attribute.
+
+```rust
+use deserr::{Deserr, DeserializeError, MergeWithError, deserialize, errors::JsonError};
+use serde_json::json;
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+struct Search<A> {
+    #[deserr(needs_predicate)]
+    query: A,
+    limit: usize,
+}
+```
+
+Is strictly equivalent to the following:
+
+```rust
+use deserr::{Deserr, DeserializeError, MergeWithError, deserialize, errors::JsonError};
+use serde_json::json;
+
+// `__Deserr_E` represents the Error returned by the generated `Deserr` implementation.
+#[derive(Deserr, Debug, PartialEq, Eq)]
+#[deserr(where_predicate = A: Deserr<__Deserr_E>)]
+struct Search<A> {
+    query: A,
+    limit: usize,
+}
+```
