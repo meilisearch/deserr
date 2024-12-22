@@ -5,4 +5,5 @@
   - [Container attributes](./attributes/container.md)
   - [Variant attributes](./attributes/variant.md)
   - [Field attributes](./attributes/field.md)
+- [Implementing deserialize](./deserialize.md)
 - [FAQ](./faq.md)
