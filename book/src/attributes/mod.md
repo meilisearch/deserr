@@ -36,3 +36,57 @@ enum E {
 
 Note that a single struct, enum, variant, or field may have multiple attributes
 on it.
+
+## Feature comparison table with serde
+
+#### Datastructure support
+
+| datastructure       | serde | deserr | note |
+|---------------------|-------|--------|------|
+| Struct              |  yes  |  yes   |      |
+| Tuple struct        |  yes  |  no    |      |
+| Untagged Enum       |  yes  |  no    |      |
+| Untagged unit Enum  |  yes  |  yes   |      |
+| Tagged Enum         |  yes  |  yes   |      |
+
+#### Container attributes
+
+| features            | serde | deserr                                       | note                                                                            |
+|---------------------|-------|----------------------------------------------|---------------------------------------------------------------------------------|
+| rename              |  yes  |  no                                          |                                                                                 |
+| rename_all          |  yes  |  [yes](container.md#deserrrenameall)         |                                                                                 |
+| deny_unknown_fields |  yes  |  [yes](container.md#deserrdenyunknownfields) | With deserr you can call a custom function when an unknown field is encountered |
+| tag                 |  yes  |  [yes](container.md#deserrtag)               |                                                                                 |
+| tag+content         |  yes  |  no                                          |                                                                                 |
+| untagged            |  yes  |  no                                          | it's only supported for unit enums                                              |
+| bound               |  yes  |  no                                          | Can be emulated with `where_predicate`                                          |
+| default             |  yes  |  no                                          |                                                                                 |
+| remote              |  yes  |  no                                          |                                                                                 |
+| transparent         |  yes  |  no                                          |                                                                                 |
+| from                |  yes  |  [yes](container.md#deserrfrom)              |                                                                                 |
+| try_from            |  yes  |  [yes](container.md#deserrtryfrom)           |                                                                                 |
+| into                |  yes  |  no                                          |                                                                                 |
+| crate               |  yes  |  no                                          |                                                                                 |
+| validate            |  no   |  [yes](container.md#deserrvalidate)          | Allows you to validate the content of struct **after** it has been deserialized |
+| error               |  no   |  [yes](container.md#deserrerror)             | Specify the error type that should be used while deserializing this structure   |
+| where_predicate     |  no   |  [yes](container.md#deserrwherepredicate)    | Let you add where clauses to the generated `Deserr` implementation              |
+
+#### Field attributes
+
+| features            | serde | deserr                                     | note                                                                      |
+|---------------------|-------|--------------------------------------------|---------------------------------------------------------------------------|
+| rename              |  yes  |  [yes](field.md#deserrrename)              |                                                                           |
+| alias               |  yes  |  no                                        |                                                                           |
+| default             |  yes  |  [yes](field.md#deserrdefault)             |                                                                           |
+| flatten             |  yes  |  no                                        | serde doesn't support flattening + denying unknown field                  |
+| skip                |  yes  |  [yes](field.md#deserrskip)                |                                                                           |
+| deserialize_with    |  yes  |  no                                        | But it's kinda emulated with `from` and `try_from`                        |
+| with                |  yes  |  no                                        |                                                                           |
+| borrow              |  yes  |  no                                        | deserr does not support types with references                             |
+| bound               |  yes  |  no                                        |                                                                           |
+| map                 |  no   |  [yes](field.md#deserrmap)                 | Allows you to map the value **after** it was deserialized                 |
+| from                |  no   |  [yes](field.md#deserrfrom)                | Deserialize this field from an infallible function                        |
+| try_from            |  no   |  [yes](field.md#deserrtry_from)            | Deserialize this field from a fallible function                           |
+| missing_field_error |  no   |  [yes](field.md#deserrmissing_field_error) | Allows you to return a custom error if this field is missing              |
+| error               |  no   |  [yes](field.md#deserrerror)               | Specify the error type that should be used while deserializing this field |
+
