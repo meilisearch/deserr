@@ -12,7 +12,7 @@ use crate::{DeserializeError, MergeWithError};
 
 use super::helpers::did_you_mean;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JsonError(String);
 
 impl Display for JsonError {
