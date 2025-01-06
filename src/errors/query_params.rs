@@ -4,7 +4,7 @@
 //! We also provides some helpers if you need to reuse some component for your error
 //! messages.
 
-use crate::{DeserializeError, MergeWithError};
+use crate::{DeserializeError, MergeWithError, Sequence};
 use deserr::{ErrorKind, IntoValue, ValueKind, ValuePointerRef};
 use std::{convert::Infallible, fmt::Display, ops::ControlFlow};
 
@@ -70,6 +70,18 @@ impl deserr::DeserializeError for QueryParamError {
                         .map(|accepted| format!("`{}`", accepted))
                         .collect::<Vec<String>>()
                         .join(", "),
+                )
+            }
+            ErrorKind::BadSequenceLen { actual, expected } => {
+                let location = location_query_param_description(location, " for parameter");
+                let len = actual.len();
+                let value: crate::Value<V> = crate::Value::Sequence(actual);
+                format!(
+                    "Invalid array len{}. Received {} elements instead of {}: `{}`",
+                    location,
+                    len,
+                    expected,
+                    serde_json::to_string(&serde_json::Value::from(value)).unwrap()
                 )
             }
             ErrorKind::Unexpected { msg } => {
@@ -280,11 +292,11 @@ mod tests {
         }
         let value = json!({ "me": [2] });
         let err = deserr::deserialize::<UnexpectedTuple, _, QueryParamError>(value).unwrap_err();
-        insta::assert_snapshot!(err, @"Invalid value in parameter `me`: the sequence should have exactly 2 elements");
+        insta::assert_snapshot!(err, @"Invalid array len for parameter `me`. Received 1 elements instead of 2: `[2]`");
 
         let value = json!({ "me": [2, 3, 4] });
         let err = deserr::deserialize::<UnexpectedTuple, _, QueryParamError>(value).unwrap_err();
-        insta::assert_snapshot!(err, @"Invalid value in parameter `me`: the sequence should have exactly 2 elements");
+        insta::assert_snapshot!(err, @"Invalid array len for parameter `me`. Received 3 elements instead of 2: `[2,3,4]`");
     }
 
     #[test]

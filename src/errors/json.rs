@@ -8,7 +8,7 @@ use std::{convert::Infallible, fmt::Display, ops::ControlFlow};
 
 use deserr::{ErrorKind, IntoValue, ValueKind, ValuePointerRef};
 
-use crate::{DeserializeError, MergeWithError};
+use crate::{DeserializeError, MergeWithError, Sequence};
 
 use super::helpers::did_you_mean;
 
@@ -188,6 +188,18 @@ impl DeserializeError for JsonError {
                         .join(", "),
                 )
             }
+            ErrorKind::BadSequenceLen { actual, expected } => {
+                let location = location_json_description(location, " at");
+                let len = actual.len();
+                let value: crate::Value<V> = crate::Value::Sequence(actual);
+                format!(
+                    "Invalid array len{}. Received {} elements instead of {}: `{}`",
+                    location,
+                    len,
+                    expected,
+                    serde_json::to_string(&serde_json::Value::from(value)).unwrap()
+                )
+            }
             ErrorKind::Unexpected { msg } => {
                 let location = location_json_description(location, " at");
                 format!("Invalid value{location}: {msg}")
@@ -344,11 +356,11 @@ mod tests {
         }
         let value = json!({ "me": [2] });
         let err = deserr::deserialize::<UnexpectedTuple, _, JsonError>(value).unwrap_err();
-        insta::assert_snapshot!(err, @"Invalid value at `.me`: the sequence should have exactly 2 elements");
+        insta::assert_snapshot!(err, @"Invalid array len at `.me`. Received 1 elements instead of 2: `[2]`");
 
         let value = json!({ "me": [2, 3, 4] });
         let err = deserr::deserialize::<UnexpectedTuple, _, JsonError>(value).unwrap_err();
-        insta::assert_snapshot!(err, @"Invalid value at `.me`: the sequence should have exactly 2 elements");
+        insta::assert_snapshot!(err, @"Invalid array len at `.me`. Received 3 elements instead of 2: `[2,3,4]`");
     }
 
     #[test]

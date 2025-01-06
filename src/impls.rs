@@ -774,8 +774,9 @@ where
                 if len != N {
                     return Err(take_cf_content(E::error::<V>(
                         None,
-                        ErrorKind::Unexpected {
-                            msg: format!("expected a sequence of {} elements but instead found a sequence of {} elements", N, len),
+                        ErrorKind::BadSequenceLen {
+                            actual: seq,
+                            expected: N,
                         },
                         location,
                     )));
@@ -834,8 +835,9 @@ where
                 if len != 2 {
                     return Err(take_cf_content(E::error::<V>(
                         None,
-                        ErrorKind::Unexpected {
-                            msg: String::from("the sequence should have exactly 2 elements"),
+                        ErrorKind::BadSequenceLen {
+                            actual: seq,
+                            expected: 2,
                         },
                         location,
                     )));
@@ -907,8 +909,9 @@ where
                 if len != 3 {
                     return Err(take_cf_content(E::error::<V>(
                         None,
-                        ErrorKind::Unexpected {
-                            msg: String::from("the sequence should have exactly 3 elements"),
+                        ErrorKind::BadSequenceLen {
+                            actual: seq,
+                            expected: 3,
                         },
                         location,
                     )));

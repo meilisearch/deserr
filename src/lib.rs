@@ -178,6 +178,10 @@ pub enum ErrorKind<'a, V: IntoValue> {
         value: &'a str,
         accepted: &'a [&'a str],
     },
+    BadSequenceLen {
+        actual: V::Sequence,
+        expected: usize,
+    },
     Unexpected {
         msg: String,
     },

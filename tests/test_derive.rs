@@ -1,6 +1,6 @@
 use deserr::{
-    DeserializeError, Deserr, ErrorKind, IntoValue, MergeWithError, ValueKind, ValuePointer,
-    ValuePointerRef,
+    DeserializeError, Deserr, ErrorKind, IntoValue, MergeWithError, Sequence, ValueKind,
+    ValuePointer, ValuePointerRef,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
@@ -30,6 +30,10 @@ pub enum DefaultErrorContent {
         accepted: Vec<String>,
     },
     CustomMissingField(usize),
+    BadSequenceLen {
+        actual: usize,
+        expected: usize,
+    },
     Validation,
 }
 
@@ -72,6 +76,10 @@ impl DeserializeError for DefaultError {
                     .iter()
                     .map(|accepted| accepted.to_string())
                     .collect(),
+            },
+            ErrorKind::BadSequenceLen { actual, expected } => DefaultErrorContent::BadSequenceLen {
+                actual: actual.len(),
+                expected,
             },
             ErrorKind::Unexpected { msg } => DefaultErrorContent::Unexpected(msg),
         };
