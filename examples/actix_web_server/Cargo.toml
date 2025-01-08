@@ -6,13 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-http = { version = "3.8.0", default-features = false, features = ["compress-brotli", "compress-gzip", "rustls"] }
-actix-web = { version = "4.8.0", default-features = false, features = ["macros", "compress-brotli", "compress-gzip", "cookies", "rustls"] }
-anyhow = "1.0.86"
+actix-http = { version = "3.9.0", default-features = false, features = ["compress-brotli", "compress-gzip", "rustls"] }
+actix-web = { version = "4.9.0", default-features = false, features = ["macros", "compress-brotli", "compress-gzip", "cookies", "rustls"] }
+anyhow = "1.0.95"
 deserr = { path = "../../", features = ["actix-web"] }
-env_logger = "0.11.3"
-futures = "0.3.30"
-futures-util = "0.3.30"
+env_logger = "0.11.6"
+futures = "0.3.31"
+futures-util = "0.3.31"
 log = "0.4.22"
-serde = { version = "1.0.203", features = ["derive"] }
-serde_json = "1.0.120"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.135"
