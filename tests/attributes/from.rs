@@ -14,7 +14,7 @@ fn from_container_attribute() {
 
     impl From<String> for AsciiString {
         fn from(s: String) -> Self {
-            if s.chars().any(|c| !c.is_ascii()) {
+            if !s.is_ascii() {
                 Self::Invalid(s)
             } else {
                 Self::Valid(s)
@@ -77,7 +77,7 @@ fn from_field_attribute() {
 
     impl From<String> for AsciiString {
         fn from(s: String) -> Self {
-            if s.chars().any(|c| !c.is_ascii()) {
+            if !s.is_ascii() {
                 Self::Invalid(s)
             } else {
                 Self::Valid(s)

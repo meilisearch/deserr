@@ -25,6 +25,7 @@ impl MergeWithError<MyError> for MyError {
 
 #[derive(Deserr)]
 #[deserr(error = MyError)]
+#[allow(unused)]
 pub struct Point {
     pub x: u32,
     pub y: u32,

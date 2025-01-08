@@ -34,7 +34,7 @@ pub enum ValuePointerRef<'a> {
     },
 }
 
-impl<'a> Default for ValuePointerRef<'a> {
+impl Default for ValuePointerRef<'_> {
     fn default() -> Self {
         Self::Origin
     }
@@ -55,10 +55,7 @@ impl<'a> ValuePointerRef<'a> {
 
     /// Return true if the pointer is at the origin.
     pub fn is_origin(&self) -> bool {
-        match self {
-            ValuePointerRef::Origin => true,
-            _ => false,
-        }
+        matches!(self, ValuePointerRef::Origin)
     }
 
     /// Return the last field encountered if there is one.
