@@ -1,0 +1,549 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Container attributes - deserr</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">deserr</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="container-attributes"><a class="header" href="#container-attributes">Container attributes</a></h1>
+<h3 id="deserrrename_all--"><a class="header" href="#deserrrename_all--"><code>#[deserr(rename_all = ...)]</code></a></h3>
+<p>Rename all the fields (if this is a struct) or variants (if this is an enum) according to the given case convention.
+The possible values are: <code>lowercase</code>, <code>camelCase</code>.</p>
+<p>If you need more values please open an issue, it's easy to implement and was simply not implemented because it isn't required for Meilisearch at the moment.</p>
+<div class="warning">
+<p>Unlike <code>serde</code>, you don't need to put the double-quotes (<code>"</code>) around the name of the case, e.g.: <code>#[deserr(rename_all = camelCase)]</code>.</p>
+</div>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use deserr::{Deserr, deserialize, errors::JsonError};
+use serde_json::json;
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+#[deserr(rename_all = camelCase)]
+struct Search {
+    query: String,
+    attributes_to_retrieve: Vec&lt;String&gt;,
+}
+
+let data = deserialize::&lt;Search, _, JsonError&gt;(
+    json!({ "query": "doggo", "attributesToRetrieve": ["age", "name"] }),
+)
+.unwrap();
+assert_eq!(data, Search {
+    query: String::from("doggo"),
+    attributes_to_retrieve: vec![String::from("age"), String::from("name")],
+});
+<span class="boring">}</span></code></pre></pre>
+<h3 id="deserrdeny_unknown_fields"><a class="header" href="#deserrdeny_unknown_fields"><code>#[deserr(deny_unknown_fields)]</code></a></h3>
+<p>Always error during deserialization when encountering unknown fields.
+When this attribute is not present, by default unknown fields are silently ignored.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use deserr::{Deserr, deserialize, errors::JsonError};
+use serde_json::json;
+
+#[derive(Deserr, Debug)]
+#[deserr(deny_unknown_fields)]
+struct Search {
+    query: String,
+}
+
+let err = deserialize::&lt;Search, _, JsonError&gt;(
+    json!({ "query": "doggo", "doggo": "bork" }),
+)
+.unwrap_err();
+
+assert_eq!(err.to_string(), "Unknown field `doggo`: expected one of `query`");
+<span class="boring">}</span></code></pre></pre>
+<div class="warning">
+<p>Unlike <code>serde</code>, with <code>deserr</code> you can specify provide a custom function to handle the error.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use deserr::{Deserr, deserialize, ErrorKind, DeserializeError, ValuePointerRef, take_cf_content, errors::JsonError};
+use std::convert::Infallible;
+use serde_json::json;
+
+#[derive(Deserr, Debug)]
+#[deserr(deny_unknown_fields = unknown_fields_search)]
+struct Search {
+    query: String,
+}
+
+fn unknown_fields_search&lt;E: DeserializeError&gt;(
+    field: &amp;str,
+    accepted: &amp;[&amp;str],
+    location: ValuePointerRef,
+) -&gt; E {
+    // `E::error` returns a `ControlFlow&lt;E, E&gt;`, which returns the error and indicates
+    // whether we should keep accumulating errors or not. However, here we simply
+    // want to retrieve the error's value. This is what `take_cf_content` does.
+    match field {
+        "doggo" =&gt; take_cf_content(E::error::&lt;Infallible&gt;(
+                None,
+                ErrorKind::Unexpected {
+                    msg: String::from("can I pet the doggo? uwu")
+                },
+                location,
+            )),
+        _ =&gt; take_cf_content(E::error::&lt;Infallible&gt;(
+            None,
+            deserr::ErrorKind::UnknownKey { key: field, accepted },
+            location,
+        )),
+    }
+}
+
+let err = deserialize::&lt;Search, _, JsonError&gt;(
+    json!({ "query": "doggo", "doggo": "bork" }),
+)
+.unwrap_err();
+
+assert_eq!(err.to_string(), "Invalid value: can I pet the doggo? uwu");
+
+let err = deserialize::&lt;Search, _, JsonError&gt;(
+    json!({ "query": "doggo", "catto": "jorts" }),
+)
+.unwrap_err();
+
+assert_eq!(err.to_string(), "Unknown field `catto`: expected one of `query`");
+<span class="boring">}</span></code></pre></pre>
+</div>
+<h3 id="deserrtag"><a class="header" href="#deserrtag"><code>#[deserr(tag)]</code></a></h3>
+<p>Externally tag an enum.</p>
+<div class="warning">
+<p>Deserr does not support internally tagging your enum yet, which means you'll always need to use this attribute if you're deserializing an enum.</p>
+</div>
+<p>For complete unit enums, deserr can deserialize their value from a string, though.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use deserr::{Deserr, deserialize, errors::JsonError};
+use serde_json::json;
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+struct Search {
+    query: Query,
+}
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+#[deserr(tag = "type")]
+enum Query {
+    Single {
+        search: String,
+    },
+    Multi {
+        searches: Vec&lt;String&gt;,
+    }
+}
+
+let data = deserialize::&lt;Search, _, JsonError&gt;(
+    json!({ "query": { "type": "Single", "search": "bork" } }),
+)
+.unwrap();
+assert_eq!(data, Search {
+    query: Query::Single {
+        search: String::from("bork"),
+    },
+});
+<span class="boring">}</span></code></pre></pre>
+<h3 id="deserrfrom"><a class="header" href="#deserrfrom"><code>#[deserr(from)]</code></a></h3>
+<p>Deserializing a type from a function instead of a <code>Value</code>.
+You need to provide the following information;</p>
+<ol>
+<li>The input type of the function (here <code>&amp;String</code>)</li>
+<li>The path of the function (here, we're simply using the std <code>FromStr</code> implementation)</li>
+</ol>
+<p>deserr will first try to deserialize the given type using its <code>Deserr&lt;E&gt;</code> implementation.
+That means the input type of the <code>from</code> can be complex. Then deserr will call your
+function.</p>
+<ul>
+<li><a href="#deserrtryfrom">If your function can fail, consider using <code>try_from</code> instead</a></li>
+<li><a href="field.html#deserrfrom">The field attribute may interests you as well</a></li>
+</ul>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use deserr::{Deserr, deserialize, errors::JsonError};
+use serde_json::json;
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+#[deserr(from(String) = From::from)]
+enum Wildcard {
+    Wildcard,
+    Value(String),
+}
+
+impl From&lt;String&gt; for Wildcard {
+    fn from(s: String) -&gt; Self {
+        if s == "*" {
+            Wildcard::Wildcard
+        } else {
+            Wildcard::Value(s)
+        }
+    }
+}
+
+let data = deserialize::&lt;Wildcard, _, JsonError&gt;(
+    json!("doggo"),
+)
+.unwrap();
+assert_eq!(data, Wildcard::Value(String::from("doggo")));
+
+let data = deserialize::&lt;Wildcard, _, JsonError&gt;(
+    json!("*"),
+)
+.unwrap();
+assert_eq!(data, Wildcard::Wildcard);
+<span class="boring">}</span></code></pre></pre>
+<h3 id="deserrtry_from"><a class="header" href="#deserrtry_from"><code>#[deserr(try_from)]</code></a></h3>
+<p>Try deserializing a type from a function instead of a <code>Value</code>.
+You need to provide the following information;</p>
+<ol>
+<li>The input type of the function (here <code>&amp;String</code>)</li>
+<li>The path of the function (here, we're simply using the std <code>FromStr</code> implementation)</li>
+<li>The error type that this function can return (here <code>AsciiStringError</code>)</li>
+</ol>
+<p>deserr will first try to deserialize the given type using its <code>Deserr&lt;E&gt;</code> implementation.
+That means the input type of the <code>try_from</code> can be complex. Then deserr will call your
+function and accumulate the specified error against the error type of the caller.</p>
+<ul>
+<li><a href="#deserrfrom">If your function cannot fail, consider using <code>from</code> directly</a></li>
+<li><a href="field.html#deserrtryfrom">The field attribute may interests you as well</a></li>
+</ul>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use deserr::{Deserr, deserialize, errors::JsonError};
+use serde_json::json;
+use std::str::FromStr;
+use std::fmt;
+
+// Notice how the `try_from` allows us to leverage the deserr limitation on tuple struct.
+#[derive(Deserr, Debug, PartialEq, Eq)]
+#[deserr(try_from(&amp;String) = FromStr::from_str -&gt; AsciiStringError)]
+struct AsciiString(String);
+
+#[derive(Debug)]
+struct AsciiStringError(char);
+
+impl fmt::Display for AsciiStringError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        write!(
+            f,
+            "Encountered invalid character: `{}`, only ascii characters are accepted",
+            self.0
+        )
+    }
+}
+impl std::error::Error for AsciiStringError {}
+
+impl FromStr for AsciiString {
+    type Err = AsciiStringError;
+
+    fn from_str(s: &amp;str) -&gt; Result&lt;Self, Self::Err&gt; {
+        if let Some(c) = s.chars().find(|c| !c.is_ascii()) {
+            Err(AsciiStringError(c))
+        } else {
+            Ok(Self(s.to_string()))
+        }
+    }
+}
+
+let data = deserialize::&lt;AsciiString, _, JsonError&gt;(
+    json!("doggo"),
+)
+.unwrap();
+assert_eq!(data, AsciiString(String::from("doggo")));
+
+let error = deserialize::&lt;AsciiString, _, JsonError&gt;(
+    json!("👉👈"),
+)
+.unwrap_err();
+assert_eq!(error.to_string(), "Invalid value: Encountered invalid character: `👉`, only ascii characters are accepted");
+<span class="boring">}</span></code></pre></pre>
+<h3 id="deserrvalidate"><a class="header" href="#deserrvalidate"><code>#[deserr(validate)]</code></a></h3>
+<p>Validate a structure <strong>after</strong> it has been deserialized.
+This is typically useful when your validation logic needs to take multiple fields into account.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use deserr::{Deserr, DeserializeError, ErrorKind, ValuePointerRef, deserialize, errors::JsonError};
+use serde_json::json;
+use std::convert::Infallible;
+
+// `__Deserr_E` represents the Error returned by the generated `Deserr` implementation.
+#[derive(Deserr, Debug, PartialEq, Eq)]
+#[deserr(validate = validate_range -&gt; __Deserr_E)]
+struct Range {
+    min: u8,
+    max: u8,
+}
+
+fn validate_range&lt;E: DeserializeError&gt;(
+    range: Range,
+    location: ValuePointerRef,
+) -&gt; Result&lt;Range, E&gt; {
+    if range.min &gt; range.max {
+        Err(deserr::take_cf_content(E::error::&lt;Infallible&gt;(
+            None,
+            ErrorKind::Unexpected {
+                msg: format!(
+                    "`max` (`{}`) should be greater than `min` (`{}`)",
+                    range.max, range.min
+                ),
+            },
+            location,
+        )))
+    } else {
+        Ok(range)
+    }
+}
+
+let data = deserialize::&lt;Range, _, JsonError&gt;(
+    json!({ "min": 2, "max": 4 }),
+)
+.unwrap();
+assert_eq!(data, Range { min: 2, max: 4 });
+
+let error = deserialize::&lt;Range, _, JsonError&gt;(
+    json!({ "min": 4, "max": 2 }),
+)
+.unwrap_err();
+assert_eq!(error.to_string(), "Invalid value: `max` (`2`) should be greater than `min` (`4`)");
+<span class="boring">}</span></code></pre></pre>
+<h3 id="deserrerror"><a class="header" href="#deserrerror"><code>#[deserr(error)]</code></a></h3>
+<p>Customize the error type that can be returned when deserializing this structure
+instead of keeping it generic.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use deserr::{Deserr, DeserializeError, ValuePointerRef, ErrorKind, deserialize, errors::JsonError};
+use serde_json::json;
+
+#[derive(Deserr, Debug, PartialEq, Eq)]
+#[deserr(error = JsonError)]
+struct Search {
+    query: String,
+    limit: usize,
+}
+
+// As we can see, rust is able to infer the error type.
+let data = deserialize::&lt;Search, _, _&gt;(
+    json!({ "query": "doggo", "limit": 1 }),
+)
+.unwrap();
+assert_eq!(data, Search { query: String::from("doggo"), limit: 1 });
+<span class="boring">}</span></code></pre></pre>
+<h3 id="deserrwhere_predicate"><a class="header" href="#deserrwhere_predicate"><code>#[deserr(where_predicate)]</code></a></h3>
+<p>Let you add <code>where</code> clauses to the <code>Deserr</code> implementation that deserr will generate.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use deserr::{Deserr, DeserializeError, MergeWithError, deserialize, errors::JsonError};
+use serde_json::json;
+
+// Here we can constraint the generic `__Deserr_E` type used by deserr to implements `MergeWithError`.
+// Now instead of constraining the final error type it stays generic if it's able to accumulate with
+// with a `JsonError`.
+#[derive(Deserr, Debug, PartialEq, Eq)]
+#[deserr(where_predicate = __Deserr_E: MergeWithError&lt;JsonError&gt;, where_predicate = A: Deserr&lt;JsonError&gt;)]
+struct Search&lt;A&gt; {
+    #[deserr(error = JsonError)]
+    query: A,
+    limit: usize,
+}
+<span class="boring">}</span></code></pre></pre>
+<p><a href="field.html#deserrneedspredicate">For simple cases, see also the <code>needs_predicate</code> field attribute.</a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../attributes/mod.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../attributes/variant.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../attributes/mod.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../attributes/variant.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
