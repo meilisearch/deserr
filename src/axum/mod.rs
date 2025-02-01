@@ -2,4 +2,4 @@
 mod serde_json;
 
 #[cfg(feature = "serde-json")]
-pub use self::serde_json::AxumJson;
+pub use self::serde_json::{AxumJson, AxumJsonRejection};

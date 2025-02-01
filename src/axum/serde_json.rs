@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::errors::JsonError;
 use crate::{DeserializeError, Deserr};
 use axum::extract::rejection::JsonRejection;
@@ -5,7 +7,6 @@ use axum::extract::FromRequest;
 use axum::response::IntoResponse;
 use axum::Json;
 use http::StatusCode;
-use std::marker::PhantomData;
 
 /// Extractor for typed data from Json request payloads
 /// deserialised by deserr.
@@ -19,7 +20,7 @@ use std::marker::PhantomData;
 /// [`axum::response::IntoResponse`] is implemented for any `AxumJson<T, E>`
 /// where `T` implement [`serde::Serialize`].
 #[derive(Debug)]
-pub struct AxumJson<T, E>(pub T, PhantomData<*const E>);
+pub struct AxumJson<T, E>(pub T, PhantomData<E>);
 
 impl<T, E> AxumJson<T, E> {
     pub fn new(data: T) -> Self {
@@ -37,15 +38,32 @@ pub enum AxumJsonRejection<E: DeserializeError> {
     JsonRejection(JsonRejection),
 }
 
-impl<T, S, E: DeserializeError> FromRequest<S> for AxumJson<T, E>
+impl<E: DeserializeError + std::fmt::Display> std::fmt::Display for AxumJsonRejection<E> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AxumJsonRejection::DeserrError(e) => e.fmt(f),
+            AxumJsonRejection::JsonRejection(e) => e.fmt(f),
+        }
+    }
+}
+
+impl<T, E> IntoResponse for AxumJson<T, E>
 where
-    T: Deserr<E>,
+    T: serde::Serialize,
+{
+    fn into_response(self) -> axum::response::Response {
+        Json(self.0).into_response()
+    }
+}
+
+impl<T, E, S> FromRequest<S> for AxumJson<T, E>
+where
     E: DeserializeError + IntoResponse + 'static,
+    T: Deserr<E>,
     S: Send + Sync,
 {
     type Rejection = AxumJsonRejection<E>;
 
-    #[inline]
     async fn from_request(req: axum::extract::Request, state: &S) -> Result<Self, Self::Rejection> {
         let Json(value) = Json::<serde_json::Value>::from_request(req, state).await?;
         let data = deserr::deserialize::<_, _, _>(value)?;

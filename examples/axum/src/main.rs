@@ -13,7 +13,8 @@ use deserr::ValuePointerRef;
 use serde::Deserialize;
 use serde::Serialize;
 use std::convert::Infallible;
-use std::net::SocketAddr;
+use std::net::Ipv4Addr;
+use tokio::net::TcpListener;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Debug, Serialize, Deserialize, Deserr)]
@@ -98,6 +99,7 @@ async fn serde(Json(item): Json<Query>) -> Result<Json<Query>, impl IntoResponse
 }
 
 /// This handler uses the official `AxumJson` deserr
+#[axum::debug_handler]
 async fn deserr(item: AxumJson<Query, JsonError>) -> AxumJson<Query, JsonError> {
     item
 }
@@ -116,10 +118,11 @@ async fn main() {
         .route("/serde", post(serde))
         .route("/deserr", post(deserr));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 8001))
+        .await
+        .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app.into_make_service())
         .await
         .unwrap();
 }

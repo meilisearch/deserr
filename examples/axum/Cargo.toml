@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 deserr = { path = "../../", features = ["axum"] }
-axum = { version = "0.8.1", features = ["json"] }
+axum = { version = "0.8.1", features = ["json", "macros"] }
 tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0.217", features = ["derive"] }
 tracing = "0.1"
