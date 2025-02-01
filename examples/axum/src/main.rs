@@ -4,11 +4,11 @@ use axum::routing::post;
 use axum::Json;
 use axum::Router;
 use deserr::axum::AxumJson;
+use deserr::errors::JsonError;
 use deserr::take_cf_content;
 use deserr::DeserializeError;
 use deserr::Deserr;
 use deserr::ErrorKind;
-use deserr::JsonError;
 use deserr::ValuePointerRef;
 use serde::Deserialize;
 use serde::Serialize;
@@ -123,4 +123,3 @@ async fn main() {
         .await
         .unwrap();
 }
-
