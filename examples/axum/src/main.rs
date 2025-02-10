@@ -99,7 +99,6 @@ async fn serde(Json(item): Json<Query>) -> Result<Json<Query>, impl IntoResponse
 }
 
 /// This handler uses the official `AxumJson` deserr
-#[axum::debug_handler]
 async fn deserr(item: AxumJson<Query, JsonError>) -> Json<Query> {
     Json(item.0)
 }
