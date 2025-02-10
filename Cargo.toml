@@ -11,7 +11,6 @@ keywords = ["deserialization", "error"]
 edition = "2021"
 
 [dependencies]
-serde = { version = "1.0", optional = true }
 serde_json = { version = "1.0", optional = true }
 serde-cs = { version = "0.2.4", optional = true }
 actix-web = { version = "4.9.0", default-features = false, optional = true }
@@ -29,7 +28,7 @@ default = ["serde-json", "serde-cs"]
 serde-json = ["serde_json"]
 serde-cs = ["dep:serde-cs"]
 actix-web = ["dep:actix-web", "futures", "actix-http", "actix-utils"]
-axum = ["dep:axum", "http", "serde"]
+axum = ["dep:axum", "http"]
 
 [dev-dependencies]
 automod = "1.0"
