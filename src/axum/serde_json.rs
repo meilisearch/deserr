@@ -15,10 +15,6 @@ use http::StatusCode;
 /// To extract typed data from a request body, the inner type `T` must implement the
 /// [`deserr::Deserr<E>`] trait. The inner type `E` must implement the
 /// [`DeserializeError`] trait.
-///
-/// ## Response
-/// [`axum::response::IntoResponse`] is implemented for any `AxumJson<T, E>`
-/// where `T` implement [`serde::Serialize`].
 #[derive(Debug)]
 pub struct AxumJson<T, E>(pub T, PhantomData<E>);
 
@@ -44,15 +40,6 @@ impl<E: DeserializeError + std::fmt::Display> std::fmt::Display for AxumJsonReje
             AxumJsonRejection::DeserrError(e) => e.fmt(f),
             AxumJsonRejection::JsonRejection(e) => e.fmt(f),
         }
-    }
-}
-
-impl<T, E> IntoResponse for AxumJson<T, E>
-where
-    T: serde::Serialize,
-{
-    fn into_response(self) -> axum::response::Response {
-        Json(self.0).into_response()
     }
 }
 
