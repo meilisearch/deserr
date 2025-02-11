@@ -1,0 +1,488 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Overview - deserr</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">deserr</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <p align="center"><img width="280px" title="The deserr logo is a crab similar to Ferris with an ice cream all in place of his body" src="https://raw.githubusercontent.com/meilisearch/deserr/main/assets/deserr.png"></a>
+<h1 id="overview"><a class="header" href="#overview">Overview</a></h1>
+<p>Deserr is a crate for deserializing data, with the ability to return
+custom, type-specific errors upon failure. It was also designed with
+user-facing APIs in mind and thus provides better defaults than serde for
+this use case.</p>
+<p>Unlike serde, deserr does not parse the data in its serialization format itself
+but offloads the work to other crates. Instead, it deserializes
+the already-parsed serialized data into the final type. For example:</p>
+<pre><code class="language-rust ignore">// bytes of the serialized value
+let s: &amp;str = ".." ;
+// parse serialized data using another crate, such as `serde_json`
+let json: serde_json::Value = serde_json::from_str(s).unwrap();
+// finally deserialize with deserr
+let data = T::deserialize_from_value(json.into_value()).unwrap();
+// `T` must implement `Deserr`.</code></pre>
+<h2 id="why-would-i-use-it"><a class="header" href="#why-would-i-use-it">Why would I use it</a></h2>
+<p>The main place where you should use deserr is on your user-facing API,
+especially if it's supposed to be read by a human.
+Since deserr gives you full control over your error types, you can improve
+the quality of your error messages.
+Here is a little preview of what you can do with deserr:</p>
+<p>Let's say I sent this payload to update my <a href="https://docs.meilisearch.com/reference/api/settings.html#settings">Meilisearch</a> settings:</p>
+<pre><code class="language-json">{
+  "filterableAttributes": ["doggo.age", "catto.age"],
+  "sortableAttributes": ["uploaded_at"],
+  "typoTolerance": {
+    "minWordSizeForTypos": {
+      "oneTypo": 1000, "twoTypo": 80
+    },
+    "enabled": true
+  },
+  "displayedAttributes": ["*"],
+  "searchableAttributes": ["doggo.name", "catto.name"]
+}
+</code></pre>
+<h4 id="with-serde"><a class="header" href="#with-serde">With serde</a></h4>
+<p>With serde, we don't have much customization; this is the typical kind of message we would get in return:</p>
+<pre><code class="language-json">{
+  "message": "Json deserialize error: invalid value: integer `1000`, expected u8 at line 6 column 21",
+  "code": "bad_request",
+  "type": "invalid_request",
+  "link": "https://docs.meilisearch.com/errors#bad_request"
+}
+</code></pre>
+<h5 id="the-message"><a class="header" href="#the-message">The message</a></h5>
+<blockquote>
+<p>Json deserialize error: invalid value: integer <code>1000</code>, expected u8 at line 6 column 21</p>
+</blockquote>
+<ul>
+<li>The message uses the word <code>u8</code>, which definitely won't help a user who doesn't know rust or is unfamiliar with types.</li>
+<li>The location is provided in terms of lines and columns. While this is generally good, when most of your users
+read this message in their terminal, it doesn't actually help much.</li>
+</ul>
+<h4 id="the-rest-of-the-payload"><a class="header" href="#the-rest-of-the-payload">The rest of the payload</a></h4>
+<p>Since serde returned this error, we cannot know what happened or on which field it happened. Thus, the best we
+can do is generate a code <code>bad_request</code> that is common for our whole API. We then use this code to generate
+a link to our documentation to help our users. But such a generic link does not help our users because it
+can be thrown by every single route of Meilisearch.</p>
+<h4 id="with-deserr"><a class="header" href="#with-deserr">With deserr</a></h4>
+<pre><code class="language-json">{
+  "message": "Invalid value at `.typoTolerance.minWordSizeForTypos.oneTypo`: value: `1000` is too large to be deserialized, maximum value authorized is `255`",
+  "code": "invalid_settings_typo_tolerance",
+  "type": "invalid_request",
+  "link": "https://docs.meilisearch.com/errors#invalid-settings-typo-tolerance"
+}
+</code></pre>
+<h5 id="the-message-1"><a class="header" href="#the-message-1">The message</a></h5>
+<blockquote>
+<p>Invalid value at <code>.typoTolerance.minWordSizeForTypos.oneTypo</code>: value: <code>1000</code> is too large to be deserialized, maximum value authorized is <code>255</code></p>
+</blockquote>
+<ul>
+<li>We get a more human-readable location; <code>.typoTolerance.minWordSizeForTypos.oneTypo</code>. It gives us the faulty field.</li>
+<li>We also get a non-confusing and helpful message this time; it explicitly tells us that the maximum value authorized is <code>255</code>.</li>
+</ul>
+<h5 id="the-rest-of-the-payload-1"><a class="header" href="#the-rest-of-the-payload-1">The rest of the payload</a></h5>
+<p>Since deserr called one of our functions in the process, we were able to use a custom error code + link to redirect
+our user to the documentation specific to this feature and this field.</p>
+<h4 id="more-possibilities-with-deserr-that-were-impossible-with-serde"><a class="header" href="#more-possibilities-with-deserr-that-were-impossible-with-serde">More possibilities with deserr that were impossible with serde</a></h4>
+<h5 id="adding-constraints-on-multiples-fields"><a class="header" href="#adding-constraints-on-multiples-fields">Adding constraints on multiples fields</a></h5>
+<p>In Meilisearch, there is another constraint on this <code>minWordSizeForTypos</code>, the <code>twoTypo</code> field <strong>must be</strong> greater than
+the <code>oneType</code> field.</p>
+<p>Serde doesn't provide any feature to do that. You could write your own implementation of <code>Deserialize</code> for the
+entire sub-object <code>minWordSizeForTypos</code>, but that's generally hard and wouldn't even let you customize the
+error type.
+Thus, that's the kind of thing you're going to check by hand in your code later on. This is error-prone and
+may bring inconsistencies between most of the deserialization error messages and your error message.</p>
+<p>With deserr, we provide attributes that allow you to validate your structure once it's deserialized.</p>
+<h5 id="when-a-field-is-missing"><a class="header" href="#when-a-field-is-missing">When a field is missing</a></h5>
+<p>It's possible to provide your own function when a field is missing.</p>
+<pre><code class="language-rust ignore">pub fn missing_field&lt;E: DeserializeError&gt;(field: &amp;str, location: ValuePointerRef) -&gt; E {
+    todo!()
+}</code></pre>
+<p>At Meilisearch, we use this function to specify a custom error code, but we keep the default error message which is pretty accurate.</p>
+<h5 id="when-an-unknown-field-is-encountered"><a class="header" href="#when-an-unknown-field-is-encountered">When an unknown field is encountered</a></h5>
+<p>It's possible to provide your own function when a field is missing.</p>
+<pre><code class="language-rust ignore">fn unknown_field&lt;E: DeserializeError&gt;(
+    field: &amp;str,
+    accepted: &amp;[&amp;str],
+    location: ValuePointerRef,
+) -&gt; E {
+    todo!()
+}</code></pre>
+<p>Here is a few ideas we have or would like to implement at Meilisearch;</p>
+<ul>
+<li>In the case of a resource you can <code>PUT</code> with some fields, but can't <code>PATCH</code> all its fields. We can throw a special <code>immutable field x</code> error instead of an <code>unknown field x</code>.</li>
+<li>Detecting when you use the field name of an alternative; for example, we use <code>q</code> to make a <code>query</code> while some Meilisearch alternatives use <code>query</code>.
+We could help our users with a <code>did you mean?</code> message that corrects the field to its proper name in Meilisearch.</li>
+<li>Trying to guess what the user was trying to say by computing the <a href="https://en.wikipedia.org/wiki/Levenshtein_distance">levenstein distance</a>
+between what the user typed and what is accepted to provide a <code>did you mean?</code> message that attempts to correct typos.</li>
+</ul>
+<h5 id="when-multiple-errors-are-encountered"><a class="header" href="#when-multiple-errors-are-encountered">When multiple errors are encountered</a></h5>
+<p>Deserr lets you accumulate multiple errors with its <code>MergeWithError</code> trait while trying to deserialize the value into your type.
+This is a good way to improve your user experience by reducing the number of interactions
+a user needs to have to fix an invalid payload.</p>
+<hr />
+<p>The main parts of deserr are:</p>
+<ol>
+<li><code>Deserr&lt;E&gt;</code> is the main trait for deserialization, unlike Serde, it's very easy to deserialize this trait manually, see the <code>implements_deserr_manually.rs</code> file in our examples directory.</li>
+<li><code>IntoValue</code> and <code>Value</code> describes the shape that the parsed serialized data must have</li>
+<li><code>DeserializeError</code> is the trait that all deserialization errors must conform to</li>
+<li><code>MergeWithError&lt;E&gt;</code> describe how to combine multiple errors together. It allows deserr
+to return multiple deserialization errors at once.</li>
+<li><code>ValuePointerRef</code> and <code>ValuePointer</code> point to locations within the value. They are
+used to locate the origin of an error.</li>
+<li><code>deserialize&lt;Ret, Val, E&gt;</code> is the main function to use to deserialize a value.
+<ul>
+<li><code>Ret</code> is the returned value or the structure you want to deserialize.</li>
+<li><code>Val</code> is the value type you want to deserialize from. Currently, only an implementation for <code>serde_json::Value</code> is provided
+in this crate, but you could add your own! Feel free to look into our <code>serde_json</code> module.</li>
+<li><code>E</code> is the error type that should be used if an error happens during the deserialization.</li>
+</ul>
+</li>
+<li>The <code>Deserr</code> derive proc macro</li>
+</ol>
+<h2 id="example"><a class="header" href="#example">Example</a></h2>
+<h3 id="implementing-deserialize-for-a-custom-type-with-a-custom-error"><a class="header" href="#implementing-deserialize-for-a-custom-type-with-a-custom-error">Implementing deserialize for a custom type with a custom error</a></h3>
+<p>In the following example, we're going to deserialize a structure containing a bunch of fields and
+uses a custom error type that accumulates all the errors encountered while deserializing the structure.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use deserr::{deserialize, DeserializeError, Deserr, ErrorKind, errors::JsonError, Value, ValueKind, IntoValue, take_cf_content, MergeWithError, ValuePointerRef, ValuePointer};
+use serde_json::json;
+use std::str::FromStr;
+use std::ops::ControlFlow;
+use std::fmt;
+use std::convert::Infallible;
+
+/// This is our custom error type. It'll accumulate multiple `JsonError`.
+#[derive(Debug)]
+struct MyError(Vec&lt;JsonError&gt;);
+
+impl DeserializeError for MyError {
+    /// Create a new error with the custom message.
+    ///
+    /// Return `ControlFlow::Continue` to continue deserializing even though an error was encountered.
+    /// We could return `ControlFlow::Break` as well to stop right here.
+    fn error&lt;V: IntoValue&gt;(self_: Option&lt;Self&gt;, error: ErrorKind&lt;V&gt;, location: ValuePointerRef) -&gt; ControlFlow&lt;Self, Self&gt; {
+        /// The `take_cf_content` return the inner error in a `ControlFlow&lt;E, E&gt;`.
+        let error = take_cf_content(JsonError::error(None, error, location));
+
+        let errors = if let Some(MyError(mut errors)) = self_ {
+            errors.push(error);
+            errors
+        } else {
+            vec![error]
+        };
+        ControlFlow::Continue(MyError(errors))
+    }
+}
+
+/// We have to implements `MergeWithError` between our error type _aaand_ our error type.
+impl MergeWithError&lt;MyError&gt; for MyError {
+    fn merge(self_: Option&lt;Self&gt;, mut other: MyError, _merge_location: ValuePointerRef) -&gt; ControlFlow&lt;Self, Self&gt; {
+        if let Some(MyError(mut errors)) = self_ {
+                other.0.append(&amp;mut errors);
+        }
+        ControlFlow::Continue(other)
+    }
+}
+
+#[derive(Debug, Deserr, PartialEq, Eq)]
+#[deserr(deny_unknown_fields)]
+struct Search {
+    #[deserr(default = String::new())]
+    query: String,
+    #[deserr(try_from(&amp;String) = FromStr::from_str -&gt; IndexUidError)]
+    index: IndexUid,
+    #[deserr(from(String) = From::from)]
+    field: Wildcard,
+    #[deserr(default)]
+    filter: Option&lt;serde_json::Value&gt;,
+    // Even though this field is an `Option` it IS mandatory.
+    limit: Option&lt;usize&gt;,
+    #[deserr(default)]
+    offset: usize,
+}
+
+/// An `IndexUid` can only be composed of ascii characters.
+#[derive(Debug, PartialEq, Eq)]
+struct IndexUid(String);
+/// If we encounter a non-ascii character this is the error type we're going to throw.
+struct IndexUidError(char);
+
+impl FromStr for IndexUid {
+    type Err = IndexUidError;
+
+    fn from_str(s: &amp;str) -&gt; Result&lt;Self, Self::Err&gt; {
+        if let Some(c) = s.chars().find(|c| !c.is_ascii()) {
+            Err(IndexUidError(c))
+        } else {
+            Ok(Self(s.to_string()))
+        }
+    }
+}
+
+impl fmt::Display for IndexUidError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        write!(
+            f,
+            "Encountered invalid character: `{}`, only ascii characters are accepted in the index",
+            self.0
+        )
+    }
+}
+
+/// We need to define how the `IndexUidError` error is going to be merged with our
+/// custom error type.
+impl MergeWithError&lt;IndexUidError&gt; for MyError {
+    fn merge(self_: Option&lt;Self&gt;, other: IndexUidError, merge_location: ValuePointerRef) -&gt; ControlFlow&lt;Self, Self&gt; {
+            // To be consistent with the other error and automatically get the position of the error we re-use the `JsonError`
+            // type and simply define ourself as an `Unexpected` error.
+        let error = take_cf_content(JsonError::error::&lt;Infallible&gt;(None, ErrorKind::Unexpected { msg: other.to_string() }, merge_location));
+        let errors = if let Some(MyError(mut errors)) = self_ {
+            errors.push(error);
+            errors
+        } else {
+            vec![error]
+        };
+        ControlFlow::Continue(MyError(errors))
+    }
+}
+
+/// A `Wildcard` can either contains a normal value or be a unit wildcard.
+#[derive(Deserr, Debug, PartialEq, Eq)]
+#[deserr(from(String) = From::from)]
+enum Wildcard {
+    Wildcard,
+    Value(String),
+}
+
+impl From&lt;String&gt; for Wildcard {
+    fn from(s: String) -&gt; Self {
+        if s == "*" {
+            Wildcard::Wildcard
+        } else {
+            Wildcard::Value(s)
+        }
+    }
+}
+
+// Here is an example of a typical payload we could deserialize:
+let data = deserialize::&lt;Search, _, MyError&gt;(
+    json!({ "index": "mieli", "field": "doggo", "filter": ["id = 1", ["catto = jorts"]], "limit": null }),
+).unwrap();
+assert_eq!(data, Search {
+    query: String::new(),
+    index: IndexUid(String::from("mieli")),
+    field: Wildcard::Value(String::from("doggo")),
+    filter: Some(json!(["id = 1", ["catto = jorts"]])),
+    limit: None,
+    offset: 0,
+});
+
+// And here is what happens when everything goes wrong at the same time:
+let error = deserialize::&lt;Search, _, MyError&gt;(
+    json!({ "query": 12, "index": "mieli 🍯", "field": true, "offset": "🔢"  }),
+).unwrap_err();
+// We're going to stringify all the error so it's easier to read
+assert_eq!(error.0.into_iter().map(|error| error.to_string()).collect::&lt;Vec&lt;String&gt;&gt;().join("\n"),
+"\
+Invalid value type at `.query`: expected a string, but found a positive integer: `12`
+Invalid value type at `.offset`: expected a positive integer, but found a string: `\"🔢\"`
+Invalid value at `.index`: Encountered invalid character: `🍯`, only ascii characters are accepted in the index
+Invalid value type at `.field`: expected a string, but found a boolean: `true`
+Missing field `limit`\
+");
+<span class="boring">}</span></code></pre></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+                            <a rel="next prefetch" href="attributes/mod.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+                    <a rel="next prefetch" href="attributes/mod.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
