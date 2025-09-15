@@ -6,8 +6,8 @@ publish = false
 
 [dependencies]
 deserr = { path = "../../", features = ["axum"] }
-axum = { version = "0.8.1", features = ["json", "macros"] }
-tokio = { version = "1.0", features = ["full"] }
-serde = { version = "1.0.217", features = ["derive"] }
+axum = { version = "0.8.4", features = ["json", "macros"] }
+tokio = { version = "1.47", features = ["full"] }
+serde = { version = "1.0.223", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
